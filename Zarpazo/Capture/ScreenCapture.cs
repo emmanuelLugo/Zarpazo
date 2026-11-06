@@ -15,11 +15,9 @@ internal static class ScreenCapture
         using var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppRgb);
         using (Graphics graphics = Graphics.FromImage(bitmap))
         {
-            graphics.CopyFromScreen(
-                bounds.Location,
-                Point.Empty,
-                bounds.Size,
-                CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt);
+            // shortcut: plain SourceCopy skips layered (see-through) windows; CaptureBlt would include them but
+            // CopyFromScreen rejects it combined with SourceCopy. Switch to BitBlt via P/Invoke if that matters.
+            graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
         }
 
         BitmapData pixels = bitmap.LockBits(
