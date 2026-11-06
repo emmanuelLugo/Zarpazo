@@ -75,7 +75,8 @@
             <TabItem Header="Acerca de">
                 <StackPanel Margin="14">
                     <TextBlock Text="Zarpazo" FontSize="24" FontWeight="SemiBold" />
-                    <TextBlock x:Name="VersionText" Foreground="#FF666666" Margin="0,2,0,12" />
+                    <TextBlock x:Name="VersionText" Foreground="#FF666666" Margin="0,2,0,0" />
+                    <TextBlock Text="Desarrollado por provisorio43" Foreground="#FF666666" Margin="0,2,0,12" />
                     <TextBlock TextWrapping="Wrap"
                                Text="Capturas de pantalla rápidas para Windows, con anotaciones, regla y cuentagotas." />
 

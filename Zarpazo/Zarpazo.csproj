@@ -8,6 +8,9 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Version>0.1.0</Version>
+    <!-- Shown in the .exe's Properties > Details tab. -->
+    <Authors>provisorio43</Authors>
+    <Copyright>© 2026 provisorio43</Copyright>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Zarpazo.ico</ApplicationIcon>
     <!-- WFAC010 prefers SetHighDpiMode, which only applies to apps that start through WinForms; WPF reads the manifest. -->
