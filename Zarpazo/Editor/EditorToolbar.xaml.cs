@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace Zarpazo.Editor;
 
@@ -36,12 +37,20 @@ public partial class EditorToolbar : UserControl
                 break;
             case "color":
                 Color = (Color)ColorConverter.ConvertFromString(value);
+                // This also fires while the XAML loads, before the swatch and the popup exist.
+                ColorSwatch?.SetCurrentValue(Shape.FillProperty, new SolidColorBrush(Color));
+                if (ColorPopup != null)
+                {
+                    ColorPopup.IsOpen = false;
+                }
                 break;
             case "size":
                 Thickness = double.Parse(value, CultureInfo.InvariantCulture);
                 break;
         }
     }
+
+    private void OnColorButton(object sender, RoutedEventArgs e) => ColorPopup.IsOpen = true;
 
     private void OnUndo(object sender, RoutedEventArgs e) => UndoRequested?.Invoke(this, EventArgs.Empty);
 

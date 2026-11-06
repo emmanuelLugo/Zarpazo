@@ -95,24 +95,41 @@
 
             <Border Style="{StaticResource Divider}" />
 
-            <RadioButton GroupName="color" Tag="#E53935" IsChecked="True" Style="{StaticResource Choice}" ToolTip="Rojo">
-                <Ellipse Width="16" Height="16" Fill="#E53935" />
-            </RadioButton>
-            <RadioButton GroupName="color" Tag="#FDD835" Style="{StaticResource Choice}" ToolTip="Amarillo">
-                <Ellipse Width="16" Height="16" Fill="#FDD835" />
-            </RadioButton>
-            <RadioButton GroupName="color" Tag="#43A047" Style="{StaticResource Choice}" ToolTip="Verde">
-                <Ellipse Width="16" Height="16" Fill="#43A047" />
-            </RadioButton>
-            <RadioButton GroupName="color" Tag="#1E88E5" Style="{StaticResource Choice}" ToolTip="Azul">
-                <Ellipse Width="16" Height="16" Fill="#1E88E5" />
-            </RadioButton>
-            <RadioButton GroupName="color" Tag="#000000" Style="{StaticResource Choice}" ToolTip="Negro">
-                <Ellipse Width="16" Height="16" Fill="Black" Stroke="#88FFFFFF" StrokeThickness="1" />
-            </RadioButton>
-            <RadioButton GroupName="color" Tag="#FFFFFF" Style="{StaticResource Choice}" ToolTip="Blanco">
-                <Ellipse Width="16" Height="16" Fill="White" />
-            </RadioButton>
+            <!-- One button showing the current color; the choices live in a popup so they don't take bar space. -->
+            <Button x:Name="ColorButton" Style="{StaticResource Action}" ToolTip="Color" Click="OnColorButton">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="ColorSwatch" Width="16" Height="16" Fill="#E53935" Stroke="#88FFFFFF" StrokeThickness="1" />
+                    <TextBlock Text="▾" Margin="5,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Popup x:Name="ColorPopup"
+                   PlacementTarget="{Binding ElementName=ColorButton}"
+                   Placement="Top"
+                   StaysOpen="False"
+                   AllowsTransparency="True">
+                <Border Background="#F0262626" CornerRadius="6" Padding="4" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal" RadioButton.Checked="OnChoice">
+                        <RadioButton GroupName="color" Tag="#E53935" IsChecked="True" Style="{StaticResource Choice}" ToolTip="Rojo">
+                            <Ellipse Width="16" Height="16" Fill="#E53935" />
+                        </RadioButton>
+                        <RadioButton GroupName="color" Tag="#FDD835" Style="{StaticResource Choice}" ToolTip="Amarillo">
+                            <Ellipse Width="16" Height="16" Fill="#FDD835" />
+                        </RadioButton>
+                        <RadioButton GroupName="color" Tag="#43A047" Style="{StaticResource Choice}" ToolTip="Verde">
+                            <Ellipse Width="16" Height="16" Fill="#43A047" />
+                        </RadioButton>
+                        <RadioButton GroupName="color" Tag="#1E88E5" Style="{StaticResource Choice}" ToolTip="Azul">
+                            <Ellipse Width="16" Height="16" Fill="#1E88E5" />
+                        </RadioButton>
+                        <RadioButton GroupName="color" Tag="#000000" Style="{StaticResource Choice}" ToolTip="Negro">
+                            <Ellipse Width="16" Height="16" Fill="Black" Stroke="#88FFFFFF" StrokeThickness="1" />
+                        </RadioButton>
+                        <RadioButton GroupName="color" Tag="#FFFFFF" Style="{StaticResource Choice}" ToolTip="Blanco">
+                            <Ellipse Width="16" Height="16" Fill="White" />
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <Border Style="{StaticResource Divider}" />
 
