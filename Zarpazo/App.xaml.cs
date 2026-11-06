@@ -61,8 +61,10 @@ public partial class App : Application
 
         BitmapSource image;
         Rectangle bounds;
+        List<Rectangle> windows;
         try
         {
+            windows = WindowFinder.GetVisibleWindowBounds(); // right before the capture, so both show the same screen
             (image, bounds) = ScreenCapture.CaptureVirtualScreen();
         }
         catch (Exception ex)
@@ -71,7 +73,7 @@ public partial class App : Application
             return;
         }
 
-        _overlay = new OverlayWindow(image, bounds);
+        _overlay = new OverlayWindow(image, bounds, windows);
         _overlay.Closed += (_, _) => _overlay = null;
         _overlay.Show();
     }

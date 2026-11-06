@@ -20,8 +20,13 @@ public partial class OverlayWindow : Window
     private const uint SwpNoActivate = 0x0010;
 
     private const double ToolbarGap = 6;
+    private const double ClickTolerance = 4; // a release this close to the press counts as a click, not a drag
 
     private readonly BitmapSource _screenshot;
+    private readonly Rectangle _bounds;
+    private readonly IReadOnlyList<Rectangle> _windows;
+    private Rect? _hoverRect;   // the window under the cursor, while no area has been chosen yet
+    private Rect? _pendingWindow; // that window as it was when the button went down
     private Point _dragStart;
     private Annotation? _drawing;
     private TextBox? _textBox;
@@ -31,10 +36,13 @@ public partial class OverlayWindow : Window
 
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
-    public OverlayWindow(BitmapSource screenshot, Rectangle bounds)
+    /// <param name="windows">Window bounds in physical pixels at the moment of the capture, topmost first.</param>
+    public OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows)
     {
         InitializeComponent();
         _screenshot = screenshot;
+        _bounds = bounds;
+        _windows = windows;
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
         SizeChanged += (_, e) => DimArea.Rect = new Rect(e.NewSize);
@@ -139,7 +147,8 @@ public partial class OverlayWindow : Window
     }
 
     // A click without dragging leaves a zero-size rectangle, which is not a selection.
-    private bool HasSelection => Selection.Rect is { IsEmpty: false, Width: >= 2, Height: >= 2 };
+    // A highlighted window is only a preview until it is clicked.
+    private bool HasSelection => _hoverRect == null && Selection.Rect is { IsEmpty: false, Width: >= 2, Height: >= 2 };
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
@@ -153,6 +162,8 @@ public partial class OverlayWindow : Window
         if (Toolbar.Tool == AnnotationTool.Select)
         {
             _dragStart = point;
+            _pendingWindow = _hoverRect;
+            _hoverRect = null;
             Annotations.Clear();
             Toolbar.Visibility = Visibility.Collapsed;
             Selection.Rect = new Rect(point, point);
@@ -185,6 +196,7 @@ public partial class OverlayWindow : Window
     {
         if (!IsMouseCaptured)
         {
+            HoverWindow(e.GetPosition(this));
             return;
         }
 
@@ -214,11 +226,53 @@ public partial class OverlayWindow : Window
             Annotations.Commit(_drawing);
             _drawing = null;
         }
-        else if (HasSelection)
+        else
         {
-            Annotations.ClipArea = Selection.Rect;
-            ShowToolbar();
+            if (_pendingWindow is { } window && (e.GetPosition(this) - _dragStart).Length < ClickTolerance)
+            {
+                Selection.Rect = window;
+            }
+            _pendingWindow = null;
+
+            if (HasSelection)
+            {
+                Annotations.ClipArea = Selection.Rect;
+                ShowToolbar();
+            }
         }
+    }
+
+    /// <summary>Highlights the window under the cursor, until an area has been chosen.</summary>
+    private void HoverWindow(Point point)
+    {
+        if (Toolbar.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
+        // Image pixels per layout unit, which is also how window pixels map onto the overlay.
+        double scaleX = _screenshot.PixelWidth / ActualWidth;
+        double scaleY = _screenshot.PixelHeight / ActualHeight;
+        int x = _bounds.X + (int)Math.Round(point.X * scaleX);
+        int y = _bounds.Y + (int)Math.Round(point.Y * scaleY);
+
+        foreach (Rectangle window in _windows)
+        {
+            Rectangle visible = Rectangle.Intersect(window, _bounds); // maximized windows reach past the screen edge
+            if (visible.Contains(x, y))
+            {
+                _hoverRect = new Rect(
+                    (visible.X - _bounds.X) / scaleX,
+                    (visible.Y - _bounds.Y) / scaleY,
+                    visible.Width / scaleX,
+                    visible.Height / scaleY);
+                Selection.Rect = _hoverRect.Value;
+                return;
+            }
+        }
+
+        _hoverRect = null;
+        Selection.Rect = Rect.Empty;
     }
 
     private void BeginText(Point point)
