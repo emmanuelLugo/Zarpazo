@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Zarpazo.Editor;
 using Zarpazo.Output;
+using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
 
 namespace Zarpazo.Overlay;
@@ -28,6 +30,7 @@ public partial class OverlayWindow : Window
     private readonly BitmapSource _screenshot;
     private readonly Rectangle _bounds;
     private readonly IReadOnlyList<Rectangle> _windows;
+    private readonly SettingsStore _settings;
     private Rect? _hoverRect;   // the window under the cursor, while no area has been chosen yet
     private Rect? _pendingWindow; // that window as it was when the button went down
     private Point _dragStart;
@@ -45,12 +48,18 @@ public partial class OverlayWindow : Window
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
     /// <param name="windows">Window bounds in physical pixels at the moment of the capture, topmost first.</param>
-    public OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows)
+    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings)
     {
         InitializeComponent();
         _screenshot = screenshot;
         _bounds = bounds;
         _windows = windows;
+        _settings = settings;
+        if (settings.Current.RememberStyle)
+        {
+            Toolbar.Restore(settings.Current.Color, settings.Current.Thickness);
+        }
+        Closed += (_, _) => RememberStyle();
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
         Selection.Changed += (_, _) => UpdateSizeLabel(); // every way the area changes goes through the rectangle
@@ -105,9 +114,31 @@ public partial class OverlayWindow : Window
         }
     }
 
-    private void OnCopy(object? sender, EventArgs e) => Finish(ImageOutput.CopyToClipboard);
+    private void OnCopy(object? sender, EventArgs e) =>
+        Finish(image => ImageOutput.CopyToClipboard(image, _settings.Current.CopyAsFile));
 
-    private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this));
+    private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this, _settings.Current));
+
+    // Written when the overlay closes, so the next capture starts with the last color and thickness used.
+    private void RememberStyle()
+    {
+        AppSettings settings = _settings.Current;
+        if (!settings.RememberStyle || (settings.Color == Toolbar.ColorHex && settings.Thickness == Toolbar.Thickness))
+        {
+            return;
+        }
+
+        settings.Color = Toolbar.ColorHex;
+        settings.Thickness = Toolbar.Thickness;
+        try
+        {
+            _settings.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Losing a color preference isn't worth interrupting the person.
+        }
+    }
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
 

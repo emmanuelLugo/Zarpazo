@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using Zarpazo.Settings;
 
 namespace Zarpazo.Output;
 
@@ -14,13 +15,15 @@ internal static class ImageOutput
     /// Puts the image on the clipboard twice: as pixels, for editors and chats, and as a PNG file, which is what a terminal
     /// needs to paste a path it can read (the same thing Explorer's "copy file" does).
     /// </summary>
-    public static bool CopyToClipboard(BitmapSource image)
+    public static bool CopyToClipboard(BitmapSource image, bool alsoAsFile)
     {
-        string path = SaveForPaste(image, Path.Combine(Path.GetTempPath(), "Zarpazo"));
-
         var data = new DataObject();
         data.SetImage(image);
-        data.SetFileDropList(new StringCollection { path });
+        if (alsoAsFile)
+        {
+            string path = SaveForPaste(image, Path.Combine(Path.GetTempPath(), "Zarpazo"));
+            data.SetFileDropList(new StringCollection { path });
+        }
         Clipboard.SetDataObject(data, copy: true); // copy: keep it after the app closes the overlay
         return true;
     }
@@ -51,16 +54,20 @@ internal static class ImageOutput
     }
 
     /// <summary>Asks for a file and writes the image as PNG or JPG. Returns false if the user cancels.</summary>
-    public static bool Save(BitmapSource image, Window owner)
+    public static bool Save(BitmapSource image, Window owner, AppSettings settings)
     {
+        bool jpg = settings.SaveFormat == "jpg";
         var dialog = new SaveFileDialog
         {
             Title = "Guardar captura",
             FileName = $"Zarpazo {DateTime.Now:yyyy-MM-dd HH-mm-ss}",
             Filter = "Imagen PNG (*.png)|*.png|Imagen JPG (*.jpg)|*.jpg",
+            FilterIndex = jpg ? 2 : 1,
             AddExtension = true,
-            DefaultExt = ".png",
-            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+            DefaultExt = jpg ? ".jpg" : ".png",
+            InitialDirectory = Directory.Exists(settings.SaveFolder)
+                ? settings.SaveFolder
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
         };
         if (dialog.ShowDialog(owner) != true)
         {

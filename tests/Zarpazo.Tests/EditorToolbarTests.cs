@@ -102,6 +102,51 @@ public class EditorToolbarTests
     }
 
     [Fact]
+    public void Restore_picks_a_listed_color_and_thickness_and_checks_their_buttons()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            toolbar.Restore("#1e88e5", 8); // lower case, as a hand-edited file might have it
+
+            Assert.Equal(System.Windows.Media.Color.FromRgb(0x1E, 0x88, 0xE5), toolbar.Color);
+            Assert.Equal(8, toolbar.Thickness);
+            Assert.True(Find(toolbar, "color", "#1E88E5").IsChecked);
+            Assert.True(Find(toolbar, "size", "8").IsChecked);
+            Assert.Equal("#1E88E5", toolbar.ColorHex);
+        });
+    }
+
+    [Fact]
+    public void Restore_shows_an_unlisted_color_as_the_custom_choice()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            toolbar.Restore("#123456", 2);
+
+            Assert.Equal("#123456", toolbar.ColorHex);
+            Assert.True(Find(toolbar, "color", "#123456").IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Restore_ignores_values_it_cannot_understand()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            toolbar.Restore("not a color", 5);
+
+            Assert.Equal("#E53935", toolbar.ColorHex);
+            Assert.Equal(4, toolbar.Thickness);
+        });
+    }
+
+    [Fact]
     public void Pressing_the_checked_color_keeps_the_tool_and_the_color()
     {
         Sta.Run(() =>

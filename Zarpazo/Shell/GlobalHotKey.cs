@@ -3,20 +3,20 @@ using System.Windows.Interop;
 
 namespace Zarpazo.Shell;
 
-internal sealed class PrintScreenHotKey : IDisposable
+/// <summary>One system-wide shortcut, which can be moved to another key combination while the app runs.</summary>
+internal sealed class GlobalHotKey : IDisposable
 {
     private const int HotKeyId = 1;
     private const int WmHotKey = 0x0312;
     private const uint ModNoRepeat = 0x4000;
-    private const uint VkSnapshot = 0x2C;
     private static readonly IntPtr HwndMessage = new(-3);
 
     private readonly Action _onPressed;
     private readonly HwndSource _window;
 
-    public bool IsRegistered { get; }
+    public bool IsRegistered { get; private set; }
 
-    public PrintScreenHotKey(Action onPressed)
+    public GlobalHotKey(Action onPressed)
     {
         _onPressed = onPressed;
         _window = new HwndSource(new HwndSourceParameters("ZarpazoHotKey")
@@ -25,15 +25,28 @@ internal sealed class PrintScreenHotKey : IDisposable
             WindowStyle = 0,
         });
         _window.AddHook(WndProc);
-        IsRegistered = RegisterHotKey(_window.Handle, HotKeyId, ModNoRepeat, VkSnapshot);
     }
 
-    public void Dispose()
+    /// <summary>Replaces the current shortcut. Returns false, with nothing registered, if another program already owns the combination.</summary>
+    public bool TryRegister(HotKeyBinding binding)
+    {
+        Unregister();
+        IsRegistered = RegisterHotKey(_window.Handle, HotKeyId, binding.Modifiers | ModNoRepeat, binding.VirtualKey);
+        return IsRegistered;
+    }
+
+    public void Unregister()
     {
         if (IsRegistered)
         {
             UnregisterHotKey(_window.Handle, HotKeyId);
+            IsRegistered = false;
         }
+    }
+
+    public void Dispose()
+    {
+        Unregister();
         _window.Dispose();
     }
 

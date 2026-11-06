@@ -20,6 +20,46 @@ public partial class EditorToolbar : UserControl
     public Color Color { get; private set; } = (Color)ColorConverter.ConvertFromString("#E53935");
     public double Thickness { get; private set; } = 4;
 
+    public string ColorHex => $"#{Color.R:X2}{Color.G:X2}{Color.B:X2}";
+
+    /// <summary>Starts with the color and thickness used last time. Values that make no sense are ignored.</summary>
+    public void Restore(string colorHex, double thickness)
+    {
+        if (FindChoice(this, "color", colorHex) is { } swatch)
+        {
+            swatch.IsChecked = true;
+        }
+        else
+        {
+            try
+            {
+                ApplyCustomColor((Color)ColorConverter.ConvertFromString(colorHex));
+            }
+            catch (FormatException)
+            {
+                // The settings file was edited by hand; keep the default color.
+            }
+        }
+
+        FindChoice(this, "size", thickness.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+    }
+
+    private static RadioButton? FindChoice(DependencyObject root, string group, string tag)
+    {
+        foreach (object child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is RadioButton radio && radio.GroupName == group && string.Equals((string)radio.Tag, tag, StringComparison.OrdinalIgnoreCase))
+            {
+                return radio;
+            }
+            if (child is DependencyObject node && FindChoice(node, group, tag) is { } found)
+            {
+                return found;
+            }
+        }
+        return null;
+    }
+
     public event EventHandler? UndoRequested;
     public event EventHandler? RedoRequested;
     public event EventHandler? CopyRequested;
@@ -107,7 +147,11 @@ public partial class EditorToolbar : UserControl
         }
         _customColors = dialog.CustomColors;
 
-        var chosen = Color.FromRgb(dialog.Color.R, dialog.Color.G, dialog.Color.B);
+        ApplyCustomColor(Color.FromRgb(dialog.Color.R, dialog.Color.G, dialog.Color.B));
+    }
+
+    private void ApplyCustomColor(Color chosen)
+    {
         CustomDot.Fill = new SolidColorBrush(chosen);
         CustomChoice.Tag = $"#{chosen.R:X2}{chosen.G:X2}{chosen.B:X2}";
         CustomChoice.Visibility = Visibility.Visible;
