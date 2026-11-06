@@ -219,8 +219,21 @@ public partial class OverlayWindow : Window
         {
             return;
         }
-        ReleaseMouseCapture();
 
+        // Releasing the capture makes WPF send a mouse move right away, which would run HoverWindow and replace the
+        // selection with the window underneath. So it is released last, once the selection and toolbar are in place.
+        try
+        {
+            FinishDrag(e);
+        }
+        finally
+        {
+            ReleaseMouseCapture();
+        }
+    }
+
+    private void FinishDrag(MouseButtonEventArgs e)
+    {
         if (_drawing != null)
         {
             Annotations.Commit(_drawing);
