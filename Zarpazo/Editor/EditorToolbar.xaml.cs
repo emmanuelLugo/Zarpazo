@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -9,6 +10,9 @@ namespace Zarpazo.Editor;
 
 public partial class EditorToolbar : UserControl
 {
+    // The dialog's 16 custom color slots, kept so colors mixed earlier are still there next time.
+    private int[]? _customColors;
+
     public EditorToolbar() => InitializeComponent();
 
     // Defaults match the buttons checked in the XAML.
@@ -26,6 +30,7 @@ public partial class EditorToolbar : UserControl
 
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e) => e.Handled = true;
 
+    // This also fires while the XAML loads, before the swatches and popups exist, hence the null checks.
     private void OnChoice(object sender, RoutedEventArgs e)
     {
         var choice = (RadioButton)e.OriginalSource;
@@ -36,21 +41,66 @@ public partial class EditorToolbar : UserControl
                 Tool = Enum.Parse<AnnotationTool>(value);
                 break;
             case "color":
-                Color = (Color)ColorConverter.ConvertFromString(value);
-                // This also fires while the XAML loads, before the swatch and the popup exist.
-                ColorSwatch?.SetCurrentValue(Shape.FillProperty, new SolidColorBrush(Color));
-                if (ColorPopup != null)
-                {
-                    ColorPopup.IsOpen = false;
-                }
+                SetColor((Color)ColorConverter.ConvertFromString(value));
                 break;
             case "size":
                 Thickness = double.Parse(value, CultureInfo.InvariantCulture);
+                if (choice.Content is Ellipse dot && SizeSwatch != null)
+                {
+                    SizeSwatch.Width = dot.Width;
+                    SizeSwatch.Height = dot.Height;
+                }
+                if (SizePopup != null)
+                {
+                    SizePopup.IsOpen = false;
+                }
                 break;
         }
     }
 
+    private void SetColor(Color color)
+    {
+        Color = color;
+        ColorSwatch?.SetCurrentValue(Shape.FillProperty, new SolidColorBrush(color));
+        if (ColorPopup != null)
+        {
+            ColorPopup.IsOpen = false;
+        }
+    }
+
     private void OnColorButton(object sender, RoutedEventArgs e) => ColorPopup.IsOpen = true;
+
+    private void OnSizeButton(object sender, RoutedEventArgs e) => SizePopup.IsOpen = true;
+
+    private void OnCustomColor(object sender, RoutedEventArgs e)
+    {
+        ColorPopup.IsOpen = false;
+
+        using var dialog = new System.Windows.Forms.ColorDialog
+        {
+            FullOpen = true,
+            Color = System.Drawing.Color.FromArgb(Color.R, Color.G, Color.B),
+        };
+        if (_customColors != null)
+        {
+            dialog.CustomColors = _customColors;
+        }
+
+        // Owned by the overlay: without an owner the dialog can open behind the always-on-top window.
+        var owner = new Win32Owner(new WindowInteropHelper(Window.GetWindow(this)!).Handle);
+        if (dialog.ShowDialog(owner) != System.Windows.Forms.DialogResult.OK)
+        {
+            return;
+        }
+        _customColors = dialog.CustomColors;
+
+        var chosen = Color.FromRgb(dialog.Color.R, dialog.Color.G, dialog.Color.B);
+        CustomDot.Fill = new SolidColorBrush(chosen);
+        CustomChoice.Tag = $"#{chosen.R:X2}{chosen.G:X2}{chosen.B:X2}";
+        CustomChoice.Visibility = Visibility.Visible;
+        CustomChoice.IsChecked = true;
+        SetColor(chosen); // IsChecked doesn't fire again when a second custom color replaces the first
+    }
 
     private void OnUndo(object sender, RoutedEventArgs e) => UndoRequested?.Invoke(this, EventArgs.Empty);
 
