@@ -1,4 +1,6 @@
 using System.Drawing;
+using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace Zarpazo.Shell;
@@ -15,8 +17,7 @@ internal sealed class TrayIcon : IDisposable
 
         _icon = new NotifyIcon
         {
-            // shortcut: generic system icon, replace it when the app has its own .ico.
-            Icon = SystemIcons.Application,
+            Icon = LoadIcon(),
             Text = "Zarpazo",
             ContextMenuStrip = menu,
             Visible = true,
@@ -30,5 +31,14 @@ internal sealed class TrayIcon : IDisposable
     {
         _icon.ContextMenuStrip?.Dispose();
         _icon.Dispose();
+    }
+
+    // Asking for the small-icon size picks the 16, 24 or 32 px entry that matches the screen's scaling,
+    // instead of shrinking the 32 px one.
+    private static Icon LoadIcon()
+    {
+        using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Zarpazo.ico")
+            ?? throw new InvalidOperationException("The embedded Zarpazo.ico is missing.");
+        return new Icon(stream, SystemInformation.SmallIconSize);
     }
 }

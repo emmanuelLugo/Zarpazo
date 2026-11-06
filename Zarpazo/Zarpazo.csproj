@@ -8,12 +8,18 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Zarpazo.ico</ApplicationIcon>
     <!-- WFAC010 prefers SetHighDpiMode, which only applies to apps that start through WinForms; WPF reads the manifest. -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Zarpazo.Tests" />
+  </ItemGroup>
+
+  <!-- The same icon, embedded again so the tray can load the size that fits the screen's scaling. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Zarpazo.ico" LogicalName="Zarpazo.ico" />
   </ItemGroup>
 
   <!-- WinForms is only here for NotifyIcon and the screen metrics; its global usings would clash with WPF names. -->
