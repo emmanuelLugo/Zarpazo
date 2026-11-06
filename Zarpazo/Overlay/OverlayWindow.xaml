@@ -1,6 +1,7 @@
 <Window x:Class="Zarpazo.Overlay.OverlayWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:editor="clr-namespace:Zarpazo.Editor"
         Title="Zarpazo"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -26,9 +27,20 @@
             </Path.Data>
         </Path>
 
+        <editor:AnnotationCanvas x:Name="Annotations" IsHitTestVisible="False" />
+
         <Path x:Name="SelectionBorder"
               Stroke="White"
               StrokeThickness="1"
               RenderOptions.EdgeMode="Aliased" />
+
+        <Canvas>
+            <editor:EditorToolbar x:Name="Toolbar"
+                                  Visibility="Collapsed"
+                                  UndoRequested="OnUndo"
+                                  RedoRequested="OnRedo"
+                                  CopyRequested="OnCopy"
+                                  SaveRequested="OnSave" />
+        </Canvas>
     </Grid>
 </Window>

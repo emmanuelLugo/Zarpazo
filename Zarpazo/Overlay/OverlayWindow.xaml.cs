@@ -1,8 +1,10 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using Zarpazo.Editor;
 using Zarpazo.Output;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -16,8 +18,11 @@ public partial class OverlayWindow : Window
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
 
+    private const double ToolbarGap = 6;
+
     private readonly BitmapSource _screenshot;
     private Point _dragStart;
+    private Annotation? _drawing;
 
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
@@ -47,20 +52,36 @@ public partial class OverlayWindow : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
+        bool ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         if (e.Key == Key.Escape)
         {
             Close();
         }
         else if (e.Key == Key.Enter || (ctrl && e.Key == Key.C))
         {
-            Finish(ImageOutput.CopyToClipboard);
+            OnCopy(this, EventArgs.Empty);
         }
         else if (ctrl && e.Key == Key.S)
         {
-            Finish(image => ImageOutput.Save(image, this));
+            OnSave(this, EventArgs.Empty);
+        }
+        else if (ctrl && e.Key == Key.Z)
+        {
+            OnUndo(this, EventArgs.Empty);
+        }
+        else if (ctrl && e.Key == Key.Y)
+        {
+            OnRedo(this, EventArgs.Empty);
         }
     }
+
+    private void OnCopy(object? sender, EventArgs e) => Finish(ImageOutput.CopyToClipboard);
+
+    private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this));
+
+    private void OnUndo(object? sender, EventArgs e) => Annotations.Undo();
+
+    private void OnRedo(object? sender, EventArgs e) => Annotations.Redo();
 
     /// <summary>Runs the output on the selected area and closes. Stays open if there is no selection, the user cancels or it fails.</summary>
     private void Finish(Func<BitmapSource, bool> output)
@@ -88,12 +109,12 @@ public partial class OverlayWindow : Window
 
     private BitmapSource? CropSelection()
     {
-        Rect area = Selection.Rect;
-        if (area.IsEmpty)
+        if (!HasSelection)
         {
             return null;
         }
 
+        Rect area = Selection.Rect;
         // Image pixels per layout unit; the window may be scaled for DPI, so don't assume 1.
         double scaleX = _screenshot.PixelWidth / ActualWidth;
         double scaleY = _screenshot.PixelHeight / ActualHeight;
@@ -108,25 +129,95 @@ public partial class OverlayWindow : Window
 
         var crop = new CroppedBitmap(_screenshot, new Int32Rect(x, y, width, height));
         crop.Freeze();
-        return crop;
+        return Annotations.Compose(crop, x, y, scaleX, scaleY);
     }
+
+    // A click without dragging leaves a zero-size rectangle, which is not a selection.
+    private bool HasSelection => Selection.Rect is { IsEmpty: false, Width: >= 2, Height: >= 2 };
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        _dragStart = e.GetPosition(this);
-        Selection.Rect = new Rect(_dragStart, _dragStart);
+        Point point = e.GetPosition(this);
+        if (Toolbar.Tool == AnnotationTool.Select)
+        {
+            _dragStart = point;
+            Annotations.Clear();
+            Toolbar.Visibility = Visibility.Collapsed;
+            Selection.Rect = new Rect(point, point);
+        }
+        else if (HasSelection && Selection.Rect.Contains(point))
+        {
+            _drawing = Annotation.Create(Toolbar.Tool, Toolbar.Color, Toolbar.Thickness, point);
+            Annotations.Begin(_drawing);
+        }
+        else
+        {
+            return; // drawing tools ignore clicks outside the capture area
+        }
         CaptureMouse();
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
-        if (IsMouseCaptured)
+        if (!IsMouseCaptured)
         {
-            Selection.Rect = new Rect(_dragStart, e.GetPosition(this));
+            return;
+        }
+
+        Point point = e.GetPosition(this);
+        if (_drawing != null)
+        {
+            Rect area = Selection.Rect;
+            _drawing.Extend(new Point(Math.Clamp(point.X, area.Left, area.Right), Math.Clamp(point.Y, area.Top, area.Bottom)));
+            Annotations.InvalidateVisual();
+        }
+        else
+        {
+            Selection.Rect = new Rect(_dragStart, point);
         }
     }
 
-    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e) => ReleaseMouseCapture();
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    {
+        if (!IsMouseCaptured)
+        {
+            return;
+        }
+        ReleaseMouseCapture();
+
+        if (_drawing != null)
+        {
+            Annotations.Commit(_drawing);
+            _drawing = null;
+        }
+        else if (HasSelection)
+        {
+            Annotations.ClipArea = Selection.Rect;
+            ShowToolbar();
+        }
+    }
+
+    private void ShowToolbar()
+    {
+        Rect area = Selection.Rect;
+        Toolbar.Visibility = Visibility.Visible;
+        Toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Size size = Toolbar.DesiredSize;
+
+        // Under the selection, right-aligned; above it if there is no room; inside it if the selection fills the screen.
+        double left = Math.Clamp(area.Right - size.Width, 0, Math.Max(0, ActualWidth - size.Width));
+        double top = area.Bottom + ToolbarGap;
+        if (top + size.Height > ActualHeight)
+        {
+            top = area.Top - size.Height - ToolbarGap;
+        }
+        if (top < 0)
+        {
+            top = Math.Max(0, area.Bottom - size.Height - ToolbarGap);
+        }
+        Canvas.SetLeft(Toolbar, left);
+        Canvas.SetTop(Toolbar, top);
+    }
 
     // Windows asks to rescale the window when its main monitor changes, which would break the 1:1 pixel fit.
     private static IntPtr IgnoreDpiChange(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
