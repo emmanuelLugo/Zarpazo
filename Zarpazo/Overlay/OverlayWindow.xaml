@@ -1,0 +1,34 @@
+<Window x:Class="Zarpazo.Overlay.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Zarpazo"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Black"
+        Cursor="Cross">
+    <Grid>
+        <Image x:Name="Screenshot"
+               Stretch="Fill"
+               RenderOptions.BitmapScalingMode="NearestNeighbor" />
+
+        <Path Fill="#80000000" RenderOptions.EdgeMode="Aliased">
+            <Path.Data>
+                <CombinedGeometry GeometryCombineMode="Exclude">
+                    <CombinedGeometry.Geometry1>
+                        <RectangleGeometry x:Name="DimArea" />
+                    </CombinedGeometry.Geometry1>
+                    <CombinedGeometry.Geometry2>
+                        <RectangleGeometry x:Name="Selection" />
+                    </CombinedGeometry.Geometry2>
+                </CombinedGeometry>
+            </Path.Data>
+        </Path>
+
+        <Path x:Name="SelectionBorder"
+              Stroke="White"
+              StrokeThickness="1"
+              RenderOptions.EdgeMode="Aliased" />
+    </Grid>
+</Window>
