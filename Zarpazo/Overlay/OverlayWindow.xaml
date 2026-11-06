@@ -50,7 +50,8 @@
                                   UndoRequested="OnUndo"
                                   RedoRequested="OnRedo"
                                   CopyRequested="OnCopy"
-                                  SaveRequested="OnSave" />
+                                  SaveRequested="OnSave"
+                                  CloseRequested="OnCloseRequested" />
 
             <Border x:Name="SizeLabel"
                     Background="#CC000000"

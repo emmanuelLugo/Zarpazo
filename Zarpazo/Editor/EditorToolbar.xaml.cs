@@ -24,6 +24,7 @@ public partial class EditorToolbar : UserControl
     public event EventHandler? RedoRequested;
     public event EventHandler? CopyRequested;
     public event EventHandler? SaveRequested;
+    public event EventHandler? CloseRequested;
 
     // A click on the bar's background must not start a new selection in the window behind it.
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e) => e.Handled = true;
@@ -121,4 +122,6 @@ public partial class EditorToolbar : UserControl
     private void OnCopy(object sender, RoutedEventArgs e) => CopyRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

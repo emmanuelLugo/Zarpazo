@@ -109,6 +109,8 @@ public partial class OverlayWindow : Window
 
     private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this));
 
+    private void OnCloseRequested(object? sender, EventArgs e) => Close();
+
     private void OnUndo(object? sender, EventArgs e) => Annotations.Undo();
 
     private void OnRedo(object? sender, EventArgs e) => Annotations.Redo();
