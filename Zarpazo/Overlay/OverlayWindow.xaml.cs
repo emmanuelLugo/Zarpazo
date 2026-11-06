@@ -164,7 +164,14 @@ public partial class OverlayWindow : Window
                 BeginText(point);
                 return;
             }
-            _drawing = Annotation.Create(Toolbar.Tool, Toolbar.Color, Toolbar.Thickness, point);
+            if (Toolbar.Tool == AnnotationTool.Step)
+            {
+                Annotations.Commit(new NumberAnnotation(Toolbar.Color, Toolbar.Thickness, point, Annotations.NextStepNumber));
+                return;
+            }
+
+            var screen = new ScreenSource(_screenshot, _screenshot.PixelWidth / ActualWidth, _screenshot.PixelHeight / ActualHeight);
+            _drawing = Annotation.Create(Toolbar.Tool, Toolbar.Color, Toolbar.Thickness, point, screen);
             Annotations.Begin(_drawing);
         }
         else

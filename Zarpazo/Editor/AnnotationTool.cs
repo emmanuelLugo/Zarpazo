@@ -5,8 +5,12 @@ public enum AnnotationTool
 {
     Select,
     Rectangle,
+    Ellipse,
     Line,
     Arrow,
     Pen,
+    Highlighter,
     Text,
+    Step,
+    Pixelate,
 }

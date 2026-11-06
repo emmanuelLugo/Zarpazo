@@ -22,6 +22,9 @@ internal sealed class AnnotationCanvas : FrameworkElement
         }
     }
 
+    /// <summary>The number the next step badge gets. Undoing a badge frees its number again.</summary>
+    public int NextStepNumber => _done.OfType<NumberAnnotation>().Count() + 1;
+
     /// <summary>The annotation being dragged right now; call <see cref="Commit"/> when it is finished.</summary>
     public void Begin(Annotation annotation) => _preview = annotation;
 
@@ -80,6 +83,7 @@ internal sealed class AnnotationCanvas : FrameworkElement
         }
 
         var visual = new DrawingVisual();
+        RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.NearestNeighbor); // keeps pixelated blocks sharp
         using (DrawingContext context = visual.RenderOpen())
         {
             context.DrawImage(crop, new Rect(0, 0, crop.PixelWidth, crop.PixelHeight));

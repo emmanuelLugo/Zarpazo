@@ -31,12 +31,16 @@ internal abstract class Annotation
 
     public abstract void Draw(DrawingContext context);
 
-    public static Annotation Create(AnnotationTool tool, Color color, double thickness, Point start) => tool switch
+    /// <summary>Starts the annotation for tools that are drawn by dragging.</summary>
+    public static Annotation Create(AnnotationTool tool, Color color, double thickness, Point start, ScreenSource screen) => tool switch
     {
         AnnotationTool.Rectangle => new RectangleAnnotation(color, thickness, start),
+        AnnotationTool.Ellipse => new EllipseAnnotation(color, thickness, start),
         AnnotationTool.Line => new LineAnnotation(color, thickness, start),
         AnnotationTool.Arrow => new ArrowAnnotation(color, thickness, start),
         AnnotationTool.Pen => new PenAnnotation(color, thickness, start),
+        AnnotationTool.Highlighter => new HighlighterAnnotation(color, thickness, start),
+        AnnotationTool.Pixelate => new PixelateAnnotation(color, thickness, start, screen),
         _ => throw new ArgumentOutOfRangeException(nameof(tool), tool, "This tool does not draw."),
     };
 }

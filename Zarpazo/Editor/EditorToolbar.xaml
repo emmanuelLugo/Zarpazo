@@ -66,14 +66,30 @@
                          Content="⛶" ToolTip="Seleccionar otra zona (borra las anotaciones)" />
             <RadioButton GroupName="tool" Tag="Rectangle" Style="{StaticResource Choice}"
                          Content="▭" ToolTip="Rectángulo" />
+            <RadioButton GroupName="tool" Tag="Ellipse" Style="{StaticResource Choice}"
+                         Content="◯" ToolTip="Elipse" />
             <RadioButton GroupName="tool" Tag="Line" Style="{StaticResource Choice}"
                          Content="╱" ToolTip="Línea" />
             <RadioButton GroupName="tool" Tag="Arrow" Style="{StaticResource Choice}"
                          Content="➚" ToolTip="Flecha" />
             <RadioButton GroupName="tool" Tag="Pen" Style="{StaticResource Choice}"
                          Content="✎" ToolTip="Lápiz" />
+            <RadioButton GroupName="tool" Tag="Highlighter" Style="{StaticResource Choice}"
+                         ToolTip="Resaltador">
+                <Rectangle Width="16" Height="9" Fill="#B3FDD835" Stroke="#88FFFFFF" StrokeThickness="1" />
+            </RadioButton>
             <RadioButton GroupName="tool" Tag="Text" Style="{StaticResource Choice}"
                          Content="T" FontWeight="Bold" ToolTip="Texto (Enter confirma, Mayús+Enter salto de línea)" />
+            <RadioButton GroupName="tool" Tag="Step" Style="{StaticResource Choice}"
+                         ToolTip="Numeración de pasos (un clic por número)">
+                <Grid>
+                    <Ellipse Width="18" Height="18" Fill="White" />
+                    <TextBlock Text="1" Foreground="Black" FontFamily="Segoe UI" FontWeight="Bold" FontSize="12"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+            </RadioButton>
+            <RadioButton GroupName="tool" Tag="Pixelate" Style="{StaticResource Choice}"
+                         Content="▦" ToolTip="Pixelar para ocultar datos" />
 
             <Border Style="{StaticResource Divider}" />
 

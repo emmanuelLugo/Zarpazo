@@ -27,7 +27,9 @@
             </Path.Data>
         </Path>
 
-        <editor:AnnotationCanvas x:Name="Annotations" IsHitTestVisible="False" />
+        <editor:AnnotationCanvas x:Name="Annotations"
+                                 IsHitTestVisible="False"
+                                 RenderOptions.BitmapScalingMode="NearestNeighbor" />
 
         <Path x:Name="SelectionBorder"
               Stroke="White"
