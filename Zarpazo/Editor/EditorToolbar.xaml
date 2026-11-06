@@ -93,6 +93,10 @@
             </RadioButton>
             <RadioButton GroupName="tool" Tag="Pixelate" Style="{StaticResource Choice}"
                          Content="▦" ToolTip="Pixelar para ocultar datos" />
+            <RadioButton GroupName="tool" Tag="Ruler" Style="{StaticResource Choice}"
+                         Content="↔" ToolTip="Regla: mide una distancia en píxeles" />
+            <RadioButton GroupName="tool" Tag="Picker" Style="{StaticResource Choice}"
+                         Content="💧" ToolTip="Cuentagotas: clic copia el color, X cambia entre HEX y RGB" />
 
             <Border Style="{StaticResource Divider}" />
 

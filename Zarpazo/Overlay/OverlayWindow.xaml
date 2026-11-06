@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:editor="clr-namespace:Zarpazo.Editor"
+        xmlns:local="clr-namespace:Zarpazo.Overlay"
         Title="Zarpazo"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -50,6 +51,17 @@
                                   RedoRequested="OnRedo"
                                   CopyRequested="OnCopy"
                                   SaveRequested="OnSave" />
+
+            <Border x:Name="SizeLabel"
+                    Background="#CC000000"
+                    CornerRadius="3"
+                    Padding="6,2"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="SizeText" Foreground="White" FontFamily="Consolas" FontSize="12" />
+            </Border>
+
+            <local:Magnifier x:Name="Probe" Visibility="Collapsed" />
         </Canvas>
     </Grid>
 </Window>

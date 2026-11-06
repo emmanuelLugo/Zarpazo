@@ -78,6 +78,27 @@ public class AnnotationEditingTests
     }
 
     [Fact]
+    public void A_ruler_is_hit_on_its_length_label_as_well_as_on_the_line()
+    {
+        OnSta(() =>
+        {
+            var ruler = new RulerAnnotation(Red, 4, new Point(0, 0), new ScreenSource(null!, 2, 2));
+            ruler.Extend(new Point(100, 0));
+
+            Assert.True(ruler.HitTest(new Point(20, 0), 0)); // on the line
+            Assert.True(ruler.HitTest(new Point(50, 7), 0)); // on the label, off the line
+            Assert.False(ruler.HitTest(new Point(20, 7), 0));
+            Assert.True(ruler.Bounds.Height > 10); // the outline wraps the label too
+        });
+    }
+
+    [Fact]
+    public void A_ruler_without_dragging_is_empty()
+    {
+        OnSta(() => Assert.True(new RulerAnnotation(Red, 4, new Point(5, 5), new ScreenSource(null!, 1, 1)).IsEmpty));
+    }
+
+    [Fact]
     public void Offset_moves_the_annotation_and_its_hit_area()
     {
         Annotation line = Drag(new LineAnnotation(Red, 4, new Point(0, 0)), 100, 0);

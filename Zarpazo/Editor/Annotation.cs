@@ -63,6 +63,7 @@ internal abstract class Annotation
         AnnotationTool.Pen => new PenAnnotation(color, thickness, start),
         AnnotationTool.Highlighter => new HighlighterAnnotation(color, thickness, start),
         AnnotationTool.Pixelate => new PixelateAnnotation(color, thickness, start, screen),
+        AnnotationTool.Ruler => new RulerAnnotation(color, thickness, start, screen),
         _ => throw new ArgumentOutOfRangeException(nameof(tool), tool, "This tool does not draw."),
     };
 }

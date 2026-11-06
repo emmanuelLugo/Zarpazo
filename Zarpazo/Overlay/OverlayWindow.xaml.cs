@@ -53,6 +53,7 @@ public partial class OverlayWindow : Window
         _windows = windows;
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
+        Selection.Changed += (_, _) => UpdateSizeLabel(); // every way the area changes goes through the rectangle
         SizeChanged += (_, e) => DimArea.Rect = new Rect(e.NewSize);
 
         IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
@@ -97,6 +98,10 @@ public partial class OverlayWindow : Window
         else if (e.Key == Key.Delete)
         {
             Annotations.DeleteSelected();
+        }
+        else if (e.Key == Key.X && Toolbar.Tool == AnnotationTool.Picker)
+        {
+            Probe.ToggleFormat();
         }
     }
 
@@ -171,6 +176,11 @@ public partial class OverlayWindow : Window
         CommitText();
 
         Point point = e.GetPosition(this);
+        if (Toolbar.Tool == AnnotationTool.Picker)
+        {
+            CopyProbeColor();
+            return;
+        }
         if (Toolbar.Tool != AnnotationTool.Move)
         {
             Annotations.Selected = null;
@@ -239,6 +249,7 @@ public partial class OverlayWindow : Window
         {
             HoverWindow(e.GetPosition(this));
             UpdateCursor(e.GetPosition(this));
+            UpdateProbe(e.GetPosition(this));
             return;
         }
 
@@ -381,6 +392,63 @@ public partial class OverlayWindow : Window
 
         _hoverRect = null;
         Selection.Rect = Rect.Empty;
+    }
+
+    /// <summary>The "width × height" tag above the area, in image pixels.</summary>
+    private void UpdateSizeLabel()
+    {
+        Rect area = Selection.Rect;
+        if (area.IsEmpty || area.Width < 1 || area.Height < 1 || ActualWidth == 0)
+        {
+            SizeLabel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double scaleX = _screenshot.PixelWidth / ActualWidth;
+        double scaleY = _screenshot.PixelHeight / ActualHeight;
+        SizeText.Text = $"{Math.Round(area.Width * scaleX)} × {Math.Round(area.Height * scaleY)}";
+        SizeLabel.Visibility = Visibility.Visible;
+        SizeLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Size size = SizeLabel.DesiredSize;
+
+        // Above the area; inside its corner when it touches the top of the screen.
+        double top = area.Top - size.Height - ToolbarGap;
+        Canvas.SetTop(SizeLabel, top < 0 ? area.Top + ToolbarGap : top);
+        Canvas.SetLeft(SizeLabel, Math.Clamp(area.Left, 0, Math.Max(0, ActualWidth - size.Width)));
+    }
+
+    /// <summary>Shows the magnifier next to the cursor while the color picker is the active tool.</summary>
+    private void UpdateProbe(Point point)
+    {
+        if (Toolbar.Tool != AnnotationTool.Picker || !IsSelectionFinal)
+        {
+            Probe.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        Probe.Show(_screenshot, (int)Math.Floor(point.X * _screenshot.PixelWidth / ActualWidth), (int)Math.Floor(point.Y * _screenshot.PixelHeight / ActualHeight));
+        Probe.Visibility = Visibility.Visible;
+        Probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Size size = Probe.DesiredSize;
+
+        const double gap = 20;
+        double left = point.X + gap + size.Width > ActualWidth ? point.X - gap - size.Width : point.X + gap;
+        double top = point.Y + gap + size.Height > ActualHeight ? point.Y - gap - size.Height : point.Y + gap;
+        Canvas.SetLeft(Probe, Math.Max(0, left));
+        Canvas.SetTop(Probe, Math.Max(0, top));
+    }
+
+    private void CopyProbeColor()
+    {
+        try
+        {
+            Clipboard.SetText(Probe.Text);
+            Probe.ShowNotice($"Copiado {Probe.Text}");
+        }
+        catch (COMException)
+        {
+            Probe.ShowNotice("No se pudo copiar"); // another program holds the clipboard
+        }
     }
 
     private void BeginText(Point point)
