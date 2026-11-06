@@ -9,6 +9,7 @@
             <Setter Property="FontFamily" Value="Segoe UI Symbol" />
             <Setter Property="FontSize" Value="16" />
             <Setter Property="Margin" Value="1" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnChoicePressed" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
@@ -62,7 +63,7 @@
 
     <Border Background="#F0262626" CornerRadius="6" Padding="4">
         <StackPanel Orientation="Horizontal" RadioButton.Checked="OnChoice">
-            <RadioButton GroupName="tool" Tag="Select" IsChecked="True" Style="{StaticResource Choice}"
+            <RadioButton x:Name="SelectTool" GroupName="tool" Tag="Select" IsChecked="True" Style="{StaticResource Choice}"
                          Content="⛶" ToolTip="Ajustar la zona: arrastra las asas o el interior. Arrastrar fuera elige otra zona y borra las anotaciones" />
             <RadioButton GroupName="tool" Tag="Move" Style="{StaticResource Choice}"
                          Content="✥" ToolTip="Mover anotaciones (Supr borra la seleccionada)" />

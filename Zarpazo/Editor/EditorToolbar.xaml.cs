@@ -58,6 +58,18 @@ public partial class EditorToolbar : UserControl
         }
     }
 
+    // A radio button doesn't uncheck when pressed again, so pressing the active drawing tool goes back to adjusting
+    // the area instead. Color and size choices keep their normal behavior.
+    private void OnChoicePressed(object sender, MouseButtonEventArgs e)
+    {
+        var choice = (RadioButton)sender;
+        if (choice.GroupName == "tool" && choice.IsChecked == true && choice != SelectTool)
+        {
+            e.Handled = true; // also keeps the click from reaching the window behind
+            SelectTool.IsChecked = true;
+        }
+    }
+
     private void SetColor(Color color)
     {
         Color = color;

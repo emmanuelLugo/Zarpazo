@@ -9,23 +9,7 @@ public class AnnotationEditingTests
     private const double Tolerance = 6;
     private static readonly Color Red = Colors.Red;
 
-    // WPF elements can only be created on an STA thread, and xunit's threads are not.
-    private static void OnSta(Action test)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { test(); }
-            catch (Exception ex) { failure = ex; }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (failure != null)
-        {
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
-    }
+    private static void OnSta(Action test) => Sta.Run(test);
 
     private static Annotation Drag(Annotation annotation, double x, double y)
     {
