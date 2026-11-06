@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -7,10 +8,46 @@ namespace Zarpazo.Output;
 
 internal static class ImageOutput
 {
+    private static readonly TimeSpan PasteFileLifetime = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Puts the image on the clipboard twice: as pixels, for editors and chats, and as a PNG file, which is what a terminal
+    /// needs to paste a path it can read (the same thing Explorer's "copy file" does).
+    /// </summary>
     public static bool CopyToClipboard(BitmapSource image)
     {
-        Clipboard.SetImage(image);
+        string path = SaveForPaste(image, Path.Combine(Path.GetTempPath(), "Zarpazo"));
+
+        var data = new DataObject();
+        data.SetImage(image);
+        data.SetFileDropList(new StringCollection { path });
+        Clipboard.SetDataObject(data, copy: true); // copy: keep it after the app closes the overlay
         return true;
+    }
+
+    /// <summary>Writes the PNG the clipboard will point to and removes the ones from earlier captures that are old enough.</summary>
+    internal static string SaveForPaste(BitmapSource image, string folder)
+    {
+        Directory.CreateDirectory(folder);
+        foreach (string old in Directory.EnumerateFiles(folder, "*.png"))
+        {
+            try
+            {
+                if (DateTime.Now - File.GetLastWriteTime(old) > PasteFileLifetime)
+                {
+                    File.Delete(old);
+                }
+            }
+            catch (IOException)
+            {
+                // Still open somewhere; it goes next time.
+            }
+        }
+
+        // No spaces, so the pasted path needs no quotes.
+        string path = Path.Combine(folder, $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.png");
+        Write(path, image);
+        return path;
     }
 
     /// <summary>Asks for a file and writes the image as PNG or JPG. Returns false if the user cancels.</summary>
@@ -30,13 +67,18 @@ internal static class ImageOutput
             return false;
         }
 
-        BitmapEncoder encoder = Path.GetExtension(dialog.FileName).ToLowerInvariant() is ".jpg" or ".jpeg"
+        Write(dialog.FileName, image);
+        return true;
+    }
+
+    private static void Write(string path, BitmapSource image)
+    {
+        BitmapEncoder encoder = Path.GetExtension(path).ToLowerInvariant() is ".jpg" or ".jpeg"
             ? new JpegBitmapEncoder { QualityLevel = 92 }
             : new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(image));
 
-        using FileStream file = File.Create(dialog.FileName);
+        using FileStream file = File.Create(path);
         encoder.Save(file);
-        return true;
     }
 }
