@@ -12,6 +12,10 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Zarpazo.Tests" />
+  </ItemGroup>
+
   <!-- WinForms is only here for NotifyIcon and the screen metrics; its global usings would clash with WPF names. -->
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />

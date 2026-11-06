@@ -10,12 +10,21 @@ internal sealed class NumberAnnotation(Color color, double thickness, Point cent
 {
     private const double LightBackgroundLuminance = 0.6;
 
+    public int Number => number;
+
     public override bool IsEmpty => false;
+
+    private double Radius => 8 + Stroke.Thickness * 2;
+
+    public override Rect Bounds => new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
+
+    public override void Offset(Vector delta) => center += delta;
+
+    public override bool HitTest(Point point, double tolerance) => (point - center).Length <= Radius + tolerance;
 
     public override void Draw(DrawingContext context)
     {
-        double radius = 8 + Stroke.Thickness * 2;
-        context.DrawEllipse(Stroke.Brush, null, center, radius, radius);
+        context.DrawEllipse(Stroke.Brush, null, center, Radius, Radius);
 
         // Dark digits on light badges (yellow, white) and white digits on dark ones.
         Color fill = ((SolidColorBrush)Stroke.Brush).Color;
@@ -26,7 +35,7 @@ internal sealed class NumberAnnotation(Color color, double thickness, Point cent
             CultureInfo.CurrentUICulture,
             FlowDirection.LeftToRight,
             new Typeface(TextAnnotation.Font, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
-            radius * 1.2,
+            Radius * 1.2,
             digitBrush,
             1.0);
         context.DrawText(digits, new Point(center.X - digits.Width / 2, center.Y - digits.Height / 2));

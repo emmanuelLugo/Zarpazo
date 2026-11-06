@@ -21,6 +21,9 @@ public partial class OverlayWindow : Window
 
     private const double ToolbarGap = 6;
     private const double ClickTolerance = 4; // a release this close to the press counts as a click, not a drag
+    private const double HandleTolerance = 6; // how close to an edge the mouse grabs it
+    private const double HandleSize = 7;
+    private const double HitTolerance = 6; // how close to an annotation a click picks it
 
     private readonly BitmapSource _screenshot;
     private readonly Rectangle _bounds;
@@ -29,6 +32,11 @@ public partial class OverlayWindow : Window
     private Rect? _pendingWindow; // that window as it was when the button went down
     private Point _dragStart;
     private Annotation? _drawing;
+    private SelectionHandle _dragHandle;  // the grab point being dragged to resize or move the capture area
+    private Rect _dragOrigin;             // the area as it was when that drag started
+    private Annotation? _moving;          // the annotation being dragged with the move tool
+    private Point _moveLast;
+    private Vector _moveTotal;
     private TextBox? _textBox;
     private Point _textOrigin;
     private Color _textColor;
@@ -85,6 +93,10 @@ public partial class OverlayWindow : Window
         else if (ctrl && e.Key == Key.Y)
         {
             OnRedo(this, EventArgs.Empty);
+        }
+        else if (e.Key == Key.Delete)
+        {
+            Annotations.DeleteSelected();
         }
     }
 
@@ -159,31 +171,60 @@ public partial class OverlayWindow : Window
         CommitText();
 
         Point point = e.GetPosition(this);
-        if (Toolbar.Tool == AnnotationTool.Select)
+        if (Toolbar.Tool != AnnotationTool.Move)
+        {
+            Annotations.Selected = null;
+        }
+
+        SelectionHandle handle = Toolbar.Tool == AnnotationTool.Select && IsSelectionFinal
+            ? SelectionGeometry.HitTest(Selection.Rect, point, HandleTolerance)
+            : SelectionHandle.None;
+        if (handle != SelectionHandle.None)
+        {
+            // Resize or move the area that is already chosen; the annotations stay where they are.
+            _dragHandle = handle;
+            _dragOrigin = Selection.Rect;
+            _dragStart = point;
+        }
+        else if (Toolbar.Tool == AnnotationTool.Select)
         {
             _dragStart = point;
             _pendingWindow = _hoverRect;
             _hoverRect = null;
             Annotations.Clear();
             Toolbar.Visibility = Visibility.Collapsed;
+            Handles.Visibility = Visibility.Collapsed;
             Selection.Rect = new Rect(point, point);
         }
         else if (HasSelection && Selection.Rect.Contains(point))
         {
-            if (Toolbar.Tool == AnnotationTool.Text)
+            if (Toolbar.Tool == AnnotationTool.Move)
+            {
+                _moving = Annotations.HitTest(point, HitTolerance);
+                Annotations.Selected = _moving;
+                if (_moving == null)
+                {
+                    return;
+                }
+                _moveLast = point;
+                _moveTotal = default;
+            }
+            else if (Toolbar.Tool == AnnotationTool.Text)
             {
                 BeginText(point);
                 return;
             }
-            if (Toolbar.Tool == AnnotationTool.Step)
+            else if (Toolbar.Tool == AnnotationTool.Step)
             {
                 Annotations.Commit(new NumberAnnotation(Toolbar.Color, Toolbar.Thickness, point, Annotations.NextStepNumber));
                 return;
             }
-
-            var screen = new ScreenSource(_screenshot, _screenshot.PixelWidth / ActualWidth, _screenshot.PixelHeight / ActualHeight);
-            _drawing = Annotation.Create(Toolbar.Tool, Toolbar.Color, Toolbar.Thickness, point, screen);
-            Annotations.Begin(_drawing);
+            else
+            {
+                var screen = new ScreenSource(_screenshot, _screenshot.PixelWidth / ActualWidth, _screenshot.PixelHeight / ActualHeight);
+                _drawing = Annotation.Create(Toolbar.Tool, Toolbar.Color, Toolbar.Thickness, point, screen);
+                Annotations.Begin(_drawing);
+            }
         }
         else
         {
@@ -197,6 +238,7 @@ public partial class OverlayWindow : Window
         if (!IsMouseCaptured)
         {
             HoverWindow(e.GetPosition(this));
+            UpdateCursor(e.GetPosition(this));
             return;
         }
 
@@ -206,6 +248,20 @@ public partial class OverlayWindow : Window
             Rect area = Selection.Rect;
             _drawing.Extend(new Point(Math.Clamp(point.X, area.Left, area.Right), Math.Clamp(point.Y, area.Top, area.Bottom)));
             Annotations.InvalidateVisual();
+        }
+        else if (_moving != null)
+        {
+            Vector step = point - _moveLast;
+            _moving.Offset(step);
+            _moveLast = point;
+            _moveTotal += step;
+            Annotations.InvalidateVisual();
+        }
+        else if (_dragHandle != SelectionHandle.None)
+        {
+            Selection.Rect = SelectionGeometry.Apply(_dragOrigin, _dragHandle, point - _dragStart, new Rect(0, 0, ActualWidth, ActualHeight));
+            Annotations.ClipArea = Selection.Rect;
+            ShowToolbar();
         }
         else
         {
@@ -239,6 +295,15 @@ public partial class OverlayWindow : Window
             Annotations.Commit(_drawing);
             _drawing = null;
         }
+        else if (_moving != null)
+        {
+            Annotations.RecordMove(_moving, _moveTotal);
+            _moving = null;
+        }
+        else if (_dragHandle != SelectionHandle.None)
+        {
+            _dragHandle = SelectionHandle.None; // the area was already updated while dragging
+        }
         else
         {
             if (_pendingWindow is { } window && (e.GetPosition(this) - _dragStart).Length < ClickTolerance)
@@ -255,10 +320,40 @@ public partial class OverlayWindow : Window
         }
     }
 
+    // The toolbar only shows once an area has been chosen.
+    private bool IsSelectionFinal => Toolbar.Visibility == Visibility.Visible;
+
+    /// <summary>Shows what a click would do here: resize, move, or start a new selection.</summary>
+    private void UpdateCursor(Point point)
+    {
+        if (!IsSelectionFinal)
+        {
+            Cursor = Cursors.Cross;
+            return;
+        }
+
+        Cursor = Toolbar.Tool switch
+        {
+            AnnotationTool.Select => SelectionGeometry.HitTest(Selection.Rect, point, HandleTolerance) switch
+            {
+                SelectionHandle.Inside => Cursors.SizeAll,
+                SelectionHandle.North or SelectionHandle.South => Cursors.SizeNS,
+                SelectionHandle.East or SelectionHandle.West => Cursors.SizeWE,
+                SelectionHandle.NorthWest or SelectionHandle.SouthEast => Cursors.SizeNWSE,
+                SelectionHandle.NorthEast or SelectionHandle.SouthWest => Cursors.SizeNESW,
+                _ => Cursors.Cross,
+            },
+            AnnotationTool.Move => Selection.Rect.Contains(point) && Annotations.HitTest(point, HitTolerance) != null
+                ? Cursors.SizeAll
+                : Cursors.Arrow,
+            _ => Cursors.Cross,
+        };
+    }
+
     /// <summary>Highlights the window under the cursor, until an area has been chosen.</summary>
     private void HoverWindow(Point point)
     {
-        if (Toolbar.Visibility == Visibility.Visible)
+        if (IsSelectionFinal)
         {
             return;
         }
@@ -370,6 +465,26 @@ public partial class OverlayWindow : Window
         }
         Canvas.SetLeft(Toolbar, left);
         Canvas.SetTop(Toolbar, top);
+        UpdateHandles(area);
+    }
+
+    private void UpdateHandles(Rect area)
+    {
+        double middleX = area.X + area.Width / 2;
+        double middleY = area.Y + area.Height / 2;
+        var handles = new GeometryGroup();
+        foreach (double x in new[] { area.Left, middleX, area.Right })
+        {
+            foreach (double y in new[] { area.Top, middleY, area.Bottom })
+            {
+                if (x != middleX || y != middleY)
+                {
+                    handles.Children.Add(new RectangleGeometry(new Rect(x - HandleSize / 2, y - HandleSize / 2, HandleSize, HandleSize)));
+                }
+            }
+        }
+        Handles.Data = handles;
+        Handles.Visibility = Visibility.Visible;
     }
 
     // Windows asks to rescale the window when its main monitor changes, which would break the 1:1 pixel fit.

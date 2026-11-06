@@ -16,17 +16,26 @@ internal sealed class TextAnnotation(Color color, double thickness, Point origin
 
     public override bool IsEmpty => string.IsNullOrWhiteSpace(text);
 
-    public override void Draw(DrawingContext context)
+    public override Rect Bounds
     {
-        // pixelsPerDip is fixed at 1: the same text is drawn on screen and, scaled, into the saved image.
-        var formatted = new FormattedText(
-            text,
-            CultureInfo.CurrentUICulture,
-            FlowDirection.LeftToRight,
-            new Typeface(Font, FontStyles.Normal, Weight, FontStretches.Normal),
-            SizeFor(Stroke.Thickness),
-            Stroke.Brush,
-            1.0);
-        context.DrawText(formatted, origin);
+        get
+        {
+            FormattedText formatted = Format();
+            return new Rect(origin, new Size(formatted.Width, formatted.Height));
+        }
     }
+
+    public override void Offset(Vector delta) => origin += delta;
+
+    public override void Draw(DrawingContext context) => context.DrawText(Format(), origin);
+
+    // pixelsPerDip is fixed at 1: the same text is drawn on screen and, scaled, into the saved image.
+    private FormattedText Format() => new(
+        text,
+        CultureInfo.CurrentUICulture,
+        FlowDirection.LeftToRight,
+        new Typeface(Font, FontStyles.Normal, Weight, FontStretches.Normal),
+        SizeFor(Stroke.Thickness),
+        Stroke.Brush,
+        1.0);
 }

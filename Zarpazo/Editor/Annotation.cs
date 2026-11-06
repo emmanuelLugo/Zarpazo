@@ -31,6 +31,28 @@ internal abstract class Annotation
 
     public abstract void Draw(DrawingContext context);
 
+    /// <summary>The box around the drawn annotation, used for the selection outline.</summary>
+    public abstract Rect Bounds { get; }
+
+    /// <summary>Moves the whole annotation.</summary>
+    public abstract void Offset(Vector delta);
+
+    /// <summary>Whether the point is on the annotation. The tolerance makes thin lines easy to pick.</summary>
+    public virtual bool HitTest(Point point, double tolerance)
+    {
+        Rect box = Bounds;
+        box.Inflate(tolerance, tolerance);
+        return box.Contains(point);
+    }
+
+    protected static double DistanceToSegment(Point point, Point from, Point to)
+    {
+        Vector segment = to - from;
+        double lengthSquared = segment.LengthSquared;
+        double along = lengthSquared == 0 ? 0 : Math.Clamp(Vector.Multiply(point - from, segment) / lengthSquared, 0, 1);
+        return (point - (from + segment * along)).Length;
+    }
+
     /// <summary>Starts the annotation for tools that are drawn by dragging.</summary>
     public static Annotation Create(AnnotationTool tool, Color color, double thickness, Point start, ScreenSource screen) => tool switch
     {

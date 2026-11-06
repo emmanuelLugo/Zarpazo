@@ -7,9 +7,15 @@ namespace Zarpazo.Editor;
 /// <summary>Holds the drawn annotations with their undo/redo history and paints them over the screenshot.</summary>
 internal sealed class AnnotationCanvas : FrameworkElement
 {
+    private static readonly Pen SelectionOutline = CreateSelectionOutline();
+
+    private readonly record struct Edit(Action Undo, Action Redo);
+
     private readonly List<Annotation> _done = [];
-    private readonly Stack<Annotation> _undone = new();
+    private readonly Stack<Edit> _history = new();
+    private readonly Stack<Edit> _future = new();
     private Annotation? _preview;
+    private Annotation? _selected;
     private Rect _clipArea = Rect.Empty;
 
     /// <summary>Strokes are cut off at the capture area, like they will be in the saved image.</summary>
@@ -22,8 +28,19 @@ internal sealed class AnnotationCanvas : FrameworkElement
         }
     }
 
-    /// <summary>The number the next step badge gets. Undoing a badge frees its number again.</summary>
-    public int NextStepNumber => _done.OfType<NumberAnnotation>().Count() + 1;
+    /// <summary>The annotation picked with the move tool, drawn with a dashed outline that is not part of the image.</summary>
+    public Annotation? Selected
+    {
+        get => _selected;
+        set
+        {
+            _selected = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The number the next step badge gets: one above the highest on screen, so numbers never repeat.</summary>
+    public int NextStepNumber => _done.OfType<NumberAnnotation>().Select(badge => badge.Number).DefaultIfEmpty(0).Max() + 1;
 
     /// <summary>The annotation being dragged right now; call <see cref="Commit"/> when it is finished.</summary>
     public void Begin(Annotation annotation) => _preview = annotation;
@@ -33,38 +50,70 @@ internal sealed class AnnotationCanvas : FrameworkElement
         _preview = null;
         if (!annotation.IsEmpty)
         {
+            int index = _done.Count;
             _done.Add(annotation);
-            _undone.Clear();
+            Record(new Edit(() => _done.Remove(annotation), () => _done.Insert(index, annotation)));
         }
+        InvalidateVisual();
+    }
+
+    /// <summary>The topmost annotation under the point, if any.</summary>
+    public Annotation? HitTest(Point point, double tolerance) => _done.LastOrDefault(a => a.HitTest(point, tolerance));
+
+    /// <summary>Notes that an annotation was already moved, so that undo and redo can move it back and forth.</summary>
+    public void RecordMove(Annotation annotation, Vector total)
+    {
+        if (total != default)
+        {
+            Record(new Edit(() => annotation.Offset(-total), () => annotation.Offset(total)));
+        }
+    }
+
+    public void DeleteSelected()
+    {
+        if (_selected is not { } annotation)
+        {
+            return;
+        }
+
+        int index = _done.IndexOf(annotation);
+        _done.RemoveAt(index);
+        _selected = null;
+        Record(new Edit(() => _done.Insert(index, annotation), () => _done.Remove(annotation)));
         InvalidateVisual();
     }
 
     public void Undo()
     {
-        if (_done.Count == 0)
+        if (_history.Count == 0)
         {
             return;
         }
-        _undone.Push(_done[^1]);
-        _done.RemoveAt(_done.Count - 1);
-        InvalidateVisual();
+        Edit edit = _history.Pop();
+        edit.Undo();
+        _future.Push(edit);
+        AfterHistoryChange();
     }
 
     public void Redo()
     {
-        if (_undone.Count == 0)
+        if (_future.Count == 0)
         {
             return;
         }
-        _done.Add(_undone.Pop());
-        InvalidateVisual();
+        Edit edit = _future.Pop();
+        edit.Redo();
+        _history.Push(edit);
+        AfterHistoryChange();
     }
 
     public void Clear()
     {
         _done.Clear();
-        _undone.Clear();
+        _history.Clear();
+        _future.Clear();
         _preview = null;
+        _selected = null;
         _clipArea = Rect.Empty;
         InvalidateVisual();
     }
@@ -114,6 +163,34 @@ internal sealed class AnnotationCanvas : FrameworkElement
             annotation.Draw(context);
         }
         _preview?.Draw(context);
+        if (_selected != null)
+        {
+            Rect outline = _selected.Bounds;
+            outline.Inflate(3, 3);
+            context.DrawRectangle(null, SelectionOutline, outline);
+        }
         context.Pop();
+    }
+
+    private void Record(Edit edit)
+    {
+        _history.Push(edit);
+        _future.Clear(); // a new edit makes the undone ones unreachable
+    }
+
+    private void AfterHistoryChange()
+    {
+        if (_selected != null && !_done.Contains(_selected))
+        {
+            _selected = null; // undo can remove what was selected
+        }
+        InvalidateVisual();
+    }
+
+    private static Pen CreateSelectionOutline()
+    {
+        var pen = new Pen(Brushes.DeepSkyBlue, 1) { DashStyle = DashStyles.Dash };
+        pen.Freeze();
+        return pen;
     }
 }

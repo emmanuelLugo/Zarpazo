@@ -36,6 +36,13 @@
               StrokeThickness="1"
               RenderOptions.EdgeMode="Aliased" />
 
+        <Path x:Name="Handles"
+              Fill="White"
+              Stroke="#FF404040"
+              StrokeThickness="1"
+              IsHitTestVisible="False"
+              Visibility="Collapsed" />
+
         <Canvas x:Name="UiLayer">
             <editor:EditorToolbar x:Name="Toolbar"
                                   Visibility="Collapsed"
