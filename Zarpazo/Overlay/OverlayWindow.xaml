@@ -34,7 +34,7 @@
               StrokeThickness="1"
               RenderOptions.EdgeMode="Aliased" />
 
-        <Canvas>
+        <Canvas x:Name="UiLayer">
             <editor:EditorToolbar x:Name="Toolbar"
                                   Visibility="Collapsed"
                                   UndoRequested="OnUndo"

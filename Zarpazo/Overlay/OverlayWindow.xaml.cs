@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Zarpazo.Editor;
 using Zarpazo.Output;
@@ -23,6 +24,10 @@ public partial class OverlayWindow : Window
     private readonly BitmapSource _screenshot;
     private Point _dragStart;
     private Annotation? _drawing;
+    private TextBox? _textBox;
+    private Point _textOrigin;
+    private Color _textColor;
+    private double _textThickness;
 
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
@@ -86,6 +91,7 @@ public partial class OverlayWindow : Window
     /// <summary>Runs the output on the selected area and closes. Stays open if there is no selection, the user cancels or it fails.</summary>
     private void Finish(Func<BitmapSource, bool> output)
     {
+        CommitText(); // text still being typed belongs in the result
         BitmapSource? crop = CropSelection();
         if (crop == null)
         {
@@ -137,6 +143,12 @@ public partial class OverlayWindow : Window
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
+        if (_textBox is { IsMouseOver: true })
+        {
+            return; // clicking inside the text being typed
+        }
+        CommitText();
+
         Point point = e.GetPosition(this);
         if (Toolbar.Tool == AnnotationTool.Select)
         {
@@ -147,6 +159,11 @@ public partial class OverlayWindow : Window
         }
         else if (HasSelection && Selection.Rect.Contains(point))
         {
+            if (Toolbar.Tool == AnnotationTool.Text)
+            {
+                BeginText(point);
+                return;
+            }
             _drawing = Annotation.Create(Toolbar.Tool, Toolbar.Color, Toolbar.Thickness, point);
             Annotations.Begin(_drawing);
         }
@@ -195,6 +212,68 @@ public partial class OverlayWindow : Window
             Annotations.ClipArea = Selection.Rect;
             ShowToolbar();
         }
+    }
+
+    private void BeginText(Point point)
+    {
+        var brush = new SolidColorBrush(Toolbar.Color);
+        _textColor = Toolbar.Color;
+        _textThickness = Toolbar.Thickness;
+        _textOrigin = point;
+        _textBox = new TextBox
+        {
+            Foreground = brush,
+            CaretBrush = brush,
+            FontFamily = TextAnnotation.Font,
+            FontWeight = TextAnnotation.Weight,
+            FontSize = TextAnnotation.SizeFor(_textThickness),
+            Background = Brushes.Transparent,
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0xAA, 0x80, 0x80, 0x80)),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(0),
+            MinWidth = 60,
+            AcceptsReturn = true,
+            Cursor = Cursors.IBeam,
+        };
+        _textBox.PreviewKeyDown += OnTextKeyDown;
+        _textBox.Loaded += (_, _) => _textBox?.Focus(); // can't take focus before it has been laid out
+        // The 1px border sits outside the text, so shift the box to keep the text exactly where it will be drawn.
+        Canvas.SetLeft(_textBox, point.X - 1);
+        Canvas.SetTop(_textBox, point.Y - 1);
+        UiLayer.Children.Add(_textBox);
+    }
+
+    private void OnTextKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            RemoveTextBox();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            CommitText();
+            e.Handled = true;
+        }
+    }
+
+    private void CommitText()
+    {
+        if (_textBox == null)
+        {
+            return;
+        }
+
+        string text = _textBox.Text.TrimEnd();
+        RemoveTextBox();
+        Annotations.Commit(new TextAnnotation(_textColor, _textThickness, _textOrigin, text));
+    }
+
+    private void RemoveTextBox()
+    {
+        UiLayer.Children.Remove(_textBox);
+        _textBox = null;
+        Focus(); // otherwise Esc and the shortcuts stop reaching the window
     }
 
     private void ShowToolbar()

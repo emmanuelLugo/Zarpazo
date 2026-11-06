@@ -72,6 +72,8 @@
                          Content="➚" ToolTip="Flecha" />
             <RadioButton GroupName="tool" Tag="Pen" Style="{StaticResource Choice}"
                          Content="✎" ToolTip="Lápiz" />
+            <RadioButton GroupName="tool" Tag="Text" Style="{StaticResource Choice}"
+                         Content="T" FontWeight="Bold" ToolTip="Texto (Enter confirma, Mayús+Enter salto de línea)" />
 
             <Border Style="{StaticResource Divider}" />
 

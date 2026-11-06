@@ -24,7 +24,10 @@ internal abstract class Annotation
     /// <summary>True while nothing visible was drawn yet, such as a click without dragging.</summary>
     public abstract bool IsEmpty { get; }
 
-    public abstract void Extend(Point point);
+    /// <summary>Follows the mouse while dragging. Annotations that are not drawn by dragging ignore it.</summary>
+    public virtual void Extend(Point point)
+    {
+    }
 
     public abstract void Draw(DrawingContext context);
 
