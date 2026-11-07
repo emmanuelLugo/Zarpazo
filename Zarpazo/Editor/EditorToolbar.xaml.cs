@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -26,9 +28,29 @@ public partial class EditorToolbar : UserControl
     private bool _beautifyEnabled;
     private bool _beautifyReady; // the radio buttons fire Checked while they are being set up and restored
 
+    private readonly List<ToolGroup> _groups = [];
+    private List<RadioButton>? _toolRadios; // every button that picks a tool, in the bar and in the group menus
+    private bool _applyingTool;
+    private Rect _area; // where the bars were last placed
+    private Size _screen;
+    private PlacementMode _side = PlacementMode.Right;
+
     public EditorToolbar()
     {
         InitializeComponent();
+        _groups.Add(BuildGroup(ShapesSlot, "Formas", AnnotationTool.Arrow,
+            new ToolEntry(AnnotationTool.Rectangle, "Rectángulo", "IconRectangle", "Rectángulo"),
+            new ToolEntry(AnnotationTool.Ellipse, "Elipse", "IconEllipse", "Elipse"),
+            new ToolEntry(AnnotationTool.Line, "Línea", "IconLine", "Línea"),
+            new ToolEntry(AnnotationTool.Arrow, "Flecha", "IconArrow", "Flecha")));
+        _groups.Add(BuildGroup(DrawSlot, "Dibujo", AnnotationTool.Pen,
+            new ToolEntry(AnnotationTool.Pen, "Lápiz", "IconPen", "Lápiz"),
+            new ToolEntry(AnnotationTool.Highlighter, "Resaltador", "IconHighlighter", "Resaltador")));
+        _groups.Add(BuildGroup(MeasureSlot, "Medir", AnnotationTool.Ruler,
+            new ToolEntry(AnnotationTool.Ruler, "Regla", "IconRuler", "Regla: mide una distancia en píxeles"),
+            new ToolEntry(AnnotationTool.Picker, "Cuentagotas", "IconPicker", "Cuentagotas: clic copia el color, X cambia entre HEX y RGB")));
+        _toolRadios = ToolRadios(this).ToList();
+        ApplyTool(AnnotationTool.Select); // shows the groups' buttons and hides the color and thickness
         BuildBackgroundChoices();
         ShowBeautify();
         _beautifyReady = true;
@@ -42,6 +64,8 @@ public partial class EditorToolbar : UserControl
     /// </summary>
     internal void Place(Rect area, Size screen)
     {
+        _area = area;
+        _screen = screen;
         Width = screen.Width;
         Height = screen.Height;
         var unbounded = new Size(double.PositiveInfinity, double.PositiveInfinity);
@@ -56,8 +80,180 @@ public partial class EditorToolbar : UserControl
 
         // The color and thickness pop-ups open away from the area.
         var side = placement.ToolsOnRight ? System.Windows.Controls.Primitives.PlacementMode.Right : System.Windows.Controls.Primitives.PlacementMode.Left;
+        _side = side;
         ColorPopup.Placement = side;
         SizePopup.Placement = side;
+        foreach (ToolGroup group in _groups)
+        {
+            group.Menu.Placement = side;
+        }
+    }
+
+    // ---- Tool groups ------------------------------------------------------------------------------------------------------
+
+    private sealed record ToolEntry(AnnotationTool Tool, string Label, string IconKey, string Hint);
+
+    private sealed class ToolGroup
+    {
+        public required string Title { get; init; }
+        public required IReadOnlyList<ToolEntry> Entries { get; init; }
+        public required AnnotationTool Remembered { get; set; }
+        public required Border Box { get; init; }
+        public required ContentControl Icon { get; init; }
+        public required Button Face { get; init; }
+        public required Popup Menu { get; init; }
+    }
+
+    // One button for tools that belong together: it shows the one used last, a click uses it (or leaves it when it is already
+    // in use), and the corner triangle or a right click lists the others.
+    private ToolGroup BuildGroup(ContentControl slot, string title, AnnotationTool first, params ToolEntry[] entries)
+    {
+        var icon = new ContentControl { Focusable = false, IsTabStop = false };
+        var face = new Button { Style = (Style)FindResource("Action"), Content = icon, Margin = new Thickness(0) };
+        AutomationProperties.SetName(face, title);
+        var box = new Border { CornerRadius = new CornerRadius(6), Margin = new Thickness(1) };
+
+        var triangle = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M0,6 L6,6 L6,0 Z"),
+            Fill = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF)),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 3, 3),
+            IsHitTestVisible = false,
+        };
+        var corner = new Border
+        {
+            Width = 14,
+            Height = 14,
+            Background = Brushes.Transparent,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Cursor = Cursors.Hand,
+        };
+        box.Child = new Grid { Children = { face, triangle, corner } };
+
+        var list = new StackPanel();
+        list.AddHandler(RadioButton.CheckedEvent, new RoutedEventHandler(OnChoice)); // a pop-up's events don't reach the bar's handler
+        foreach (ToolEntry entry in entries)
+        {
+            var label = new StackPanel { Orientation = Orientation.Horizontal };
+            label.Children.Add((UIElement)FindResource(entry.IconKey));
+            label.Children.Add(new TextBlock { Text = entry.Label, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            var item = new RadioButton
+            {
+                GroupName = "tool",
+                Tag = entry.Tool.ToString(),
+                Style = (Style)FindResource("MenuChoice"),
+                ToolTip = entry.Hint,
+                Content = label,
+            };
+            AutomationProperties.SetName(item, entry.Label);
+            list.Children.Add(item);
+        }
+
+        var menu = new Popup
+        {
+            PlacementTarget = box,
+            Placement = _side,
+            StaysOpen = false,
+            AllowsTransparency = true,
+            Child = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(0xF2, 0x20, 0x21, 0x24)),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(4),
+                Margin = new Thickness(6),
+                Child = list,
+            },
+        };
+
+        var group = new ToolGroup { Title = title, Entries = entries, Remembered = first, Box = box, Icon = icon, Face = face, Menu = menu };
+        face.Click += (_, _) => ApplyTool(group.Entries.Any(entry => entry.Tool == Tool) ? AnnotationTool.Select : group.Remembered);
+        face.MouseRightButtonUp += (_, e) =>
+        {
+            menu.IsOpen = true;
+            e.Handled = true;
+        };
+        corner.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true; // not a click on the button underneath
+            menu.IsOpen = true;
+        };
+
+        slot.Content = new Grid { Children = { box, menu } };
+        return group;
+    }
+
+    private static IEnumerable<RadioButton> ToolRadios(DependencyObject root)
+    {
+        foreach (object child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is RadioButton { GroupName: "tool" } radio)
+            {
+                yield return radio;
+            }
+            if (child is DependencyObject node)
+            {
+                foreach (RadioButton nested in ToolRadios(node))
+                {
+                    yield return nested;
+                }
+            }
+        }
+    }
+
+    // Radio buttons that live in different pop-ups can't see each other, so the checks are kept by hand.
+    private void ApplyTool(AnnotationTool tool)
+    {
+        if (_applyingTool)
+        {
+            return;
+        }
+
+        _applyingTool = true;
+        try
+        {
+            Tool = tool;
+            if (_toolRadios == null)
+            {
+                return; // still loading the XAML
+            }
+
+            foreach (RadioButton radio in _toolRadios)
+            {
+                radio.IsChecked = (string)radio.Tag == tool.ToString();
+            }
+
+            foreach (ToolGroup group in _groups)
+            {
+                bool used = group.Entries.Any(entry => entry.Tool == tool);
+                if (used)
+                {
+                    group.Remembered = tool;
+                }
+
+                ToolEntry shown = group.Entries.First(entry => entry.Tool == group.Remembered);
+                group.Icon.Content = FindResource(shown.IconKey);
+                group.Box.Background = used ? new SolidColorBrush(Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF)) : Brushes.Transparent;
+                group.Face.ToolTip = $"{group.Title}: {shown.Label}. Pulsa otra vez para soltarla; el triángulo o el clic derecho muestran las demás";
+                group.Menu.IsOpen = false;
+            }
+
+            StyleTools.Visibility = tool is AnnotationTool.Rectangle or AnnotationTool.Ellipse or AnnotationTool.Line or AnnotationTool.Arrow
+                or AnnotationTool.Pen or AnnotationTool.Highlighter or AnnotationTool.Text or AnnotationTool.Step
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        finally
+        {
+            _applyingTool = false;
+        }
+
+        if (_screen.Width > 0)
+        {
+            Place(_area, _screen); // the column got taller or shorter
+        }
     }
 
     /// <summary>What the recording panel is set to: the kind of file and the sound sources.</summary>
@@ -197,8 +393,15 @@ public partial class EditorToolbar : UserControl
         FindChoice(this, "beautyRadius", _beautify.Radius.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
         BeautifyShadowBox.IsChecked = _beautify.Shadow;
         BeautifyEnabledBox.IsChecked = _beautifyEnabled;
-        BeautifyDot.Visibility = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
+        ShowBeautifyDot();
         RefreshBeautifyPreview();
+    }
+
+    private void ShowBeautifyDot()
+    {
+        Visibility shown = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
+        BeautifyDot.Visibility = shown;
+        BeautifyState.Visibility = shown;
     }
 
     private void RefreshBeautifyPreview()
@@ -220,7 +423,7 @@ public partial class EditorToolbar : UserControl
 
     private void OnBeautifyEdited()
     {
-        BeautifyDot.Visibility = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
+        ShowBeautifyDot();
         RefreshBeautifyPreview();
     }
 
@@ -330,7 +533,7 @@ public partial class EditorToolbar : UserControl
         switch (choice.GroupName)
         {
             case "tool":
-                Tool = Enum.Parse<AnnotationTool>(value);
+                ApplyTool(Enum.Parse<AnnotationTool>(value));
                 break;
             case "color":
                 SetColor((Color)ColorConverter.ConvertFromString(value));
@@ -417,6 +620,26 @@ public partial class EditorToolbar : UserControl
     private void OnCopy(object sender, RoutedEventArgs e) => CopyRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnMoreButton(object sender, RoutedEventArgs e) => MorePopup.IsOpen = true;
+
+    private void OnMoreOcr(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        OnOcr(sender, e);
+    }
+
+    private void OnMorePin(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        OnPin(sender, e);
+    }
+
+    private void OnMoreBeautify(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        OnBeautifyButton(sender, e);
+    }
 
     private void OnOcr(object sender, RoutedEventArgs e) => OcrRequested?.Invoke(this, EventArgs.Empty);
 
