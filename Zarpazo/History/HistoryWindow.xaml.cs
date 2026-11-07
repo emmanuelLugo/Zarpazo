@@ -121,7 +121,7 @@ public partial class HistoryWindow : Window
         var dialog = new SaveFileDialog
         {
             Title = $"Guardar {kind.ToLowerInvariant()}",
-            FileName = $"Zarpazo {DateTime.Now:yyyy-MM-dd HH-mm-ss}",
+            FileName = FileNameTemplate.Expand(_settings.Current.FileNameTemplate, DateTime.Now, _settings.Current.AutoSaveCounter + 1),
             Filter = extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ? "Imagen GIF (*.gif)|*.gif" : "Video MP4 (*.mp4)|*.mp4",
             AddExtension = true,
             DefaultExt = extension,

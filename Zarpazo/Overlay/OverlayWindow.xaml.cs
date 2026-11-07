@@ -151,8 +151,39 @@ public partial class OverlayWindow : Window
         }
     }
 
+    /// <summary>The capture was also saved by itself (the path); raised after the overlay has done its work.</summary>
+    internal event Action<string>? AutoSaved;
+
+    /// <summary>The capture was copied but could not be saved by itself (the reason).</summary>
+    internal event Action<string>? AutoSaveFailed;
+
     private void OnCopy(object? sender, EventArgs e) =>
-        Finish(image => ImageOutput.CopyToClipboard(Embellished(image), _settings.Current.CopyAsFile));
+        Finish(image =>
+        {
+            BitmapSource final = Embellished(image);
+            ImageOutput.CopyToClipboard(final, _settings.Current.CopyAsFile);
+            AutoSave(final);
+            return true;
+        });
+
+    // After the copy: if automatic saving is on the same picture is also written to the folder. A problem there must not undo the copy.
+    private void AutoSave(BitmapSource image)
+    {
+        var saver = new AutoSaver(_settings);
+        if (!saver.IsEnabled)
+        {
+            return;
+        }
+
+        try
+        {
+            AutoSaved?.Invoke(saver.SaveImage(image));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AutoSaveFailed?.Invoke(ex.Message);
+        }
+    }
 
     private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(Embellished(image), this, _settings.Current));
 

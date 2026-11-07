@@ -39,6 +39,9 @@ public partial class SettingsWindow : Window
         FormatBox.SelectedIndex = settings.SaveFormat == "jpg" ? 1 : 0;
         RememberStyleBox.IsChecked = settings.RememberStyle;
         KeepHistoryBox.IsChecked = settings.KeepHistory;
+        AutoSaveBox.IsChecked = settings.AutoSave;
+        AutoFolderBox.Text = settings.AutoSaveFolder;
+        TemplateBox.Text = settings.FileNameTemplate;
 
         // The version has a "+commit" suffix when built from git; that part means nothing to the person.
         string version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
@@ -58,6 +61,30 @@ public partial class SettingsWindow : Window
             FolderBox.Text = dialog.SelectedPath;
         }
     }
+
+    private void OnBrowseAutoFolder(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = "Carpeta donde se guardan solas las capturas y grabaciones",
+            SelectedPath = Directory.Exists(AutoFolderBox.Text) ? AutoFolderBox.Text : "",
+        };
+        if (dialog.ShowDialog(new Win32Owner(new WindowInteropHelper(this).Handle)) == System.Windows.Forms.DialogResult.OK)
+        {
+            AutoFolderBox.Text = dialog.SelectedPath;
+        }
+    }
+
+    // Shows what the next file would be called, so the template can be tried out before saving.
+    private void OnTemplateChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (TemplatePreview != null)
+        {
+            TemplatePreview.Text = $"Ejemplo: {Output.FileNameTemplate.Expand(TemplateBox.Text, DateTime.Now, _store.Current.AutoSaveCounter + 1)}.png";
+        }
+    }
+
+    private void OnDefaultTemplate(object sender, RoutedEventArgs e) => TemplateBox.Text = Output.FileNameTemplate.Default;
 
     private void OnOpenSettingsFolder(object sender, RoutedEventArgs e)
     {
@@ -114,6 +141,9 @@ public partial class SettingsWindow : Window
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";
         settings.RememberStyle = RememberStyleBox.IsChecked == true;
         settings.KeepHistory = KeepHistoryBox.IsChecked == true;
+        settings.AutoSave = AutoSaveBox.IsChecked == true;
+        settings.AutoSaveFolder = AutoFolderBox.Text.Trim();
+        settings.FileNameTemplate = string.IsNullOrWhiteSpace(TemplateBox.Text) ? Output.FileNameTemplate.Default : TemplateBox.Text.Trim();
 
         try
         {

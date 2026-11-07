@@ -221,6 +221,8 @@ public partial class App : Application
 
         _overlay = new OverlayWindow(image, bounds, windows, _settings, _history);
         _overlay.RecordRequested += BeginRecording;
+        _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
+        _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");
         _overlay.Closed += (_, _) => _overlay = null;
         _overlay.Show();
     }

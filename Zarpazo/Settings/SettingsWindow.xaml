@@ -107,6 +107,33 @@
                 </StackPanel>
             </TabItem>
 
+            <TabItem Header="Guardado">
+                <StackPanel Margin="14,0,14,14">
+                    <TextBlock Style="{StaticResource Section}" Text="Guardado automático" />
+                    <CheckBox x:Name="AutoSaveBox" Content="Guardar cada captura que copio y cada grabación" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Además de copiarla, la guarda sola en la carpeta de abajo, sin preguntar. El botón Guardar sigue abriendo el cuadro para elegir otro lugar." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Carpeta" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AutoFolderBox" Padding="4,3" />
+                        <Button Grid.Column="1" Content="Examinar…" Margin="8,0,0,0" Click="OnBrowseAutoFolder" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource Hint}" Text="Vacía usa Imágenes\Zarpazo. Se crea si no existe." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Nombre del archivo" />
+                    <TextBox x:Name="TemplateBox" Padding="4,3" TextChanged="OnTemplateChanged" />
+                    <TextBlock x:Name="TemplatePreview" Style="{StaticResource Hint}" FontFamily="Consolas" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Puedes usar {fecha} (2026-11-07), {hora} (14-30-05) y {n}, un contador que sube solo. {n:000} lo rellena con ceros: 001, 002… Si ya existe un archivo con ese nombre, se añade (2), (3)…" />
+                    <Button Content="Usar el nombre por defecto" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnDefaultTemplate" />
+                </StackPanel>
+            </TabItem>
+
             <TabItem Header="Acerca de">
                 <StackPanel Margin="14">
                     <TextBlock Text="Zarpazo" FontSize="24" FontWeight="SemiBold" />

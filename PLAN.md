@@ -52,8 +52,8 @@ El MVP se limita a copiar al portapapeles y guardar como imagen; subir a la nube
 | --- | --- |
 | Copiar al portapapeles | MVP |
 | Guardar como PNG o JPG | MVP |
-| Guardar automáticamente en una carpeta elegida | Después |
-| Nombres de archivo con plantilla (fecha, hora, contador) | Después |
+| Guardar automáticamente en una carpeta elegida | Después (hecho: pestaña Guardado de Configuración) |
+| Nombres de archivo con plantilla (fecha, hora, contador) | Después (hecho: {fecha}, {hora}, {n}) |
 | Imprimir | Después |
 | Abrir la imagen en otro programa | Después |
 | Subir a la nube y copiar el link (servidor propio, Imgur, etc.) | Avanzado |

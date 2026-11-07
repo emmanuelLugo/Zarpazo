@@ -60,7 +60,7 @@ internal static class ImageOutput
         var dialog = new SaveFileDialog
         {
             Title = "Guardar captura",
-            FileName = $"Zarpazo {DateTime.Now:yyyy-MM-dd HH-mm-ss}",
+            FileName = FileNameTemplate.Expand(settings.FileNameTemplate, DateTime.Now, settings.AutoSaveCounter + 1),
             Filter = "Imagen PNG (*.png)|*.png|Imagen JPG (*.jpg)|*.jpg",
             FilterIndex = jpg ? 2 : 1,
             AddExtension = true,

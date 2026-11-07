@@ -31,6 +31,18 @@ internal sealed class AppSettings
     /// <summary>Keep every copied or saved capture in the history.</summary>
     public bool KeepHistory { get; set; } = true;
 
+    /// <summary>Also save every capture that is copied, and every recording, to <see cref="AutoSaveFolder"/> without asking.</summary>
+    public bool AutoSave { get; set; }
+
+    /// <summary>Where the automatic saves go. Empty means Pictures\Zarpazo.</summary>
+    public string AutoSaveFolder { get; set; } = "";
+
+    /// <summary>The name of automatic saves, with {fecha}, {hora} and {n}; see <see cref="Output.FileNameTemplate"/>.</summary>
+    public string FileNameTemplate { get; set; } = Output.FileNameTemplate.Default;
+
+    /// <summary>The last number {n} took; kept between runs so the numbering carries on.</summary>
+    public int AutoSaveCounter { get; set; }
+
     /// <summary>How many captures the history keeps; the oldest are deleted beyond that.</summary>
     public int HistoryLimit { get; set; } = DefaultHistoryLimit;
 
@@ -141,6 +153,12 @@ internal sealed class AppSettings
             HistoryLimit = DefaultHistoryLimit;
         }
         Color ??= DefaultColor;
+        AutoSaveFolder ??= "";
+        if (string.IsNullOrWhiteSpace(FileNameTemplate))
+        {
+            FileNameTemplate = Output.FileNameTemplate.Default;
+        }
+        AutoSaveCounter = Math.Max(0, AutoSaveCounter);
         RecordFormat = RecordFormat?.ToLowerInvariant() == "video" ? "video" : "gif";
         RecordCountdownSeconds = CountdownChoices.MinBy(choice => Math.Abs(choice - RecordCountdownSeconds));
         RecordAudioOffsetMs = AudioOffsetChoices.MinBy(choice => Math.Abs(choice - RecordAudioOffsetMs));

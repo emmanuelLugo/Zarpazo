@@ -39,4 +39,26 @@ public sealed class SettingsWindowTests
             window.Close();
         });
     }
+
+    [Fact]
+    public void The_window_shows_the_auto_save_choices_and_an_example_name()
+    {
+        Sta.Run(() =>
+        {
+            string path = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"), "settings.json");
+            var store = new SettingsStore(path);
+            store.Current.AutoSave = true;
+            store.Current.AutoSaveFolder = @"D:\Capturas";
+            store.Current.FileNameTemplate = "shot {n:000}";
+            store.Current.AutoSaveCounter = 41;
+
+            var window = new SettingsWindow(store, new StartupRegistration(@"Software\Zarpazo.Tests", "Zarpazo", @"C:\Zarpazo\Zarpazo.exe"), _ => true, _ => true);
+
+            Assert.True(window.AutoSaveBox.IsChecked);
+            Assert.Equal(@"D:\Capturas", window.AutoFolderBox.Text);
+            Assert.Equal("shot {n:000}", window.TemplateBox.Text);
+            Assert.Equal("Ejemplo: shot 042.png", window.TemplatePreview.Text); // the next number, 42
+            window.Close();
+        });
+    }
 }

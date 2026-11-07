@@ -42,6 +42,9 @@ internal sealed class TrayIcon : IDisposable
     public void ShowWarning(string message) =>
         _icon.ShowBalloonTip(5000, "Zarpazo", message, ToolTipIcon.Warning);
 
+    public void ShowInfo(string message) =>
+        _icon.ShowBalloonTip(3000, "Zarpazo", message, ToolTipIcon.Info);
+
     /// <summary>
     /// Shows that a recording is under way: a red dot on the icon, an amber one while paused, and a menu entry to stop it.
     /// That way it is visible even when the bar is out of sight.

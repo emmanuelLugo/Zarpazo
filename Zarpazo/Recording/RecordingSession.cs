@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Zarpazo.History;
+using Zarpazo.Output;
 using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -203,7 +204,8 @@ internal sealed class RecordingSession
             }
             _filePath = path;
             _historyPath = AddToHistory(path);
-            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}", _job.CanTrim);
+            string saved = AutoSave(path);
+            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{saved}", _job.CanTrim);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -230,6 +232,26 @@ internal sealed class RecordingSession
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return null;
+        }
+    }
+
+    // With automatic saving on the finished file also goes to the folder; what is added to the bar's message says so.
+    private string AutoSave(string path)
+    {
+        var saver = new AutoSaver(_settings);
+        if (!saver.IsEnabled)
+        {
+            return "";
+        }
+
+        try
+        {
+            saver.SaveFile(path);
+            return " · guardado";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return " · no se pudo guardar solo";
         }
     }
 
@@ -307,7 +329,7 @@ internal sealed class RecordingSession
         var dialog = new SaveFileDialog
         {
             Title = $"Guardar {_job.Label}",
-            FileName = $"Zarpazo {DateTime.Now:yyyy-MM-dd HH-mm-ss}",
+            FileName = FileNameTemplate.Expand(_settings.Current.FileNameTemplate, DateTime.Now, _settings.Current.AutoSaveCounter + 1),
             Filter = _job.FileFilter,
             AddExtension = true,
             DefaultExt = _job.Extension,
