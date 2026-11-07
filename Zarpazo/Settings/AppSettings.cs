@@ -10,6 +10,9 @@ internal sealed class AppSettings
     public const double DefaultThickness = 4;
     public const int DefaultHistoryLimit = 100;
 
+    /// <summary>The countdowns the settings window offers.</summary>
+    public static readonly int[] CountdownChoices = [0, 3, 5];
+
     public uint HotKeyModifiers { get; set; } = HotKeyBinding.Default.Modifiers;
     public uint HotKeyVirtualKey { get; set; } = HotKeyBinding.Default.VirtualKey;
     public bool CopyAsFile { get; set; } = true;
@@ -41,6 +44,9 @@ internal sealed class AppSettings
     public string RecordFormat { get; set; } = "gif";
     public bool RecordMicrophone { get; set; }
     public bool RecordSystemSound { get; set; }
+
+    /// <summary>Seconds counted down before a recording starts: 0, 3 or 5.</summary>
+    public int RecordCountdownSeconds { get; set; } = 3;
 
     /// <summary>The microphone chosen for videos; empty means the one Windows uses by default.</summary>
     public string RecordMicrophoneId { get; set; } = "";
@@ -97,6 +103,7 @@ internal sealed class AppSettings
         }
         Color ??= DefaultColor;
         RecordFormat = RecordFormat?.ToLowerInvariant() == "video" ? "video" : "gif";
+        RecordCountdownSeconds = CountdownChoices.MinBy(choice => Math.Abs(choice - RecordCountdownSeconds));
         BeautifyStyle = new Output.BeautifyStyle(
             Output.BeautifyBackground.Find(BeautifyBackground).Key,
             Output.BeautifyStyle.Nearest(BeautifyPadding, Output.BeautifyStyle.PaddingChoices),

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Drawing;
 
 namespace Zarpazo.Recording;
@@ -13,7 +12,7 @@ internal sealed class ScreenRecorder
     private readonly Rectangle _region;
     private readonly TimeSpan _maxDuration;
     private readonly long _maxBytes;
-    private readonly Stopwatch _clock = new();
+    private readonly RecordingClock _clock = new();
     private readonly List<RecordedFrame> _frames = [];
     private Thread? _thread;
     private volatile bool _stopRequested;
@@ -34,6 +33,12 @@ internal sealed class ScreenRecorder
     public int Height { get; }
 
     public TimeSpan Elapsed => _clock.Elapsed;
+
+    public bool IsPaused => _clock.IsPaused;
+
+    public void Pause() => _clock.Pause();
+
+    public void Resume() => _clock.Resume();
 
     /// <summary>Raised, from the capture thread, when it stops by itself because a limit was reached.</summary>
     public event Action<RecordingEnd>? LimitReached;
@@ -64,6 +69,12 @@ internal sealed class ScreenRecorder
 
         while (!_stopRequested)
         {
+            if (_clock.IsPaused)
+            {
+                Thread.Sleep(20);
+                continue;
+            }
+
             long now = _clock.ElapsedMilliseconds;
             if (now < next)
             {

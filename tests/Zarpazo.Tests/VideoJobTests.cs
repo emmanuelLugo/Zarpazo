@@ -80,4 +80,34 @@ public sealed class VideoJobTests : IDisposable
         Assert.False(new RecordingOptions(RecordingFormat.Video, false, false).HasSound);
         Assert.False(new RecordingOptions(RecordingFormat.Gif, true, true).HasSound);
     }
+
+    [Fact]
+    public async Task A_paused_stretch_leaves_no_gap_and_no_extra_length_in_the_video()
+    {
+        var job = new VideoJob(Corner, NoSound);
+        job.Start(_folder);
+        await Task.Delay(1000);
+
+        job.Pause();
+        Assert.True(job.IsPaused);
+        await Task.Delay(1500);
+        job.Resume();
+        await Task.Delay(1000);
+        string? path = await job.FinishAsync();
+
+        MediaClip clip = await MediaClip.CreateFromFileAsync(await StorageFile.GetFileFromPathAsync(path!));
+        Assert.InRange(clip.OriginalDuration.TotalSeconds, 1.6, 2.8); // two seconds recorded, not three and a half
+    }
+
+    [Fact]
+    public void Preparing_does_not_record_and_can_be_thrown_away()
+    {
+        var job = new VideoJob(Corner, NoSound);
+
+        job.Prepare(_folder);
+        job.Abort(); // a countdown that was cancelled
+
+        Assert.Equal(TimeSpan.Zero, job.Elapsed);
+        Assert.Empty(Directory.GetFiles(_folder, "*.mp4"));
+    }
 }

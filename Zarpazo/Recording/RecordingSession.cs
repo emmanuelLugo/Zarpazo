@@ -1,5 +1,4 @@
 using System.Collections.Specialized;
-using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -9,7 +8,7 @@ using Rectangle = System.Drawing.Rectangle;
 
 namespace Zarpazo.Recording;
 
-/// <summary>One recording of an area, from the first picture to the finished file being copied or saved.</summary>
+/// <summary>One recording of an area, from the countdown to the finished file being copied or saved.</summary>
 internal sealed class RecordingSession
 {
     private readonly Rectangle _region;
@@ -18,8 +17,10 @@ internal sealed class RecordingSession
     private readonly string _folder;
     private readonly RecordingJob _job;
     private RecordingOutline? _outline;
+    private RecordingCountdown? _countdown;
     private RecordingBar? _bar;
     private DispatcherTimer? _clock;
+    private DispatcherTimer? _countdownTimer;
     private string? _filePath;
     private bool _closedAlready;
 
@@ -35,13 +36,28 @@ internal sealed class RecordingSession
         _job = options.Format == RecordingFormat.Video ? new VideoJob(region, options) : new GifJob(region);
     }
 
+    public bool IsCountingDown { get; private set; }
+
     public bool IsRecording { get; private set; }
 
+    public bool IsPaused => IsRecording && _job.IsPaused;
+
+    /// <summary>Raised when it starts or stops counting down, recording or pausing, so the tray icon can follow.</summary>
+    public event Action? StateChanged;
+
+    /// <summary>Raised when the recording could not start after a countdown; the message says why.</summary>
+    public event Action<string>? Failed;
+
+    /// <param name="countdownSeconds">Seconds to count down first; 0 starts at once.</param>
     /// <exception cref="InvalidOperationException">Something the recording needs is missing, such as a microphone.</exception>
-    public void Start()
+    public void Start(int countdownSeconds)
     {
+        // Before anything is shown: a missing microphone is reported at once, not after the countdown.
+        _job.Prepare(_folder);
+
         _outline = new RecordingOutline(_region);
         _bar = new RecordingBar();
+        _bar.PauseRequested += (_, _) => TogglePause();
         _bar.StopRequested += (_, _) => Stop();
         _bar.CancelRequested += (_, _) => Close();
         _bar.CopyRequested += (_, _) => Copy();
@@ -55,24 +71,103 @@ internal sealed class RecordingSession
         _outline.Show();
         _bar.Show();
 
-        try
+        if (countdownSeconds > 0)
         {
-            _job.Start(_folder);
+            BeginCountdown(countdownSeconds);
         }
-        catch
+        else
         {
-            Close(); // nothing was recorded: the frame and the bar must not stay on screen
-            throw;
+            try
+            {
+                BeginRecording();
+            }
+            catch
+            {
+                Close(); // nothing was recorded: the frame and the bar must not stay on screen
+                throw;
+            }
         }
-
-        IsRecording = true;
-        _clock = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _clock.Tick += (_, _) => _bar.ShowRecording(_job.Elapsed, _job.MaxDuration, _job.Meters);
-        _clock.Start();
     }
 
-    /// <summary>Ends the recording and makes the file.</summary>
-    public void Stop() => Finish(RecordingEnd.Stopped);
+    private void BeginCountdown(int seconds)
+    {
+        IsCountingDown = true;
+        _countdown = new RecordingCountdown(_region);
+        _countdown.ShowNumber(seconds);
+        _countdown.Show();
+        _bar!.ShowCountdown(seconds);
+        StateChanged?.Invoke();
+
+        int left = seconds;
+        _countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _countdownTimer.Tick += (_, _) =>
+        {
+            left--;
+            if (left > 0)
+            {
+                _countdown?.ShowNumber(left);
+                _bar?.ShowCountdown(left);
+                return;
+            }
+
+            _countdownTimer?.Stop();
+            _countdown?.Close();
+            _countdown = null;
+            IsCountingDown = false;
+            try
+            {
+                BeginRecording();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Close();
+                Failed?.Invoke($"No se pudo empezar a grabar: {ex.Message}");
+            }
+        };
+        _countdownTimer.Start();
+    }
+
+    private void BeginRecording()
+    {
+        _job.Begin();
+        IsRecording = true;
+        _bar!.ShowRecording(TimeSpan.Zero, _job.MaxDuration, _job.Meters);
+        _clock = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _clock.Tick += (_, _) => _bar!.ShowRecording(_job.Elapsed, _job.MaxDuration, _job.Meters, _job.IsPaused);
+        _clock.Start();
+        StateChanged?.Invoke();
+    }
+
+    /// <summary>Pauses a recording that is running, or carries on with one that is paused.</summary>
+    public void TogglePause()
+    {
+        if (!IsRecording || _bar == null)
+        {
+            return;
+        }
+
+        if (_job.IsPaused)
+        {
+            _job.Resume();
+        }
+        else
+        {
+            _job.Pause();
+        }
+        _bar.ShowRecording(_job.Elapsed, _job.MaxDuration, _job.Meters, _job.IsPaused);
+        StateChanged?.Invoke();
+    }
+
+    /// <summary>Ends the recording and makes the file; during the countdown it cancels instead.</summary>
+    public void Stop()
+    {
+        if (IsCountingDown)
+        {
+            Close();
+            return;
+        }
+        Finish(RecordingEnd.Stopped);
+    }
 
     private async void Finish(RecordingEnd reason)
     {
@@ -84,6 +179,7 @@ internal sealed class RecordingSession
         _clock?.Stop();
         _outline?.Close();
         _bar.ShowEncoding($"Creando el {_job.Label}…");
+        StateChanged?.Invoke();
 
         try
         {
@@ -187,14 +283,18 @@ internal sealed class RecordingSession
             return;
         }
         _closedAlready = true;
-        if (IsRecording)
+        _countdownTimer?.Stop();
+        _countdown?.Close();
+        if (IsRecording || IsCountingDown)
         {
             IsRecording = false;
+            IsCountingDown = false;
             _clock?.Stop();
             _job.Abort();
         }
         _outline?.Close();
         _bar?.Close();
         _closed();
+        StateChanged?.Invoke();
     }
 }

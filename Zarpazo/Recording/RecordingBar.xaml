@@ -46,9 +46,16 @@
         <Grid>
             <!-- Recording -->
             <StackPanel x:Name="RecordingPanel" Orientation="Horizontal">
-                <Ellipse Width="10" Height="10" Fill="#E53935" Margin="2,0,8,0" VerticalAlignment="Center" />
+                <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="#E53935" Margin="2,0,8,0" VerticalAlignment="Center" />
                 <TextBlock x:Name="ElapsedText" Style="{StaticResource Label}" FontFamily="Consolas" Margin="0,0,10,0" />
                 <StackPanel x:Name="MetersPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+                <Button Style="{StaticResource Action}" Click="OnPause" ToolTip="Pausar o reanudar: lo que pase en la pausa no queda grabado" AutomationProperties.Name="Pausar">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Two bars while recording (press to pause); a triangle while paused (press to resume). -->
+                        <Path x:Name="PauseIcon" Data="M1,0 H3.5 V10 H1 Z M6.5,0 H9 V10 H6.5 Z" Fill="White" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="PauseText" Text="Pausa" Style="{StaticResource Label}" />
+                    </StackPanel>
+                </Button>
                 <Button Style="{StaticResource Action}" Click="OnStop" ToolTip="Detener (también con el atajo de captura)" AutomationProperties.Name="Detener">
                     <StackPanel Orientation="Horizontal">
                         <Rectangle Width="10" Height="10" Fill="White" RadiusX="1.5" RadiusY="1.5" Margin="0,0,6,0" VerticalAlignment="Center" />
@@ -60,7 +67,15 @@
                 </Button>
             </StackPanel>
 
-            <!-- Making the GIF -->
+            <!-- Counting down to the start -->
+            <StackPanel x:Name="CountdownPanel" Orientation="Horizontal" Visibility="Collapsed">
+                <TextBlock x:Name="CountdownText" Style="{StaticResource Label}" Margin="4,0,10,0" />
+                <Button Style="{StaticResource Action}" Click="OnCancel" ToolTip="Cancelar" AutomationProperties.Name="Cancelar">
+                    <Path Data="M1,1 L9,9 M9,1 L1,9" Stroke="#EF5350" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                </Button>
+            </StackPanel>
+
+            <!-- Making the file -->
             <StackPanel x:Name="EncodingPanel" Orientation="Horizontal" Visibility="Collapsed">
                 <TextBlock x:Name="EncodingText" Style="{StaticResource Label}" Margin="4,0,10,0" />
                 <ProgressBar IsIndeterminate="True" Width="80" Height="4" VerticalAlignment="Center" Margin="0,0,4,0" />

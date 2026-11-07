@@ -33,6 +33,7 @@ public partial class RecordingBar : Window
         WindowNative.ExcludeFromScreenCapture(hwnd);
     }
 
+    internal event EventHandler? PauseRequested;
     internal event EventHandler? StopRequested;
     internal event EventHandler? CancelRequested;
     internal event EventHandler? CopyRequested;
@@ -40,11 +41,22 @@ public partial class RecordingBar : Window
     internal event EventHandler? CloseRequested;
 
     /// <param name="meters">One level bar per sound source, so it is clear at a glance that each one is picking something up.</param>
-    internal void ShowRecording(TimeSpan elapsed, TimeSpan limit, IReadOnlyList<AudioMeter> meters)
+    internal void ShowRecording(TimeSpan elapsed, TimeSpan limit, IReadOnlyList<AudioMeter> meters, bool paused = false)
     {
-        ElapsedText.Text = $"{Format(elapsed)} / {Format(limit)}";
+        ElapsedText.Text = paused ? $"{Format(elapsed)} · en pausa" : $"{Format(elapsed)} / {Format(limit)}";
+        // The red dot means "recording"; while paused it turns amber, and the button offers to carry on.
+        StatusDot.Fill = new SolidColorBrush(paused ? Color.FromRgb(0xFD, 0xD8, 0x35) : Color.FromRgb(0xE5, 0x39, 0x35));
+        PauseText.Text = paused ? "Reanudar" : "Pausa";
+        PauseIcon.Data = Geometry.Parse(paused ? "M0,0 L9,5 L0,10 Z" : "M1,0 H3.5 V10 H1 Z M6.5,0 H9 V10 H6.5 Z");
         UpdateMeters(meters);
         ShowPanel(RecordingPanel);
+    }
+
+    /// <summary>The seconds left before the recording starts.</summary>
+    internal void ShowCountdown(int secondsLeft)
+    {
+        CountdownText.Text = $"Empieza en {secondsLeft}…";
+        ShowPanel(CountdownPanel);
     }
 
     private void UpdateMeters(IReadOnlyList<AudioMeter> meters)
@@ -92,7 +104,7 @@ public partial class RecordingBar : Window
 
     private void ShowPanel(UIElement panel)
     {
-        foreach (UIElement other in new UIElement[] { RecordingPanel, EncodingPanel, DonePanel, FailurePanel })
+        foreach (UIElement other in new UIElement[] { RecordingPanel, CountdownPanel, EncodingPanel, DonePanel, FailurePanel })
         {
             other.Visibility = other == panel ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -126,6 +138,8 @@ public partial class RecordingBar : Window
 
         WindowNative.Place(new WindowInteropHelper(this).Handle, new Rectangle(left, top, width, height));
     }
+
+    private void OnPause(object sender, RoutedEventArgs e) => PauseRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnStop(object sender, RoutedEventArgs e) => StopRequested?.Invoke(this, EventArgs.Empty);
 

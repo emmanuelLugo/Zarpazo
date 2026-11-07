@@ -98,6 +98,9 @@ internal sealed class AudioInput : IDisposable
 
     public void Start() => _capture.StartRecording();
 
+    /// <summary>Throws away what the device has sent and nobody has used yet, such as what came in during a pause.</summary>
+    public void Clear() => _buffer.ClearBuffer();
+
     /// <summary>Drops the oldest sound if the device is delivering faster than it is being used, so the delay can't build up.</summary>
     public void TrimBacklog()
     {

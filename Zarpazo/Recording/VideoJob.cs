@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -14,12 +13,13 @@ internal sealed class VideoJob : RecordingJob
 
     private readonly Rectangle _region;
     private readonly RecordingOptions _options;
-    private readonly Stopwatch _clock = new();
+    private readonly RecordingClock _clock = new();
     private Mp4Writer? _writer;
     private RegionGrabber? _grabber;
     private AudioRecorder? _audio;
     private Thread? _thread;
     private volatile bool _stopRequested;
+    private bool _timerRaised;
     private string? _path;
 
     public VideoJob(Rectangle region, RecordingOptions options)
@@ -42,7 +42,9 @@ internal sealed class VideoJob : RecordingJob
 
     public override event Action<RecordingEnd>? LimitReached;
 
-    public override void Start(string folder)
+    public override bool IsPaused => _clock.IsPaused;
+
+    public override void Prepare(string folder)
     {
         (int width, int height) = RegionGrabber.FitSize(_region, MaxSide, even: true);
         _path = NewFilePath(folder);
@@ -75,13 +77,26 @@ internal sealed class VideoJob : RecordingJob
             _audio = new AudioRecorder(inputs, _writer, _clock);
         }
 
+    }
+
+    public override void Begin()
+    {
         // Windows wakes a sleeping thread every 15 ms unless asked for better; at 30 pictures a second that is too coarse.
         TimeBeginPeriod(1);
+        _timerRaised = true;
         _clock.Start();
-        _writer.Start();
+        _writer!.Start();
         _audio?.Start();
         _thread = new Thread(Capture) { IsBackground = true, Name = "Zarpazo video" };
         _thread.Start();
+    }
+
+    public override void Pause() => _clock.Pause();
+
+    public override void Resume()
+    {
+        _audio?.DiscardBuffered(); // what the devices heard during the pause is not part of the video
+        _clock.Resume();
     }
 
     public override async Task<string?> FinishAsync()
@@ -134,7 +149,11 @@ internal sealed class VideoJob : RecordingJob
         _audio?.Dispose();
         _grabber?.Dispose();
         _clock.Stop();
-        TimeEndPeriod(1);
+        if (_timerRaised)
+        {
+            TimeEndPeriod(1);
+            _timerRaised = false;
+        }
     }
 
     private void Capture()
@@ -143,6 +162,12 @@ internal sealed class VideoJob : RecordingJob
         long frame = 0;
         while (!_stopRequested)
         {
+            if (_clock.IsPaused)
+            {
+                Thread.Sleep(10);
+                continue;
+            }
+
             long due = frame * 1000 / FramesPerSecond;
             long now = _clock.ElapsedMilliseconds;
             if (now < due)

@@ -33,11 +33,15 @@ internal sealed class GifJob : RecordingJob
         remove => _recorder.LimitReached -= value;
     }
 
-    public override void Start(string folder)
-    {
-        _folder = folder;
-        _recorder.Start();
-    }
+    public override bool IsPaused => _recorder.IsPaused;
+
+    public override void Prepare(string folder) => _folder = folder;
+
+    public override void Begin() => _recorder.Start();
+
+    public override void Pause() => _recorder.Pause();
+
+    public override void Resume() => _recorder.Resume();
 
     public override async Task<string?> FinishAsync()
     {

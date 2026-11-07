@@ -99,4 +99,22 @@ public sealed class ScreenRecorderTests
 
         Assert.Equal((640, 360), (recorder.Width, recorder.Height));
     }
+
+    [Fact]
+    public void The_time_spent_paused_is_not_part_of_the_recording()
+    {
+        var recorder = new ScreenRecorder(Corner, TimeSpan.FromSeconds(10), maxBytes: 100_000_000);
+        recorder.Start();
+        Thread.Sleep(500);
+
+        recorder.Pause();
+        Assert.True(recorder.IsPaused);
+        Thread.Sleep(1000); // a long pause
+        recorder.Resume();
+        Thread.Sleep(500);
+        (IReadOnlyList<RecordedFrame> frames, int durationMs) = recorder.Stop();
+
+        Assert.InRange(durationMs, 800, 1400); // about a second of recording, not the two and a half that went by
+        Assert.All(frames, frame => Assert.InRange(frame.TimeMs, 0, durationMs));
+    }
 }

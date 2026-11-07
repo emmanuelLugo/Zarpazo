@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Zarpazo.Recording;
 
 /// <summary>Mixes the sound sources into chunks on a steady schedule and hands them to the video file, each stamped with its place in time.</summary>
@@ -7,13 +5,13 @@ internal sealed class AudioRecorder : IDisposable
 {
     private readonly IReadOnlyList<AudioInput> _inputs;
     private readonly Mp4Writer _writer;
-    private readonly Stopwatch _clock;
+    private readonly RecordingClock _clock;
     private readonly AudioMixer _mixer;
     private Thread? _thread;
     private volatile bool _stopRequested;
 
     /// <param name="clock">The recording's clock, shared with the video so that picture and sound start together.</param>
-    public AudioRecorder(IReadOnlyList<AudioInput> inputs, Mp4Writer writer, Stopwatch clock)
+    public AudioRecorder(IReadOnlyList<AudioInput> inputs, Mp4Writer writer, RecordingClock clock)
     {
         _inputs = inputs;
         _writer = writer;
@@ -35,6 +33,15 @@ internal sealed class AudioRecorder : IDisposable
         _thread.Start();
     }
 
+    /// <summary>Drops what the devices have gathered, so that after a pause the sound is from now and not from before it.</summary>
+    public void DiscardBuffered()
+    {
+        foreach (AudioInput input in _inputs)
+        {
+            input.Clear();
+        }
+    }
+
     public void Stop()
     {
         _stopRequested = true;
@@ -46,6 +53,12 @@ internal sealed class AudioRecorder : IDisposable
         long chunk = 0;
         while (!_stopRequested)
         {
+            if (_clock.IsPaused)
+            {
+                Thread.Sleep(10); // the clock stands still, so no chunk falls due
+                continue;
+            }
+
             // A chunk is made once the time it covers has passed, so there is that much sound to take.
             long due = (chunk + 1) * AudioMixer.ChunkMilliseconds;
             long now = _clock.ElapsedMilliseconds;

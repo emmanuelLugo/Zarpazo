@@ -25,9 +25,26 @@ internal abstract class RecordingJob
     /// <summary>Raised, from a capture thread, when the job stops by itself.</summary>
     public abstract event Action<RecordingEnd>? LimitReached;
 
+    public abstract bool IsPaused { get; }
+
+    /// <summary>Gets everything ready without recording yet, so that anything missing (a microphone) shows up before a countdown.</summary>
     /// <param name="folder">Where the file is made. A video is written into it while recording; a GIF when it ends.</param>
     /// <exception cref="InvalidOperationException">Something it needs is missing, such as a microphone.</exception>
-    public abstract void Start(string folder);
+    public abstract void Prepare(string folder);
+
+    /// <summary>Starts recording what <see cref="Prepare"/> got ready.</summary>
+    public abstract void Begin();
+
+    public void Start(string folder)
+    {
+        Prepare(folder);
+        Begin();
+    }
+
+    /// <summary>Stops taking pictures and sound; what comes after the pause continues right where this left off.</summary>
+    public abstract void Pause();
+
+    public abstract void Resume();
 
     /// <summary>Ends the recording and completes the file; returns its path, or null if nothing was recorded.</summary>
     public abstract Task<string?> FinishAsync();

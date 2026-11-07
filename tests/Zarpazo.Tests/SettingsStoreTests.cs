@@ -169,4 +169,15 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.Equal("{0.0.1.00000000}.{abc}", second.RecordingOptions.MicrophoneId);
     }
+
+    [Fact]
+    public void The_countdown_starts_at_three_seconds_and_odd_values_snap_to_what_is_offered()
+    {
+        Assert.Equal(3, new SettingsStore(FilePath).Current.RecordCountdownSeconds);
+
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(FilePath, """{ "RecordCountdownSeconds": 9 }""");
+
+        Assert.Equal(5, new SettingsStore(FilePath).Current.RecordCountdownSeconds);
+    }
 }

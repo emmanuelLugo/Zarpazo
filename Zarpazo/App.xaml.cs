@@ -38,7 +38,7 @@ public partial class App : Application
         }
 
         _settings = new SettingsStore(SettingsStore.DefaultPath);
-        _tray = new TrayIcon(CaptureFromMenu, ShowHistory, ShowSettings, Shutdown);
+        _tray = new TrayIcon(CaptureFromMenu, ShowHistory, ShowSettings, () => _recording?.Stop(), Shutdown);
         _hotKey = new GlobalHotKey(ShowOverlay);
         if (!_hotKey.TryRegister(_settings.Current.HotKey))
         {
@@ -143,9 +143,12 @@ public partial class App : Application
         _recording?.Close(); // a finished one still on screen makes way for the new one
         var session = new RecordingSession(region, options, _settings, () => _recording = null);
         _recording = session;
+        // The tray icon shows that something is being recorded, even when the bar is out of sight.
+        session.StateChanged += () => _tray?.SetRecording(session.IsCountingDown || session.IsRecording, session.IsPaused);
+        session.Failed += message => _tray!.ShowWarning(message);
         try
         {
-            session.Start();
+            session.Start(_settings.Current.RecordCountdownSeconds);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -157,9 +160,9 @@ public partial class App : Application
     private void ShowOverlay()
     {
         // The same shortcut that starts a capture stops a recording: it is the one key that is always within reach.
-        if (_recording is { IsRecording: true })
+        if (_recording is { IsRecording: true } or { IsCountingDown: true })
         {
-            _recording.Stop();
+            _recording.Stop(); // stops a recording, or cancels the countdown
             return;
         }
         if (_overlay != null)
