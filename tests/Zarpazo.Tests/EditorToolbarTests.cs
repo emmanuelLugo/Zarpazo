@@ -273,4 +273,172 @@ public class EditorToolbarTests
             Assert.Equal(saved, toolbar.RecordingOptions);
         });
     }
+
+    // The button that stands for a group of tools, found by its name.
+    private static Button Group(EditorToolbar toolbar, string title) => Buttons(toolbar).First(b => System.Windows.Automation.AutomationProperties.GetName(b) == title);
+
+    private static IEnumerable<Button> Buttons(DependencyObject root)
+    {
+        foreach (object child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is Button button)
+            {
+                yield return button;
+            }
+            if (child is DependencyObject node)
+            {
+                foreach (Button nested in Buttons(node))
+                {
+                    yield return nested;
+                }
+            }
+        }
+    }
+
+    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+    [Fact]
+    public void Clicking_a_group_uses_the_tool_it_remembers_and_clicking_again_lets_go()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Click(Group(toolbar, "Formas"));
+            Assert.Equal(AnnotationTool.Arrow, toolbar.Tool); // the arrow is what the shapes start with
+
+            Click(Group(toolbar, "Formas"));
+            Assert.Equal(AnnotationTool.Select, toolbar.Tool);
+        });
+    }
+
+    [Fact]
+    public void A_group_remembers_the_last_tool_chosen_from_its_menu()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            Find(toolbar, "tool", "Ellipse").IsChecked = true; // picked from the Formas menu
+            Find(toolbar, "tool", "Select").IsChecked = true;  // then back to adjusting
+
+            Click(Group(toolbar, "Formas"));
+
+            Assert.Equal(AnnotationTool.Ellipse, toolbar.Tool);
+        });
+    }
+
+    [Fact]
+    public void Only_one_tool_is_checked_even_when_the_buttons_live_in_different_menus()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Find(toolbar, "tool", "Pen").IsChecked = true;   // in the Dibujo menu
+            Find(toolbar, "tool", "Ruler").IsChecked = true; // in the Medir menu
+            Find(toolbar, "tool", "Text").IsChecked = true;  // in the bar
+
+            Assert.Equal(1, RadioButtons(toolbar).Count(r => r.GroupName == "tool" && r.IsChecked == true));
+            Assert.True(Find(toolbar, "tool", "Text").IsChecked);
+        });
+    }
+
+    [Theory]
+    [InlineData("Select", false)]
+    [InlineData("Move", false)]
+    [InlineData("Pixelate", false)]
+    [InlineData("Ruler", false)]
+    [InlineData("Picker", false)]
+    [InlineData("Rectangle", true)]
+    [InlineData("Arrow", true)]
+    [InlineData("Highlighter", true)]
+    [InlineData("Text", true)]
+    [InlineData("Step", true)]
+    public void Color_and_thickness_only_show_for_the_tools_that_use_them(string tool, bool shown)
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Find(toolbar, "tool", tool).IsChecked = true;
+
+            Assert.Equal(shown ? Visibility.Visible : Visibility.Collapsed, toolbar.StyleTools.Visibility);
+        });
+    }
+
+    [Fact]
+    public void The_tools_column_is_short_and_the_adjust_tool_has_no_button()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            toolbar.Place(new Rect(200, 100, 400, 300), new Size(1366, 768));
+
+            Assert.Equal(Visibility.Collapsed, Find(toolbar, "tool", "Select").Visibility);
+            Assert.True(toolbar.ToolsBar.DesiredSize.Height < 300, $"column is {toolbar.ToolsBar.DesiredSize.Height} px tall");
+
+            Find(toolbar, "tool", "Arrow").IsChecked = true; // with color and thickness it grows, and the bars are placed again
+            Assert.True(toolbar.ToolsBar.DesiredSize.Height < 400);
+        });
+    }
+
+    [Fact]
+    public void The_more_menu_shows_when_beautify_is_on()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            Assert.Equal(Visibility.Collapsed, toolbar.BeautifyDot.Visibility);
+
+            toolbar.RestoreBeautify(enabled: true, Zarpazo.Output.BeautifyStyle.Default);
+
+            Assert.Equal(Visibility.Visible, toolbar.BeautifyDot.Visibility); // on the button, so it is not forgotten
+            Assert.Equal(Visibility.Visible, toolbar.BeautifyState.Visibility); // and spelled out in the menu
+        });
+    }
+
+    [Fact]
+    public void Releasing_the_button_over_an_entry_of_a_group_menu_picks_it()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            RadioButton ellipse = Find(toolbar, "tool", "Ellipse");
+
+            // The menu opened when the button went down on the corner; the release lands on the entry without a press on it.
+            ellipse.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent,
+                Source = ellipse,
+            });
+
+            Assert.Equal(AnnotationTool.Ellipse, toolbar.Tool);
+            Assert.True(ellipse.IsChecked);
+        });
+    }
+
+    [Fact]
+    public void A_quick_click_on_the_corner_leaves_the_menu_open_for_the_next_click()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            (System.Windows.Controls.Primitives.Popup menu, UIElement corner) = toolbar.GroupParts("Formas");
+
+            corner.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                Source = corner,
+            });
+            Assert.True(menu.StaysOpen); // or the release would close it (a pop-up outside a window can't open, so only this is checked)
+
+            corner.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent,
+                Source = corner,
+            });
+            Assert.False(menu.StaysOpen);  // after the release it closes on a click outside again, like any menu
+        });
+    }
 }
+

@@ -144,7 +144,7 @@ public sealed class QualitySettingsTests : IDisposable
         return new FileInfo(path).Length;
     }
 
-    [Fact]
+    [HardwareEncoderFact]
     public async Task A_higher_quality_makes_a_bigger_video_of_the_same_picture()
     {
         long low = await VideoSizeAsync("low.mp4", VideoQuality.Low);

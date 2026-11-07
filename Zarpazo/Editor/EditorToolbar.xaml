@@ -96,6 +96,71 @@
             <Setter Property="StrokeStartLineCap" Value="Round" />
             <Setter Property="StrokeEndLineCap" Value="Round" />
         </Style>
+
+        <Path x:Key="IconRectangle" x:Shared="False" Style="{StaticResource Icon}" Data="M2.5,3.5 H13.5 V12.5 H2.5 Z" />
+        <Path x:Key="IconEllipse" x:Shared="False" Style="{StaticResource Icon}" Data="M2,8 A6,5 0 1 0 14,8 A6,5 0 1 0 2,8 Z" />
+        <Path x:Key="IconLine" x:Shared="False" Style="{StaticResource Icon}" Data="M3,13 L13,3" />
+        <Path x:Key="IconArrow" x:Shared="False" Style="{StaticResource Icon}" Data="M3,13 L13,3 M6.5,3 H13 V9.5" />
+        <Path x:Key="IconPen" x:Shared="False" Style="{StaticResource Icon}" Data="M2.5,13.5 L3.3,10 L10.8,2.5 L13.5,5.2 L6,12.7 Z M9.2,4.1 L11.9,6.8" />
+        <Grid x:Key="IconHighlighter" x:Shared="False" Width="16" Height="16">
+            <Path Style="{StaticResource Icon}" Data="M10.5,1.8 L13.7,5 L7.2,11.5 L4,8.3 Z M4,8.3 L2.5,11.7 L6,10.5" />
+            <Path Style="{StaticResource Icon}" Data="M8,14.2 H14" Stroke="#FDD835" StrokeThickness="2" />
+        </Grid>
+        <Path x:Key="IconRuler" x:Shared="False" Style="{StaticResource Icon}" Data="M1.5,5.5 H14.5 V10.5 H1.5 Z M4.5,5.5 V8 M8,5.5 V8.5 M11.5,5.5 V8" />
+        <Path x:Key="IconPicker" x:Shared="False" Style="{StaticResource Icon}"
+              Data="M2.5,13.5 L3.2,10.3 L9.3,4.2 L11.8,6.7 L5.7,12.8 Z M8.5,5 L11,2.5 Q12.5,1 14,2.5 Q15.5,4 13.5,5.5 L11.5,7.5" />
+
+        <!-- A row of a pop-up list: a tool with its name. -->
+        <Style x:Key="MenuChoice" TargetType="RadioButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="1" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnChoicePressed" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Box" MinWidth="150" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#26FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#4DFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MenuAction" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Box" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#26FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#4DFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <!-- Two bars on a transparent layer the size of the screen: the drawing tools stand beside the area, the actions under it.
@@ -103,11 +168,9 @@
     <Canvas x:Name="Layer" RadioButton.Checked="OnChoice">
     <Border x:Name="ToolsBar" Style="{StaticResource Bar}">
         <StackPanel Orientation="Vertical">
+            <!-- "Adjust the area" has no button: pressing the active tool again, or its entry in a group, goes back to it. -->
             <RadioButton x:Name="SelectTool" GroupName="tool" Tag="Select" IsChecked="True" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Ajustar zona"
-                         ToolTip="Ajustar la zona: arrastra las asas o el interior. Arrastrar fuera elige otra zona y borra las anotaciones">
-                <Path Style="{StaticResource Icon}" Data="M2.5,2.5 H13.5 V13.5 H2.5 Z" StrokeDashArray="2 1.6" />
-            </RadioButton>
+                         Visibility="Collapsed" AutomationProperties.Name="Ajustar zona" />
             <RadioButton GroupName="tool" Tag="Move" Style="{StaticResource Choice}"
                          AutomationProperties.Name="Mover anotaciones"
                          ToolTip="Mover anotaciones (Supr borra la seleccionada)">
@@ -117,33 +180,9 @@
 
             <Border Style="{StaticResource DividerH}" />
 
-            <RadioButton GroupName="tool" Tag="Rectangle" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Rectángulo" ToolTip="Rectángulo">
-                <Path Style="{StaticResource Icon}" Data="M2.5,3.5 H13.5 V12.5 H2.5 Z" />
-            </RadioButton>
-            <RadioButton GroupName="tool" Tag="Ellipse" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Elipse" ToolTip="Elipse">
-                <Path Style="{StaticResource Icon}" Data="M2,8 A6,5 0 1 0 14,8 A6,5 0 1 0 2,8 Z" />
-            </RadioButton>
-            <RadioButton GroupName="tool" Tag="Line" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Línea" ToolTip="Línea">
-                <Path Style="{StaticResource Icon}" Data="M3,13 L13,3" />
-            </RadioButton>
-            <RadioButton GroupName="tool" Tag="Arrow" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Flecha" ToolTip="Flecha">
-                <Path Style="{StaticResource Icon}" Data="M3,13 L13,3 M6.5,3 H13 V9.5" />
-            </RadioButton>
-            <RadioButton GroupName="tool" Tag="Pen" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Lápiz" ToolTip="Lápiz">
-                <Path Style="{StaticResource Icon}" Data="M2.5,13.5 L3.3,10 L10.8,2.5 L13.5,5.2 L6,12.7 Z M9.2,4.1 L11.9,6.8" />
-            </RadioButton>
-            <RadioButton GroupName="tool" Tag="Highlighter" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Resaltador" ToolTip="Resaltador">
-                <Grid Width="16" Height="16">
-                    <Path Style="{StaticResource Icon}" Data="M10.5,1.8 L13.7,5 L7.2,11.5 L4,8.3 Z M4,8.3 L2.5,11.7 L6,10.5" />
-                    <Path Style="{StaticResource Icon}" Data="M8,14.2 H14" Stroke="#FDD835" StrokeThickness="2" />
-                </Grid>
-            </RadioButton>
+            <!-- Tools that belong together share one button showing the one used last; the groups are built in code. -->
+            <ContentControl x:Name="ShapesSlot" Focusable="False" IsTabStop="False" />
+            <ContentControl x:Name="DrawSlot" Focusable="False" IsTabStop="False" />
             <RadioButton GroupName="tool" Tag="Text" Style="{StaticResource Choice}"
                          AutomationProperties.Name="Texto" ToolTip="Texto (Enter confirma, Mayús+Enter salto de línea)">
                 <Path Style="{StaticResource Icon}" Data="M3,4 V3 H13 V4 M8,3 V13 M6,13 H10" />
@@ -164,17 +203,11 @@
                     <Path Style="{StaticResource Icon}" Data="M2.5,2.5 H13.5 V13.5 H2.5 Z M8,2.5 V13.5 M2.5,8 H13.5" />
                 </Grid>
             </RadioButton>
-            <RadioButton GroupName="tool" Tag="Ruler" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Regla" ToolTip="Regla: mide una distancia en píxeles">
-                <Path Style="{StaticResource Icon}" Data="M1.5,5.5 H14.5 V10.5 H1.5 Z M4.5,5.5 V8 M8,5.5 V8.5 M11.5,5.5 V8" />
-            </RadioButton>
-            <RadioButton GroupName="tool" Tag="Picker" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Cuentagotas" ToolTip="Cuentagotas: clic copia el color, X cambia entre HEX y RGB">
-                <Path Style="{StaticResource Icon}"
-                      Data="M2.5,13.5 L3.2,10.3 L9.3,4.2 L11.8,6.7 L5.7,12.8 Z M8.5,5 L11,2.5 Q12.5,1 14,2.5 Q15.5,4 13.5,5.5 L11.5,7.5" />
-            </RadioButton>
+            <ContentControl x:Name="MeasureSlot" Focusable="False" IsTabStop="False" />
 
-            <Border Style="{StaticResource DividerH}" />
+            <!-- Only for the tools that draw something with a color. -->
+            <StackPanel x:Name="StyleTools" Visibility="Collapsed">
+                <Border Style="{StaticResource DividerH}" />
 
             <!-- Color and thickness are one button each showing the current choice; the options live in popups so they
                  don't take bar space. -->
@@ -266,6 +299,7 @@
                 </Border>
             </Popup>
 
+            </StackPanel>
         </StackPanel>
     </Border>
 
@@ -279,14 +313,6 @@
             </Button>
 
             <Border Style="{StaticResource Divider}" />
-
-            <Button Style="{StaticResource Action}" ToolTip="Copiar el texto de la imagen (Ctrl+T)" AutomationProperties.Name="Copiar texto" Click="OnOcr">
-                <Path Style="{StaticResource Icon}" Data="M1.5,5 V1.5 H5 M11,1.5 H14.5 V5 M14.5,11 V14.5 H11 M5,14.5 H1.5 V11 M5,5.5 H11 M8,5.5 V11" />
-            </Button>
-
-            <Button Style="{StaticResource Action}" ToolTip="Fijar sobre la pantalla (Ctrl+P)" AutomationProperties.Name="Fijar" Click="OnPin">
-                <Path Style="{StaticResource Icon}" Data="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14" />
-            </Button>
 
             <Button x:Name="RecordButton" Style="{StaticResource Action}" ToolTip="Grabar esta zona como GIF o video, con o sin sonido (Ctrl+G empieza con lo último elegido)"
                     AutomationProperties.Name="Grabar" Click="OnRecordButton">
@@ -355,17 +381,66 @@
                 </Border>
             </Popup>
 
-            <Button x:Name="BeautifyButton" Style="{StaticResource Action}" ToolTip="Embellecer: fondo, margen, esquinas y sombra al copiar y guardar"
-                    AutomationProperties.Name="Embellecer" Click="OnBeautifyButton">
+            <Button x:Name="MoreButton" Style="{StaticResource Action}" ToolTip="Más: copiar el texto, fijar sobre la pantalla, embellecer"
+                    AutomationProperties.Name="Más" Click="OnMoreButton">
                 <Grid Width="16" Height="16">
-                    <Path Style="{StaticResource Icon}" Data="M2,2.5 H14 V13.5 H2 Z M5.5,5.5 H10.5 V10.5 H5.5 Z" />
-                    <!-- Shows when it is on, so a forgotten setting doesn't surprise anyone. -->
+                    <Path Fill="White" Data="M2.2,8 A1.3,1.3 0 1 0 4.8,8 A1.3,1.3 0 1 0 2.2,8 Z M6.7,8 A1.3,1.3 0 1 0 9.3,8 A1.3,1.3 0 1 0 6.7,8 Z M11.2,8 A1.3,1.3 0 1 0 13.8,8 A1.3,1.3 0 1 0 11.2,8 Z" />
+                    <!-- Shows when Embellecer is on, so a forgotten setting doesn't surprise anyone. -->
                     <Ellipse x:Name="BeautifyDot" Width="7" Height="7" Fill="#FDD835" Stroke="#F2202124" StrokeThickness="1"
                              HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0" Visibility="Collapsed" />
                 </Grid>
             </Button>
+            <Popup x:Name="MorePopup"
+                   PlacementTarget="{Binding ElementName=MoreButton}"
+                   Placement="Top"
+                   StaysOpen="False"
+                   AllowsTransparency="True">
+                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="0,0,0,6">
+                    <StackPanel Width="264">
+                        <Button Style="{StaticResource MenuAction}" Click="OnMoreOcr" AutomationProperties.Name="Copiar texto"
+                                ToolTip="Lee el texto de la zona y lo copia">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Path Style="{StaticResource Icon}" Data="M1.5,5 V1.5 H5 M11,1.5 H14.5 V5 M14.5,11 V14.5 H11 M5,14.5 H1.5 V11 M5,5.5 H11 M8,5.5 V11" />
+                                <TextBlock Grid.Column="1" Text="Copiar texto de la imagen" Margin="10,0,0,0" />
+                                <TextBlock Grid.Column="2" Text="Ctrl+T" Foreground="#80FFFFFF" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                        <Button Style="{StaticResource MenuAction}" Click="OnMorePin" AutomationProperties.Name="Fijar"
+                                ToolTip="Deja la captura flotando sobre la pantalla">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Path Style="{StaticResource Icon}" Data="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14" />
+                                <TextBlock Grid.Column="1" Text="Fijar sobre la pantalla" Margin="10,0,0,0" />
+                                <TextBlock Grid.Column="2" Text="Ctrl+P" Foreground="#80FFFFFF" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                        <Button Style="{StaticResource MenuAction}" Click="OnMoreBeautify" AutomationProperties.Name="Embellecer"
+                                ToolTip="Fondo, margen, esquinas y sombra al copiar y guardar">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Path Style="{StaticResource Icon}" Data="M2,2.5 H14 V13.5 H2 Z M5.5,5.5 H10.5 V10.5 H5.5 Z" />
+                                <TextBlock Grid.Column="1" Text="Embellecer…" Margin="10,0,0,0" />
+                                <TextBlock x:Name="BeautifyState" Grid.Column="2" Text="Activado" Foreground="#FDD835" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Popup>
             <Popup x:Name="BeautifyPopup"
-                   PlacementTarget="{Binding ElementName=BeautifyButton}"
+                   PlacementTarget="{Binding ElementName=MoreButton}"
                    Placement="Top"
                    StaysOpen="False"
                    AllowsTransparency="True">
