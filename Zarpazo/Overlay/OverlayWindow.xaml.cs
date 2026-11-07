@@ -34,6 +34,7 @@ public partial class OverlayWindow : Window
     private Rect? _hoverRect;   // the window under the cursor, while no area has been chosen yet
     private Rect? _pendingWindow; // that window as it was when the button went down
     private Point _dragStart;
+    private bool _replacePending; // button is down outside the chosen area; becomes a new selection only if dragged
     private Annotation? _drawing;
     private SelectionHandle _dragHandle;  // the grab point being dragged to resize or move the capture area
     private Rect _dragOrigin;             // the area as it was when that drag started
@@ -234,10 +235,14 @@ public partial class OverlayWindow : Window
             _dragStart = point;
             _pendingWindow = _hoverRect;
             _hoverRect = null;
-            Annotations.Clear();
-            Toolbar.Visibility = Visibility.Collapsed;
-            Handles.Visibility = Visibility.Collapsed;
-            Selection.Rect = new Rect(point, point);
+            if (IsSelectionFinal)
+            {
+                _replacePending = true; // a plain click outside keeps the current area; only a drag replaces it
+            }
+            else
+            {
+                StartNewSelection(point);
+            }
         }
         else if (HasSelection && Selection.Rect.Contains(point))
         {
@@ -309,8 +314,24 @@ public partial class OverlayWindow : Window
         }
         else
         {
-            Selection.Rect = new Rect(_dragStart, point);
+            if (_replacePending && (point - _dragStart).Length >= ClickTolerance)
+            {
+                _replacePending = false;
+                StartNewSelection(_dragStart);
+            }
+            if (!_replacePending)
+            {
+                Selection.Rect = new Rect(_dragStart, point);
+            }
         }
+    }
+
+    private void StartNewSelection(Point origin)
+    {
+        Annotations.Clear();
+        Toolbar.Visibility = Visibility.Collapsed;
+        Handles.Visibility = Visibility.Collapsed;
+        Selection.Rect = new Rect(origin, origin);
     }
 
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
@@ -347,6 +368,10 @@ public partial class OverlayWindow : Window
         else if (_dragHandle != SelectionHandle.None)
         {
             _dragHandle = SelectionHandle.None; // the area was already updated while dragging
+        }
+        else if (_replacePending)
+        {
+            _replacePending = false; // it was only a click: the area stays as it was
         }
         else
         {
