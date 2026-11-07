@@ -14,6 +14,10 @@ internal sealed class CaptureHistory
 {
     private const string StateExtension = ".json";
     private const string CleanExtension = ".clean";
+    private static readonly string[] RecordingExtensions = [".gif", ".mp4"];
+
+    /// <summary>A video can be hundreds of megabytes, so recordings are kept in far smaller numbers than captures.</summary>
+    public const int RecordingLimit = 10;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -54,6 +58,41 @@ internal sealed class CaptureHistory
         return path;
     }
 
+    /// <summary>
+    /// Keeps a finished GIF or video: a copy of the file, and a PNG with the same name (its first frame) that makes it show in the list.
+    /// Drops the oldest recordings beyond <paramref name="recordingLimit"/>; captures are not counted.
+    /// </summary>
+    /// <exception cref="IOException">A file could not be written.</exception>
+    /// <exception cref="UnauthorizedAccessException">The folder is not writable.</exception>
+    public string AddRecording(string mediaFile, BitmapSource firstFrame, int recordingLimit = RecordingLimit)
+    {
+        Directory.CreateDirectory(_folder);
+        string stamp = $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
+        string extension = Path.GetExtension(mediaFile);
+        string path = Path.Combine(_folder, stamp + ".png");
+        for (int copy = 1; File.Exists(path); copy++)
+        {
+            path = Path.Combine(_folder, $"{stamp}_{copy}.png");
+        }
+
+        // The recording first: the picture is what makes the entry appear, so a half-made entry never shows.
+        File.Copy(mediaFile, Path.ChangeExtension(path, extension));
+        ImageOutput.Write(path, firstFrame);
+
+        foreach (HistoryEntry old in List().Where(entry => entry.IsRecording).Skip(Math.Max(recordingLimit, 0)))
+        {
+            try
+            {
+                Delete(old.Path);
+            }
+            catch (IOException)
+            {
+                // Still open somewhere; it goes next time.
+            }
+        }
+        return path;
+    }
+
     /// <summary>Newest first. Empty if nothing was captured yet.</summary>
     public IReadOnlyList<HistoryEntry> List()
     {
@@ -64,14 +103,20 @@ internal sealed class CaptureHistory
 
         return Directory.EnumerateFiles(_folder, "Zarpazo_*.png")
             .OrderByDescending(path => path, StringComparer.Ordinal)
-            .Select(path => new HistoryEntry(path, File.GetLastWriteTime(path), File.Exists(Path.ChangeExtension(path, StateExtension))))
+            .Select(path => new HistoryEntry(
+                path,
+                File.GetLastWriteTime(path),
+                File.Exists(Path.ChangeExtension(path, StateExtension)),
+                RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)).FirstOrDefault(File.Exists)))
             .ToList();
     }
 
     /// <summary>Removes the capture and the files that belong to it.</summary>
     public void Delete(string path)
     {
-        foreach (string file in new[] { path, Path.ChangeExtension(path, StateExtension), Path.ChangeExtension(path, CleanExtension) })
+        var files = new List<string> { path, Path.ChangeExtension(path, StateExtension), Path.ChangeExtension(path, CleanExtension) };
+        files.AddRange(RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)));
+        foreach (string file in files)
         {
             if (File.Exists(file))
             {

@@ -21,6 +21,9 @@ internal sealed class VideoJob : RecordingJob
     private volatile bool _stopRequested;
     private bool _timerRaised;
     private string? _path;
+    private byte[]? _firstPicture;
+    private int _width;
+    private int _height;
 
     public VideoJob(Rectangle region, RecordingOptions options)
     {
@@ -47,6 +50,7 @@ internal sealed class VideoJob : RecordingJob
     public override void Prepare(string folder)
     {
         (int width, int height) = RegionGrabber.FitSize(_region, MaxSide, even: true);
+        (_width, _height) = (width, height);
         _path = NewFilePath(folder);
 
         var inputs = new List<AudioInput>();
@@ -108,6 +112,10 @@ internal sealed class VideoJob : RecordingJob
         }
 
         await _writer.FinishAsync();
+        if (_firstPicture != null)
+        {
+            Thumbnail = PictureOf(_firstPicture, _width, _height);
+        }
         return _path;
     }
 
@@ -179,6 +187,7 @@ internal sealed class VideoJob : RecordingJob
             // The array goes into the encoder's queue and stays there, so every picture needs its own.
             var pixels = new byte[grabber.Width * grabber.Height * 4];
             grabber.Grab(pixels);
+            _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
             _writer!.AddVideo(pixels, TimeSpan.FromMilliseconds(now)); // dropped, not queued, if the encoder is a second behind
 
             // After a slow picture the next ones are not rushed: the schedule restarts from where the clock is.

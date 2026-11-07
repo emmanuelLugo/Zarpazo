@@ -67,9 +67,9 @@
                     <CheckBox x:Name="RememberStyleBox" Content="Recordar el último color y grosor" />
 
                     <TextBlock Style="{StaticResource Section}" Text="Historial" />
-                    <CheckBox x:Name="KeepHistoryBox" Content="Guardar un historial de las capturas" />
+                    <CheckBox x:Name="KeepHistoryBox" Content="Guardar un historial de capturas y grabaciones" />
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Guarda en este equipo las últimas 100 capturas que copias o guardas, para volver a usarlas desde el icono de la bandeja. Al desactivarlo no se borra lo ya guardado." />
+                               Text="Guarda en este equipo las últimas 100 capturas que copias o guardas y las últimas 10 grabaciones, para volver a usarlas desde el icono de la bandeja. Al desactivarlo no se borra lo ya guardado." />
                 </StackPanel>
             </TabItem>
 

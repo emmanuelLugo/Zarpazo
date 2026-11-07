@@ -110,4 +110,32 @@ public sealed class VideoJobTests : IDisposable
         Assert.Equal(TimeSpan.Zero, job.Elapsed);
         Assert.Empty(Directory.GetFiles(_folder, "*.mp4"));
     }
+
+    [Fact]
+    public async Task A_finished_video_hands_over_its_first_picture_for_the_history()
+    {
+        var job = new VideoJob(Corner, NoSound);
+        job.Start(_folder);
+        await Task.Delay(700);
+
+        await job.FinishAsync();
+
+        Assert.NotNull(job.Thumbnail);
+        Assert.Equal((320, 180), (job.Thumbnail!.PixelWidth, job.Thumbnail.PixelHeight));
+        Assert.True(job.Thumbnail.IsFrozen);
+    }
+
+    [Fact]
+    public async Task A_finished_gif_hands_over_its_first_picture_too()
+    {
+        var job = new GifJob(Corner);
+        job.Start(_folder);
+        await Task.Delay(700);
+
+        string? path = await job.FinishAsync();
+
+        Assert.Equal(".gif", Path.GetExtension(path));
+        Assert.NotNull(job.Thumbnail);
+        Assert.Equal((321, 181), (job.Thumbnail!.PixelWidth, job.Thumbnail.PixelHeight)); // a GIF keeps odd sizes
+    }
 }

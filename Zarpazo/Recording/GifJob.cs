@@ -51,6 +51,8 @@ internal sealed class GifJob : RecordingJob
             return null; // stopped before the first picture was taken
         }
 
+        Thumbnail = PictureOf(frames[0].Pixels, _recorder.Width, _recorder.Height); // the first frame is always the whole picture
+
         return await Task.Run(() =>
         {
             string path = NewFilePath(_folder);

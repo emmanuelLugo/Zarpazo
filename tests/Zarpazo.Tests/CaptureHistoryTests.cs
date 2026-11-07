@@ -137,4 +137,84 @@ public sealed class CaptureHistoryTests : IDisposable
 
         Assert.Equal(AppSettings.DefaultHistoryLimit, settings.HistoryLimit);
     }
+
+    private string MediaFile(string extension, string content = "media")
+    {
+        Directory.CreateDirectory(_folder);
+        string path = Path.Combine(_folder, "source-" + Guid.NewGuid().ToString("N") + extension);
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    [Fact]
+    public void A_recording_is_kept_as_a_copy_of_its_file_plus_a_picture_that_makes_it_show_in_the_list()
+    {
+        var history = new CaptureHistory(_folder);
+        string gif = MediaFile(".gif", "pretend gif");
+
+        string path = history.AddRecording(gif, Image(8, 6));
+
+        HistoryEntry entry = Assert.Single(history.List());
+        Assert.True(entry.IsRecording);
+        Assert.Equal("GIF", entry.Kind);
+        Assert.Equal(path, entry.Path);
+        Assert.Equal("pretend gif", File.ReadAllText(entry.MediaPath!));
+        Assert.True(File.Exists(gif), "the original file is left where it was: the clipboard may point at it");
+        Assert.False(entry.CanEdit);
+    }
+
+    [Fact]
+    public void A_video_is_told_apart_from_a_gif_by_its_extension()
+    {
+        var history = new CaptureHistory(_folder);
+
+        history.AddRecording(MediaFile(".mp4"), Image(8, 6));
+
+        Assert.Equal("Video", Assert.Single(history.List()).Kind);
+    }
+
+    [Fact]
+    public void A_capture_is_not_a_recording()
+    {
+        var history = new CaptureHistory(_folder);
+
+        history.Add(Image(8, 6), limit: 100);
+
+        HistoryEntry entry = Assert.Single(history.List());
+        Assert.False(entry.IsRecording);
+        Assert.Null(entry.MediaPath);
+    }
+
+    [Fact]
+    public void Deleting_a_recording_removes_its_file_and_its_picture()
+    {
+        var history = new CaptureHistory(_folder);
+        string path = history.AddRecording(MediaFile(".mp4"), Image(8, 6));
+        string media = history.List()[0].MediaPath!;
+
+        history.Delete(path);
+
+        Assert.False(File.Exists(path));
+        Assert.False(File.Exists(media));
+        Assert.Empty(history.List());
+    }
+
+    [Fact]
+    public void Only_the_newest_recordings_are_kept_and_captures_are_left_alone()
+    {
+        var history = new CaptureHistory(_folder);
+        history.Add(Image(8, 6), limit: 100);
+        for (int i = 0; i < 4; i++)
+        {
+            history.AddRecording(MediaFile(".gif", $"recording {i}"), Image(8, 6), recordingLimit: 2);
+            Thread.Sleep(5);
+        }
+
+        IReadOnlyList<HistoryEntry> entries = history.List();
+
+        Assert.Equal(2, entries.Count(entry => entry.IsRecording));
+        Assert.Single(entries, entry => !entry.IsRecording); // the capture survived
+        // The two that remain are the last two made.
+        Assert.Equal(["recording 3", "recording 2"], entries.Where(entry => entry.IsRecording).Select(entry => File.ReadAllText(entry.MediaPath!)));
+    }
 }

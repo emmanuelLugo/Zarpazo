@@ -1,4 +1,6 @@
 using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace Zarpazo.Recording;
 
@@ -18,6 +20,9 @@ internal abstract class RecordingJob
     public abstract TimeSpan MaxDuration { get; }
 
     public abstract TimeSpan Elapsed { get; }
+
+    /// <summary>The first picture of the recording, for the history; available once <see cref="FinishAsync"/> has run.</summary>
+    public BitmapSource? Thumbnail { get; protected set; }
 
     /// <summary>The sound sources and how loud each is, for the bar while recording; none for a GIF or a silent video.</summary>
     public virtual IReadOnlyList<AudioMeter> Meters => [];
@@ -51,6 +56,14 @@ internal abstract class RecordingJob
 
     /// <summary>Ends the recording and throws it away.</summary>
     public abstract void Abort();
+
+    /// <summary>A frozen picture from the BGRA pixels a capture produces.</summary>
+    protected static BitmapSource PictureOf(byte[] bgra, int width, int height)
+    {
+        BitmapSource picture = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgr32, null, bgra, width * 4);
+        picture.Freeze();
+        return picture;
+    }
 
     /// <summary>A new file name in the folder (created if needed), after clearing out the old files of the same kind.</summary>
     protected string NewFilePath(string folder)

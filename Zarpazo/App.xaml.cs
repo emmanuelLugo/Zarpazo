@@ -176,7 +176,7 @@ public partial class App : Application
         _lastRecordingRegion = region;
         await Task.Delay(MenuCloseDelayMs);
         _recording?.Close(); // a finished one still on screen makes way for the new one
-        var session = new RecordingSession(region, options, _settings, () => _recording = null);
+        var session = new RecordingSession(region, options, _settings, _history, () => _recording = null);
         _recording = session;
         // The tray icon shows that something is being recorded, even when the bar is out of sight.
         session.StateChanged += () => _tray?.SetRecording(session.IsCountingDown || session.IsRecording, session.IsPaused);

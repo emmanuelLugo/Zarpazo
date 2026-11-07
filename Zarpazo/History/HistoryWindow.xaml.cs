@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using Zarpazo.Output;
 using Zarpazo.Settings;
 
@@ -33,7 +34,7 @@ public partial class HistoryWindow : Window
         {
             try
             {
-                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit));
+                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind));
             }
             catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException)
             {
@@ -72,6 +73,15 @@ public partial class HistoryWindow : Window
 
         Run(() =>
         {
+            if (item.MediaPath is { } media)
+            {
+                // A recording goes on the clipboard as a file, which is what chats and documents take for it.
+                var data = new DataObject();
+                data.SetFileDropList(new System.Collections.Specialized.StringCollection { media });
+                Clipboard.SetDataObject(data, copy: true);
+                StatusText.Text = $"{item.Kind} copiado al portapapeles";
+                return;
+            }
             ImageOutput.CopyToClipboard(CaptureHistory.Load(item.Path), _settings.Current.CopyAsFile);
             StatusText.Text = "Copiada al portapapeles";
         });
@@ -86,7 +96,11 @@ public partial class HistoryWindow : Window
 
         Run(() =>
         {
-            if (ImageOutput.Save(CaptureHistory.Load(item.Path), this, _settings.Current))
+            if (item.MediaPath is { } media)
+            {
+                SaveRecording(media, item.Kind);
+            }
+            else if (ImageOutput.Save(CaptureHistory.Load(item.Path), this, _settings.Current))
             {
                 StatusText.Text = "Guardada";
             }
@@ -97,7 +111,28 @@ public partial class HistoryWindow : Window
     {
         if (Selected is { } item)
         {
-            Run(() => Process.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true }));
+            Run(() => Process.Start(new ProcessStartInfo(item.MediaPath ?? item.Path) { UseShellExecute = true }));
+        }
+    }
+
+    private void SaveRecording(string media, string kind)
+    {
+        string extension = Path.GetExtension(media);
+        var dialog = new SaveFileDialog
+        {
+            Title = $"Guardar {kind.ToLowerInvariant()}",
+            FileName = $"Zarpazo {DateTime.Now:yyyy-MM-dd HH-mm-ss}",
+            Filter = extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ? "Imagen GIF (*.gif)|*.gif" : "Video MP4 (*.mp4)|*.mp4",
+            AddExtension = true,
+            DefaultExt = extension,
+            InitialDirectory = Directory.Exists(_settings.Current.SaveFolder)
+                ? _settings.Current.SaveFolder
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            File.Copy(media, dialog.FileName, overwrite: true);
+            StatusText.Text = "Guardado";
         }
     }
 
@@ -137,5 +172,8 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit);
+    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit, string? MediaPath, string Kind)
+    {
+        public bool IsRecording => MediaPath != null;
+    }
 }

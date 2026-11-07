@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using Zarpazo.History;
 using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -13,6 +14,7 @@ internal sealed class RecordingSession
 {
     private readonly Rectangle _region;
     private readonly SettingsStore _settings;
+    private readonly CaptureHistory _history;
     private readonly Action _closed;
     private readonly string _folder;
     private readonly RecordingJob _job;
@@ -27,10 +29,11 @@ internal sealed class RecordingSession
     /// <param name="region">The area to record, in physical screen pixels.</param>
     /// <param name="closed">Called when the person is done with it, so the owner can let go of it.</param>
     /// <param name="folder">Where the file is written first; the tests use their own.</param>
-    public RecordingSession(Rectangle region, RecordingOptions options, SettingsStore settings, Action closed, string? folder = null)
+    public RecordingSession(Rectangle region, RecordingOptions options, SettingsStore settings, CaptureHistory history, Action closed, string? folder = null)
     {
         _region = region;
         _settings = settings;
+        _history = history;
         _closed = closed;
         _folder = folder ?? Path.Combine(Path.GetTempPath(), "Zarpazo");
         _job = options.Format == RecordingFormat.Video ? new VideoJob(region, options) : new GifJob(region);
@@ -194,6 +197,7 @@ internal sealed class RecordingSession
                 return;
             }
             _filePath = path;
+            AddToHistory(path);
             _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -203,6 +207,23 @@ internal sealed class RecordingSession
             {
                 _bar.ShowFailure($"No se pudo crear el {_job.Label}: {ex.Message}");
             }
+        }
+    }
+
+    // The recording is already made, so a full disk or a locked folder must not turn that into an error.
+    private void AddToHistory(string path)
+    {
+        if (!_settings.Current.KeepHistory || _job.Thumbnail == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _history.AddRecording(path, _job.Thumbnail);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
