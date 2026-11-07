@@ -64,7 +64,7 @@ internal sealed class TrayIcon : IDisposable
         {
             if (dark)
             {
-                dropDown.Renderer = new ToolStripProfessionalRenderer(new DarkMenuColors()) { RoundedEdges = false };
+                dropDown.Renderer = new DarkMenuRenderer();
                 dropDown.BackColor = DarkMenuColors.Background;
                 dropDown.ForeColor = DarkMenuColors.Text;
             }

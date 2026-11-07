@@ -8,7 +8,7 @@ internal sealed class DarkMenuColors : ProfessionalColorTable
 {
     internal static readonly Color Background = Color.FromArgb(0x26, 0x27, 0x2B);
     internal static readonly Color Text = Color.FromArgb(0xE8, 0xEA, 0xED);
-    private static readonly Color Highlight = Color.FromArgb(0x3B, 0x3E, 0x44);
+    internal static readonly Color Highlight = Color.FromArgb(0x3B, 0x3E, 0x44);
     private static readonly Color Line = Color.FromArgb(0x3A, 0x3D, 0x43);
 
     public DarkMenuColors() => UseSystemColors = false;
