@@ -12,6 +12,8 @@ Primera versión.
 
 ### Añadido
 - Captura de área y de ventana con atajo global (Impr Pant), icono en la bandeja y una sola instancia.
+- Captura de pantalla completa, captura con retardo (3, 5 o 10 segundos) y repetir la última área, desde el menú de la bandeja; la tecla F elige el monitor en el selector.
+- Barra del editor ordenada: herramientas agrupadas en menús (formas, dibujo, medir), color y grosor solo cuando aplican, y OCR, fijar y embellecer bajo el menú «Más».
 - Lupa con zoom de píxeles y coordenadas, y soporte para varios monitores y escalado distinto (PerMonitorV2).
 - Editor de anotaciones vectoriales: rectángulo, elipse, línea, flecha, lápiz, resaltador, texto, pasos numerados, regla, pixelado y cuentagotas; mover, borrar, deshacer y rehacer.
 - Copiar al portapapeles y guardar como PNG o JPG, con guardado automático y plantilla de nombre.

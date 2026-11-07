@@ -22,9 +22,11 @@
 **Captura**
 - Captura de **área** arrastrando el mouse, con la pantalla congelada y oscurecida, asas para ajustar la selección y **lupa** con zoom de píxeles y coordenadas.
 - Captura de **ventana**: detecta la ventana bajo el cursor y la resalta.
+- **Pantalla completa**, **captura con retardo** (3, 5 o 10 segundos) y **repetir la última área**, desde el menú de la bandeja. Con varios monitores, la tecla `F` elige el monitor en el selector.
 - Atajo global configurable (**Impr Pant** por defecto) e icono en la bandeja.
 
 **Anotaciones** (objetos vectoriales: se pueden mover, borrar, deshacer y rehacer)
+- Barra ordenada: las herramientas parecidas comparten botón (formas, dibujo, medir) y el color y el grosor solo salen cuando la herramienta dibuja.
 - Rectángulo, elipse, línea, flecha, lápiz y resaltador.
 - Texto, numeración de pasos, regla y cuentagotas de color.
 - **Pixelado** para ocultar datos sensibles.

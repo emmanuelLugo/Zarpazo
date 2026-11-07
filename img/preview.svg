@@ -133,48 +133,59 @@
   <rect x="260" y="72" width="80" height="22" rx="3" fill="#000" fill-opacity="0.8"/>
   <text x="300" y="87.5" font-family="Consolas, 'Courier New', monospace" font-size="12" fill="#fff" text-anchor="middle">640 × 400</text>
 
-  <!-- Drawing tools: a column beside the area -->
+  <!-- Drawing tools: a column beside the area. Related tools share one button (small triangle), color and thickness show only for tools that draw -->
   <g filter="url(#bar-shadow)">
-    <rect x="912.5" y="100.5" width="42" height="518" rx="10" fill="#202124" fill-opacity="0.95" stroke="#fff" stroke-opacity="0.15"/>
+    <rect x="912.5" y="100.5" width="42" height="342" rx="10" fill="#202124" fill-opacity="0.95" stroke="#fff" stroke-opacity="0.15"/>
   </g>
-  <rect x="917" y="173" width="32" height="32" rx="6" fill="#fff" fill-opacity="0.3"/>
-  <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" transform="translate(923,111) scale(1.25)">
-    <use xlink:href="#i-select"/>
-  </g>
+  <rect x="917" y="153" width="32" height="32" rx="6" fill="#fff" fill-opacity="0.3"/>
   <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-    <use xlink:href="#i-move" transform="translate(923,145) scale(1.25)"/>
-    <use xlink:href="#i-rect" transform="translate(923,179) scale(1.25)"/>
-    <use xlink:href="#i-ellipse" transform="translate(923,213) scale(1.25)"/>
-    <use xlink:href="#i-line" transform="translate(923,247) scale(1.25)"/>
-    <use xlink:href="#i-arrow" transform="translate(923,281) scale(1.25)"/>
-    <use xlink:href="#i-pen" transform="translate(923,315) scale(1.25)"/>
-    <use xlink:href="#i-highlighter" transform="translate(923,349) scale(1.25)"/>
-    <use xlink:href="#i-text" transform="translate(923,383) scale(1.25)"/>
-    <circle cx="933" cy="426" r="7.5"/>
-    <use xlink:href="#i-pixelate" transform="translate(923,451) scale(1.25)"/>
-    <use xlink:href="#i-ruler" transform="translate(923,485) scale(1.25)"/>
-    <use xlink:href="#i-dropper" transform="translate(923,519) scale(1.25)"/>
+    <use xlink:href="#i-move" transform="translate(923,111) scale(1.25)"/>
+    <use xlink:href="#i-rect" transform="translate(923,159) scale(1.25)"/>
+    <use xlink:href="#i-pen" transform="translate(923,193) scale(1.25)"/>
+    <use xlink:href="#i-text" transform="translate(923,227) scale(1.25)"/>
+    <circle cx="933" cy="271" r="7.5"/>
+    <use xlink:href="#i-pixelate" transform="translate(923,295) scale(1.25)"/>
+    <use xlink:href="#i-ruler" transform="translate(923,329) scale(1.25)"/>
   </g>
-  <text x="933" y="430.5" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#fff" text-anchor="middle">1</text>
-  <path d="M921,553 H945" stroke="#fff" stroke-opacity="0.2"/>
-  <circle cx="933" cy="574" r="8" fill="#E53935" stroke="#fff" stroke-opacity="0.53"/>
-  <circle cx="933" cy="604" r="4" fill="#fff"/>
+  <text x="933" y="275.5" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#fff" text-anchor="middle">1</text>
+  <path d="M921,145.5 H945 M921,362.5 H945" stroke="#fff" stroke-opacity="0.2"/>
+  <g fill="#fff" fill-opacity="0.6">
+    <path d="M0,6 L6,6 L6,0 Z" transform="translate(941,177)"/>
+    <path d="M0,6 L6,6 L6,0 Z" transform="translate(941,211)"/>
+    <path d="M0,6 L6,6 L6,0 Z" transform="translate(941,347)"/>
+  </g>
+  <circle cx="933" cy="386" r="8" fill="#E53935" stroke="#fff" stroke-opacity="0.53"/>
+  <circle cx="933" cy="420" r="4" fill="#fff"/>
+
+  <!-- The Formas menu, open beside its button -->
+  <rect x="956.5" y="158.5" width="160" height="144" rx="8" fill="#202124" fill-opacity="0.95"/>
+  <rect x="961" y="163" width="150" height="32" rx="6" fill="#fff" fill-opacity="0.3"/>
+  <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <use xlink:href="#i-rect" transform="translate(969,169) scale(1.25)"/>
+    <use xlink:href="#i-ellipse" transform="translate(969,203) scale(1.25)"/>
+    <use xlink:href="#i-line" transform="translate(969,237) scale(1.25)"/>
+    <use xlink:href="#i-arrow" transform="translate(969,271) scale(1.25)"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#fff">
+    <text x="999" y="184">Rectángulo</text>
+    <text x="999" y="218">Elipse</text>
+    <text x="999" y="252">Línea</text>
+    <text x="999" y="286">Flecha</text>
+  </g>
 
   <!-- Actions: a short row under the area -->
   <g filter="url(#bar-shadow)">
-    <rect x="570.5" y="512.5" width="330" height="42" rx="10" fill="#202124" fill-opacity="0.95" stroke="#fff" stroke-opacity="0.15"/>
+    <rect x="626.5" y="512.5" width="274" height="42" rx="10" fill="#202124" fill-opacity="0.95" stroke="#fff" stroke-opacity="0.15"/>
   </g>
   <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-    <use xlink:href="#i-undo" transform="translate(585,523) scale(1.25)"/>
-    <use xlink:href="#i-redo" transform="translate(619,523) scale(1.25)"/>
-    <use xlink:href="#i-ocr" transform="translate(653,523) scale(1.25)"/>
-    <use xlink:href="#i-pin" transform="translate(687,523) scale(1.25)"/>
-    <circle cx="731" cy="533" r="6.5" stroke="#EF5350" stroke-width="1.5"/>
-    <circle cx="731" cy="533" r="2.6" fill="#EF5350" stroke="none"/>
-    <use xlink:href="#i-beautify" transform="translate(755,523) scale(1.25)"/>
-    <path d="M785,520 V546" stroke="#fff" stroke-opacity="0.2"/>
-    <use xlink:href="#i-close" transform="translate(797,523) scale(1.25)"/>
-    <use xlink:href="#i-save" transform="translate(831,523) scale(1.25)"/>
-    <use xlink:href="#i-copy" transform="translate(865,523) scale(1.25)"/>
+    <use xlink:href="#i-undo" transform="translate(638,523) scale(1.25)"/>
+    <use xlink:href="#i-redo" transform="translate(672,523) scale(1.25)"/>
+    <circle cx="729" cy="533" r="6.5" stroke="#EF5350" stroke-width="1.5"/>
+    <circle cx="729" cy="533" r="3" fill="#EF5350" stroke="none"/>
+    <path d="M705.5,520 V546 M786.5,520 V546" stroke="#fff" stroke-opacity="0.2"/>
+    <use xlink:href="#i-close" transform="translate(800,523) scale(1.25)"/>
+    <use xlink:href="#i-save" transform="translate(834,523) scale(1.25)"/>
+    <use xlink:href="#i-copy" transform="translate(868,523) scale(1.25)"/>
   </g>
+  <g fill="#fff"><circle cx="757.4" cy="533" r="1.7"/><circle cx="763" cy="533" r="1.7"/><circle cx="768.6" cy="533" r="1.7"/></g>
 </svg>
