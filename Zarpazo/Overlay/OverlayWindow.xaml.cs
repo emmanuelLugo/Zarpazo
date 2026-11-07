@@ -6,8 +6,10 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Zarpazo.Editor;
 using Zarpazo.History;
+using Zarpazo.Ocr;
 using Zarpazo.Output;
 using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
@@ -44,6 +46,8 @@ public partial class OverlayWindow : Window
     private Annotation? _moving;          // the annotation being dragged with the move tool
     private Point _moveLast;
     private Vector _moveTotal;
+    private bool _recognizing;           // a text reading is in progress
+    private DispatcherTimer? _noticeTimer;
     private TextBox? _textBox;
     private Point _textOrigin;
     private Color _textColor;
@@ -107,6 +111,10 @@ public partial class OverlayWindow : Window
         {
             OnSave(this, EventArgs.Empty);
         }
+        else if (ctrl && e.Key == Key.T)
+        {
+            OnOcr(this, EventArgs.Empty);
+        }
         else if (ctrl && e.Key == Key.Z)
         {
             OnUndo(this, EventArgs.Empty);
@@ -129,6 +137,75 @@ public partial class OverlayWindow : Window
         Finish(image => ImageOutput.CopyToClipboard(image, _settings.Current.CopyAsFile));
 
     private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this, _settings.Current));
+
+    /// <summary>Reads the text in the chosen area and copies it. The overlay stays open so the area can be adjusted and tried again.</summary>
+    private async void OnOcr(object? sender, EventArgs e)
+    {
+        if (_recognizing)
+        {
+            return;
+        }
+
+        CommitText();
+        Crop? crop = CropSelection();
+        if (crop == null)
+        {
+            return;
+        }
+
+        _recognizing = true;
+        ShowNotice("Leyendo texto…", TimeSpan.FromSeconds(30));
+        try
+        {
+            // The pixels as they were on the screen: drawn annotations would get in the way of the reading.
+            string text = await TextRecognizer.RecognizeAsync(crop.Clean);
+            if (text.Length == 0)
+            {
+                ShowNotice("No se encontró texto");
+                return;
+            }
+
+            Clipboard.SetDataObject(text, copy: true);
+            ShowNotice($"Texto copiado ({text.Length} caracteres)");
+        }
+        catch (InvalidOperationException ex)
+        {
+            ShowNotice(ex.Message, TimeSpan.FromSeconds(5)); // no OCR language installed
+        }
+        catch (COMException)
+        {
+            ShowNotice("No se pudo copiar"); // another program holds the clipboard
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            ShowNotice("No se pudo leer el texto");
+        }
+        finally
+        {
+            _recognizing = false;
+        }
+    }
+
+    /// <summary>A short message in the middle of the chosen area.</summary>
+    private void ShowNotice(string message, TimeSpan? duration = null)
+    {
+        NoticeText.Text = message;
+        Notice.Visibility = Visibility.Visible;
+        Notice.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Size size = Notice.DesiredSize;
+        Rect area = Selection.Rect;
+        Canvas.SetLeft(Notice, Math.Clamp(area.X + (area.Width - size.Width) / 2, 0, Math.Max(0, ActualWidth - size.Width)));
+        Canvas.SetTop(Notice, Math.Clamp(area.Y + (area.Height - size.Height) / 2, 0, Math.Max(0, ActualHeight - size.Height)));
+
+        _noticeTimer?.Stop();
+        _noticeTimer = new DispatcherTimer { Interval = duration ?? TimeSpan.FromSeconds(2.5) };
+        _noticeTimer.Tick += (_, _) =>
+        {
+            _noticeTimer?.Stop();
+            Notice.Visibility = Visibility.Collapsed;
+        };
+        _noticeTimer.Start();
+    }
 
     // Written when the overlay closes, so the next capture starts with the last color and thickness used.
     private void RememberStyle()

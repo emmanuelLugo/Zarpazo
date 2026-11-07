@@ -1,6 +1,6 @@
 # Builds both single-file versions of Zarpazo into publish\ (the folder is git-ignored):
-#   Zarpazo.exe         everything included, ~68 MB, runs on any 64-bit Windows
-#   Zarpazo-ligero.exe  without .NET, well under 1 MB, needs the .NET 8 Desktop Runtime installed
+#   Zarpazo.exe         everything included, ~75 MB, runs on any 64-bit Windows
+#   Zarpazo-ligero.exe  without .NET, ~25 MB (the Windows OCR bindings), needs the .NET 8 Desktop Runtime installed
 # Run from anywhere: pwsh tools\publish.ps1
 $ErrorActionPreference = 'Stop'
 
