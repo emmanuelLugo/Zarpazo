@@ -3,8 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              IsHitTestVisible="False">
     <Border Background="#F0262626" CornerRadius="6" Padding="6">
-        <StackPanel Width="132">
-            <Grid Width="132" Height="132">
+        <!-- A minimum, not a fixed width: "rgb(150, 25, 114)" and the swatch need more than the zoom image does. -->
+        <StackPanel MinWidth="132">
+            <Grid Width="132" Height="132" HorizontalAlignment="Left">
                 <Image x:Name="Zoom" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
                 <!-- Two outlines so the pixel under the cursor shows on both light and dark colors. -->
                 <Rectangle Width="12" Height="12" Stroke="Black" StrokeThickness="1" />
