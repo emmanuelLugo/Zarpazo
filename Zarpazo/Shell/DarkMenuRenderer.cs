@@ -30,7 +30,7 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
 
     protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e)
     {
-        e.ArrowColor = e.Item.Enabled ? DarkMenuColors.Text : DisabledText;
+        e.ArrowColor = e.Item is { Enabled: false } ? DisabledText : DarkMenuColors.Text;
         base.OnRenderArrow(e);
     }
 }
