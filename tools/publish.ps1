@@ -1,5 +1,5 @@
 # Builds both single-file versions of Zarpazo into publish\ (the folder is git-ignored):
-#   Zarpazo.exe         everything included, ~75 MB, runs on any 64-bit Windows
+#   Zarpazo.exe         everything included, ~180 MB (not compressed: a compressed one is unpacked into RAM, ~70 MB more in use), runs on any 64-bit Windows
 #   Zarpazo-ligero.exe  without .NET, ~25 MB (the Windows OCR bindings), needs the .NET 8 Desktop Runtime installed
 # Run from anywhere: pwsh tools\publish.ps1
 $ErrorActionPreference = 'Stop'
@@ -16,7 +16,7 @@ function Publish-Version([string]$FileName, [bool]$SelfContained) {
 
     $selfContainedArgs = if ($SelfContained) {
         # WPF's native libraries must be bundled too, or they are left next to the .exe.
-        '--self-contained', 'true', '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true'
+        '--self-contained', 'true', '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=false'
     } else {
         '--self-contained', 'false'
     }
