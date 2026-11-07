@@ -1,10 +1,18 @@
-# Cambios
+﻿# Cambios
 
 Todos los cambios importantes de Zarpazo se anotan aquí. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.1.0]`) y la usa como notas de la release.
 
 ## [Sin publicar]
+
+### Cambiado
+- Usa mucha menos memoria RAM: el ejecutable ya no va comprimido (la compresión se descomprimía en memoria) y pasa de ~118 MB a ~49 MB recién abierto, y de ~190 MB a ~119 MB tras varias capturas.
+- Al grabar video los cuadros se reutilizan en vez de crear uno nuevo cada vez, y la memoria se devuelve al terminar la grabación o cerrar una captura.
+
+### Corregido
+- La memoria se disparaba al grabar video y se quedaba alta después de cerrarlo.
+- Al pulsar Impr Pant con una ventana maximizada debajo, la pantalla no se oscurecía porque se resaltaba la ventana entera; ahora queda oscura. Tampoco se resalta ya una ventana escondida detrás de la maximizada.
 
 ## [0.2.0] - 2026-11-07
 
