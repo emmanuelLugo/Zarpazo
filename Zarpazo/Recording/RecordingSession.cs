@@ -24,6 +24,7 @@ internal sealed class RecordingSession
     private DispatcherTimer? _clock;
     private DispatcherTimer? _countdownTimer;
     private string? _filePath;
+    private string? _historyPath; // this recording's entry in the history, replaced if it is trimmed
     private bool _closedAlready;
 
     /// <param name="region">The area to record, in physical screen pixels.</param>
@@ -66,6 +67,7 @@ internal sealed class RecordingSession
         _bar.GainChanged += (source, gain) => _job.SetSourceGain(source, gain);
         _bar.StopRequested += (_, _) => Stop();
         _bar.CancelRequested += (_, _) => Close();
+        _bar.TrimRequested += (_, _) => Trim();
         _bar.CopyRequested += (_, _) => Copy();
         _bar.SaveRequested += (_, _) => Save();
         _bar.CloseRequested += (_, _) => Close();
@@ -200,8 +202,8 @@ internal sealed class RecordingSession
                 return;
             }
             _filePath = path;
-            AddToHistory(path);
-            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}");
+            _historyPath = AddToHistory(path);
+            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}", _job.CanTrim);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -214,20 +216,50 @@ internal sealed class RecordingSession
     }
 
     // The recording is already made, so a full disk or a locked folder must not turn that into an error.
-    private void AddToHistory(string path)
+    private string? AddToHistory(string path)
     {
         if (!_settings.Current.KeepHistory || _job.Thumbnail == null)
         {
-            return;
+            return null;
         }
 
         try
         {
-            _history.AddRecording(path, _job.Thumbnail);
+            return _history.AddRecording(path, _job.Thumbnail);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            return null;
         }
+    }
+
+    // Opens the player to cut the start and end off. The trimmed video replaces the recording, in the history too.
+    private void Trim()
+    {
+        if (_filePath == null || _bar == null || !_job.CanTrim)
+        {
+            return;
+        }
+
+        var window = new TrimWindow(_filePath) { Owner = _bar };
+        if (window.ShowDialog() != true || window.TrimmedPath is not { } trimmed)
+        {
+            return;
+        }
+
+        _filePath = trimmed;
+        if (_historyPath != null)
+        {
+            try
+            {
+                _history.Delete(_historyPath);
+            }
+            catch (IOException)
+            {
+            }
+        }
+        _historyPath = AddToHistory(trimmed);
+        _bar.ShowDone($"Video recortado · {SizeText(new FileInfo(trimmed).Length)}", canTrim: true);
     }
 
     private string Describe(RecordingEnd reason) => reason switch
