@@ -82,7 +82,7 @@ El MVP necesita el icono en la bandeja y una sola instancia en ejecución; el re
 | Iniciar con Windows | Después |
 | Notificaciones nativas de Windows | Después |
 | Modo oscuro y claro según el sistema | Después (hecho: Configuración > General > Tema) |
-| Actualización automática | Después |
+| Actualización automática | Después (hecho: aviso diario y «Descargar e instalar» en Configuración > Acerca de) |
 
 ## 6. Configuración
 

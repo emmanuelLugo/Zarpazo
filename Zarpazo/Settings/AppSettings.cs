@@ -37,6 +37,15 @@ internal sealed class AppSettings
         set => Appearance = value switch { ThemeMode.Light => "light", ThemeMode.Dark => "dark", _ => "system" };
     }
 
+    /// <summary>Look on GitHub, once a day, for a newer version. Nothing is installed without being asked.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>When the last successful look for updates was (UTC); the next one waits a day after it.</summary>
+    public DateTime LastUpdateCheck { get; set; } = DateTime.MinValue;
+
+    /// <summary>The version the person was last told about, so the notice doesn't repeat every day.</summary>
+    public string UpdateNotifiedVersion { get; set; } = "";
+
     /// <summary>Where the Save dialog opens. Empty means the Pictures folder.</summary>
     public string SaveFolder { get; set; } = "";
 
@@ -197,6 +206,7 @@ internal sealed class AppSettings
         AppearanceMode = AppearanceMode; // anything that isn't light or dark becomes "system"
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";
+        UpdateNotifiedVersion ??= "";
         if (HistoryLimit < 1)
         {
             HistoryLimit = DefaultHistoryLimit;

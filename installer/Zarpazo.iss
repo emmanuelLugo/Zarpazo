@@ -53,3 +53,11 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\Zarpazo.exe"; Description: "Abrir Zarpazo"; Flags: nowait postinstall skipifsilent
+; An update started from inside the app runs this setup silently with /RELAUNCH=1 and expects Zarpazo to come back.
+Filename: "{app}\Zarpazo.exe"; Flags: nowait skipifnotsilent; Check: ShouldRelaunch
+
+[Code]
+function ShouldRelaunch: Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|0}') = '1';
+end;

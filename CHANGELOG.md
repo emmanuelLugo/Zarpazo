@@ -9,6 +9,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 ### Añadido
 - Tema claro y oscuro: en Configuración > General se elige entre «Igual que Windows» (cambia solo cuando cambias Windows), «Claro» y «Oscuro». Afecta a Configuración, Historial, Recortar video, la barra del título y el menú del icono de la bandeja.
 
+- Actualización automática: una vez al día Zarpazo pregunta a GitHub si hay una versión nueva y avisa desde el icono de la bandeja (una sola vez por versión). En Configuración > Acerca de se puede buscar ahora, ver las novedades y pulsar «Descargar e instalar»: descarga el instalador solo del repositorio oficial, comprueba su tamaño y su SHA-256 contra lo publicado, lo ejecuta en silencio y vuelve a abrir Zarpazo. Se puede apagar con «Buscar actualizaciones automáticamente». Solo se actualiza sola la copia instalada con el instalador; un .exe suelto abre la página de descarga.
+
 ### Cambiado
 - Aspecto renovado de las ventanas de Configuración, Historial y Recortar video: botones, listas, casillas, pestañas y barras de desplazamiento planos y redondeados, con el color de la marca como acento.
 

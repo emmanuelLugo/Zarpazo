@@ -7,6 +7,7 @@ using Zarpazo.Editor;
 using Zarpazo.Recording;
 using Zarpazo.Shell;
 using Zarpazo.Theme;
+using Zarpazo.Update;
 
 namespace Zarpazo.Settings;
 
@@ -16,11 +17,15 @@ public partial class SettingsWindow : Window
     private readonly StartupRegistration _startup;
     private readonly Func<HotKeyBinding, bool> _tryRegisterHotKey;
     private readonly Func<HotKeyBinding, bool> _tryRegisterRecordHotKey;
+    private readonly UpdateService? _updates;
+    private CancellationTokenSource? _download;
 
     /// <param name="tryRegisterHotKey">Makes the combination the active capture shortcut; false if another program owns it.</param>
     /// <param name="tryRegisterRecordHotKey">The same for the recording shortcut.</param>
+    /// <param name="updates">Looks for and installs new versions; without it the update section is hidden.</param>
+    /// <param name="showAbout">Opens on the About tab, where the update is.</param>
     internal SettingsWindow(SettingsStore store, StartupRegistration startup, Func<HotKeyBinding, bool> tryRegisterHotKey,
-        Func<HotKeyBinding, bool> tryRegisterRecordHotKey)
+        Func<HotKeyBinding, bool> tryRegisterRecordHotKey, UpdateService? updates = null, bool showAbout = false)
     {
         InitializeComponent();
         TitleBarTheme.Follow(this);
@@ -59,6 +64,110 @@ public partial class SettingsWindow : Window
         string version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
         VersionText.Text = $"Versión {version.Split('+')[0]}";
         SettingsPathText.Text = store.FilePath;
+
+        AutoUpdateBox.IsChecked = settings.CheckForUpdates;
+        _updates = updates;
+        UpdatePanel.Visibility = updates == null ? Visibility.Collapsed : Visibility.Visible;
+        if (updates != null)
+        {
+            updates.Changed += ShowUpdateState;
+            Closed += (_, _) =>
+            {
+                updates.Changed -= ShowUpdateState;
+                _download?.Cancel();
+            };
+            ShowUpdateState();
+        }
+        if (showAbout)
+        {
+            Tabs.SelectedIndex = Tabs.Items.Count - 1;
+        }
+    }
+
+    internal void ShowAboutTab() => Tabs.SelectedIndex = Tabs.Items.Count - 1;
+
+    // What the update section says and offers, from what the last check found.
+    private void ShowUpdateState()
+    {
+        if (_updates?.Available is { } release)
+        {
+            bool inPlace = _updates.CanInstallInPlace;
+            InstallUpdateButton.Content = inPlace ? "Descargar e instalar" : "Abrir la página de descarga";
+            InstallUpdateButton.Visibility = NotesButton.Visibility = Visibility.Visible;
+            UpdateStatus.Text = $"Hay una versión nueva: {release.Version} (tienes la {AppVersion.Current})."
+                + (inPlace ? "" : " Esta copia no se instaló con el instalador, así que se descarga desde la página.");
+        }
+        else
+        {
+            InstallUpdateButton.Visibility = NotesButton.Visibility = Visibility.Collapsed;
+            DateTime last = _store.Current.LastUpdateCheck;
+            UpdateStatus.Text = last > DateTime.MinValue
+                ? $"Tienes la última versión. Última comprobación: {last.ToLocalTime():g}."
+                : "";
+        }
+    }
+
+    private async void OnCheckUpdates(object sender, RoutedEventArgs e)
+    {
+        if (_updates == null)
+        {
+            return;
+        }
+
+        CheckUpdateButton.IsEnabled = false;
+        UpdateStatus.Text = "Buscando…";
+        UpdateCheck result = await _updates.CheckAsync();
+        CheckUpdateButton.IsEnabled = true;
+        if (result.IsFailure)
+        {
+            UpdateStatus.Text = result.Error!;
+        }
+        else
+        {
+            ShowUpdateState();
+        }
+    }
+
+    private async void OnInstallUpdate(object sender, RoutedEventArgs e)
+    {
+        if (_updates?.Available is not { } release)
+        {
+            return;
+        }
+        if (!_updates.CanInstallInPlace)
+        {
+            OnOpenReleasePage(sender, e);
+            return;
+        }
+
+        InstallUpdateButton.IsEnabled = CheckUpdateButton.IsEnabled = false;
+        UpdateProgress.Value = 0;
+        UpdateProgress.Visibility = Visibility.Visible;
+        UpdateStatus.Text = $"Descargando la versión {release.Version}…";
+        _download = new CancellationTokenSource();
+        try
+        {
+            await _updates.InstallAsync(new Progress<double>(done => UpdateProgress.Value = done), _download.Token);
+            UpdateStatus.Text = "Instalando. Zarpazo se cierra y se abre de nuevo solo."; // the app is closing now
+        }
+        catch (UpdateException ex)
+        {
+            UpdateStatus.Text = ex.Message;
+            InstallUpdateButton.IsEnabled = CheckUpdateButton.IsEnabled = true;
+            UpdateProgress.Visibility = Visibility.Collapsed;
+        }
+        catch (OperationCanceledException)
+        {
+            // the window was closed while downloading
+        }
+    }
+
+    private void OnOpenReleasePage(object sender, RoutedEventArgs e)
+    {
+        if (_updates?.Available is { } release)
+        {
+            Process.Start(new ProcessStartInfo(release.PageUrl) { UseShellExecute = true });
+        }
     }
 
     private void OnBrowseFolder(object sender, RoutedEventArgs e)
@@ -145,6 +254,7 @@ public partial class SettingsWindow : Window
         }
 
         settings.AppearanceMode = (ThemeMode)Math.Max(0, ThemeBox.SelectedIndex);
+        settings.CheckForUpdates = AutoUpdateBox.IsChecked == true;
         settings.HotKey = CaptureHotKey.Value;
         settings.RecordHotKey = RecordHotKey.Value;
         settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];

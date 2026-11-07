@@ -1,6 +1,11 @@
-﻿using System.Drawing;
+﻿using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Zarpazo.Capture;
 using Zarpazo.History;
 using Zarpazo.Overlay;
@@ -8,6 +13,7 @@ using Zarpazo.Recording;
 using Zarpazo.Settings;
 using Zarpazo.Shell;
 using Zarpazo.Theme;
+using Zarpazo.Update;
 using Application = System.Windows.Application;
 
 namespace Zarpazo;
@@ -30,6 +36,8 @@ public partial class App : Application
     private RecordingSession? _recording;
     private readonly CaptureHistory _history = new(CaptureHistory.DefaultFolder);
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
+    private UpdateService _updates = null!; // the same
+    private DispatcherTimer? _updateTimer;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -44,9 +52,16 @@ public partial class App : Application
 
         _settings = new SettingsStore(SettingsStore.DefaultPath);
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
-            ShowHistory, ShowSettings, () => _recording?.Stop(), Shutdown);
+            ShowHistory, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
         ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);
         ThemeManager.Apply(_settings.Current.AppearanceMode);
+
+        var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // each request sets its own limit
+        _updates = new UpdateService(_settings, new UpdateChecker(http, AppVersion.Current),
+            new UpdateDownloader(http, UpdateDownloader.DefaultFolder), LaunchInstaller);
+        _updates.Changed += () => _tray.SetUpdateAvailable(_updates.Available?.Version.ToString());
+        _tray.UpdateRequested += () => ShowSettings(showAbout: true);
+        StartUpdateChecks();
         _hotKey = new GlobalHotKey(() => ShowOverlay());
         if (!_hotKey.TryRegister(_settings.Current.HotKey))
         {
@@ -61,6 +76,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _updateTimer?.Stop();
         _hotKey?.Dispose();
         _recordHotKey?.Dispose();
         _tray?.Dispose();
@@ -173,10 +189,14 @@ public partial class App : Application
         }
     }
 
-    private void ShowSettings()
+    private void ShowSettings(bool showAbout = false)
     {
         if (_settingsWindow != null)
         {
+            if (showAbout)
+            {
+                _settingsWindow.ShowAboutTab();
+            }
             _settingsWindow.Activate();
             return;
         }
@@ -184,7 +204,7 @@ public partial class App : Application
         // While the shortcut is registered Windows keeps the key from the window, so it couldn't be recorded.
         _hotKey!.Unregister();
         _recordHotKey!.Unregister();
-        _settingsWindow = new SettingsWindow(_settings, new StartupRegistration(), _hotKey.TryRegister, _recordHotKey.TryRegister);
+        _settingsWindow = new SettingsWindow(_settings, new StartupRegistration(), _hotKey.TryRegister, _recordHotKey.TryRegister, _updates, showAbout);
         _settingsWindow.Closed += (_, _) =>
         {
             _settingsWindow = null;
@@ -199,6 +219,68 @@ public partial class App : Application
             }
         };
         _settingsWindow.Show();
+    }
+
+    // The first look a little after start-up, so it doesn't compete with the rest, and then every few hours: the app can
+    // stay open for days, and the look only goes to GitHub when a day has passed since the last good one.
+    private async void StartUpdateChecks()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(30));
+        await CheckForUpdatesQuietlyAsync();
+        _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(3) };
+        _updateTimer.Tick += async (_, _) => await CheckForUpdatesQuietlyAsync();
+        _updateTimer.Start();
+    }
+
+    private async Task CheckForUpdatesQuietlyAsync()
+    {
+        try
+        {
+            if (!_updates.IsDue())
+            {
+                return;
+            }
+
+            UpdateCheck result = await _updates.CheckAsync();
+            // Told once per version: not again at every start-up while the person decides.
+            if (result.Newer is { } release && _settings.Current.UpdateNotifiedVersion != release.Tag)
+            {
+                _settings.Current.UpdateNotifiedVersion = release.Tag;
+                _settings.Save();
+                _tray!.ShowUpdateNotice($"Zarpazo {release.Version} está disponible. Haz clic aquí para verla.");
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // a failed look or a settings file that can't be written is no reason to bother anyone
+        }
+    }
+
+    // Runs the downloaded installer and closes this copy so it can be replaced; null if all went well, else why not.
+    private string? LaunchInstaller(string setupPath)
+    {
+        if (_recording is { IsRecording: true } or { IsCountingDown: true })
+        {
+            return "Hay una grabación en curso. Termínala y vuelve a intentarlo.";
+        }
+
+        // The installer refuses to go on while it sees this mutex, so it is let go before the installer starts.
+        _instanceMutex?.ReleaseMutex();
+        _instanceMutex?.Dispose();
+        _instanceMutex = null;
+        try
+        {
+            // /RELAUNCH=1: the installer opens Zarpazo again when it finishes, as a silent install shows no "open" box.
+            Process.Start(new ProcessStartInfo(setupPath, "/SILENT /NORESTART /RELAUNCH=1") { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or IOException or InvalidOperationException)
+        {
+            _instanceMutex = new Mutex(true, InstanceMutexName, out _); // still running: keep being the one instance
+            return $"No se pudo iniciar el instalador: {ex.Message}";
+        }
+
+        Shutdown();
+        return null;
     }
 
     // One key for the whole recording: it stops what is running, repeats the last area, or asks for an area the first time.

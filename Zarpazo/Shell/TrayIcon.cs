@@ -20,6 +20,8 @@ internal sealed class TrayIcon : IDisposable
     private readonly ToolStripItem _stopRecording;
     private readonly ContextMenuStrip _menu;
     private readonly ToolStripMenuItem _delayedMenu;
+    private readonly ToolStripItem _updateItem;
+    private Action? _balloonClick;
     private Icon? _recordingIcon;
     private Icon? _pausedIcon;
 
@@ -44,6 +46,8 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
         _stopRecording = menu.Items.Add("Detener grabación", null, (_, _) => onStopRecording());
         _stopRecording.Visible = false; // only while recording
+        _updateItem = menu.Items.Add("", null, (_, _) => UpdateRequested?.Invoke());
+        _updateItem.Visible = false; // only while a newer version is waiting
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => onExit());
 
@@ -55,6 +59,30 @@ internal sealed class TrayIcon : IDisposable
             ContextMenuStrip = menu,
             Visible = true,
         };
+        _icon.BalloonTipClicked += (_, _) =>
+        {
+            Action? click = _balloonClick;
+            _balloonClick = null;
+            click?.Invoke();
+        };
+        _icon.BalloonTipClosed += (_, _) => _balloonClick = null;
+    }
+
+    /// <summary>The person asked to see the waiting update: from its menu entry or by clicking its notice.</summary>
+    public event Action? UpdateRequested;
+
+    /// <summary>Shows a menu entry for the new version, or hides it when <paramref name="version"/> is null.</summary>
+    public void SetUpdateAvailable(string? version)
+    {
+        _updateItem.Visible = version != null;
+        _updateItem.Text = $"Actualizar a la versión {version}…";
+    }
+
+    /// <summary>A notice that, when clicked, asks to see the waiting update.</summary>
+    public void ShowUpdateNotice(string message)
+    {
+        _balloonClick = () => UpdateRequested?.Invoke();
+        _icon.ShowBalloonTip(8000, "Zarpazo", message, ToolTipIcon.Info);
     }
 
     /// <summary>Paints the menu dark or back to the colours Windows gives it.</summary>
@@ -77,11 +105,17 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
-    public void ShowWarning(string message) =>
+    public void ShowWarning(string message)
+    {
+        _balloonClick = null; // a click on this notice must not open the update
         _icon.ShowBalloonTip(5000, "Zarpazo", message, ToolTipIcon.Warning);
+    }
 
-    public void ShowInfo(string message) =>
+    public void ShowInfo(string message)
+    {
+        _balloonClick = null;
         _icon.ShowBalloonTip(3000, "Zarpazo", message, ToolTipIcon.Info);
+    }
 
     /// <summary>
     /// Shows that a recording is under way: a red dot on the icon, an amber one while paused, and a menu entry to stop it.
