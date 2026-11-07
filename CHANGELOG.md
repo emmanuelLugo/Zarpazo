@@ -6,6 +6,12 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Tema claro y oscuro: en Configuración > General se elige entre «Igual que Windows» (cambia solo cuando cambias Windows), «Claro» y «Oscuro». Afecta a Configuración, Historial, Recortar video, la barra del título y el menú del icono de la bandeja.
+
+### Cambiado
+- Aspecto renovado de las ventanas de Configuración, Historial y Recortar video: botones, listas, casillas, pestañas y barras de desplazamiento planos y redondeados, con el color de la marca como acento.
+
 ## [0.2.1] - 2026-11-07
 
 ### Cambiado

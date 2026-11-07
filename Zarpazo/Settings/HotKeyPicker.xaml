@@ -4,9 +4,9 @@
     <StackPanel>
         <StackPanel Orientation="Horizontal">
             <TextBox x:Name="Box" Width="220" IsReadOnly="True" IsReadOnlyCaretVisible="False"
-                     Padding="4,3" PreviewKeyDown="OnKeyDown" PreviewKeyUp="OnKeyUp" />
-            <Button Content="Restablecer" Padding="14,4" Margin="8,0,0,0" Click="OnReset" />
+                     PreviewKeyDown="OnKeyDown" PreviewKeyUp="OnKeyUp" />
+            <Button Content="Restablecer" Margin="8,0,0,0" Click="OnReset" />
         </StackPanel>
-        <TextBlock x:Name="Hint" Foreground="#FF666666" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
+        <TextBlock x:Name="Hint" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0" />
     </StackPanel>
 </UserControl>

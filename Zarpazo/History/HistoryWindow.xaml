@@ -7,25 +7,34 @@
         MinWidth="520"
         MinHeight="320"
         WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI"
         FontSize="13">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisible" />
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="14,4" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisible" />
+        </ResourceDictionary>
     </Window.Resources>
 
-    <DockPanel Margin="14">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
+    <DockPanel Margin="16,14,16,16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,14,0,0">
+            <StackPanel.Resources>
+                <!-- Here, not in the window's resources, so BasedOn finds the themed button style and not itself. -->
+                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                    <Setter Property="Margin" Value="0,0,8,0" />
+                </Style>
+            </StackPanel.Resources>
             <Button x:Name="EditButton" Content="Editar" Click="OnEdit" />
             <Button x:Name="CopyButton" Content="Copiar" Click="OnCopy" />
             <Button x:Name="SaveButton" Content="Guardar como…" Click="OnSave" />
             <Button x:Name="OpenButton" Content="Abrir" Click="OnOpen" />
             <Button x:Name="DeleteButton" Content="Eliminar" Click="OnDelete" />
             <Button Content="Abrir carpeta" Click="OnOpenFolder" />
-            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#FF666666" />
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
         </StackPanel>
 
         <Grid>
@@ -51,7 +60,7 @@
                                     <TextBlock Text="{Binding Kind, StringFormat='▶ {0}'}" Foreground="White" FontSize="11" />
                                 </Border>
                             </Grid>
-                            <TextBlock Text="{Binding Caption}" HorizontalAlignment="Center" Margin="0,4,0,0" Foreground="#FF666666" />
+                            <TextBlock Text="{Binding Caption}" HorizontalAlignment="Center" Margin="0,4,0,6" Foreground="{DynamicResource TextSecondary}" />
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -63,7 +72,7 @@
                        TextAlignment="Center"
                        TextWrapping="Wrap"
                        MaxWidth="360"
-                       Foreground="#FF666666"
+                       Foreground="{DynamicResource TextSecondary}"
                        Text="Todavía no hay nada. Aquí aparecen las capturas que copias o guardas, y tus grabaciones." />
         </Grid>
     </DockPanel>

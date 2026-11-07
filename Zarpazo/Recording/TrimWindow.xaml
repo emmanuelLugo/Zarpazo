@@ -7,9 +7,18 @@
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI"
         FontSize="13">
-    <StackPanel Margin="14">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <StackPanel Margin="16">
         <Border Background="Black" Height="340" CornerRadius="4">
             <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
                           Stretch="Uniform" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" />
@@ -21,7 +30,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Button x:Name="PlayButton" Width="92" Padding="0,4" Content="▶ Reproducir" Click="OnPlay" IsEnabled="False" />
+            <Button x:Name="PlayButton" Width="104" Padding="0,4" Content="▶ Reproducir" Click="OnPlay" IsEnabled="False" />
             <ProgressBar x:Name="PositionBar" Grid.Column="1" Height="6" Margin="12,0" VerticalAlignment="Center" />
             <TextBlock x:Name="PositionText" Grid.Column="2" FontFamily="Consolas" VerticalAlignment="Center" />
         </Grid>
@@ -47,12 +56,12 @@
             <TextBlock x:Name="EndText" Grid.Row="2" Grid.Column="2" FontFamily="Consolas" HorizontalAlignment="Right" VerticalAlignment="Center" />
         </Grid>
 
-        <TextBlock x:Name="KeptText" Foreground="#FF666666" Margin="0,10,0,0" />
+        <TextBlock x:Name="KeptText" Foreground="{DynamicResource TextSecondary}" Margin="0,10,0,0" />
         <ProgressBar x:Name="WorkBar" Height="4" Margin="0,8,0,0" Minimum="0" Maximum="1" Visibility="Collapsed" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button x:Name="SaveButton" Content="Guardar recorte" Padding="14,4" Margin="0,0,8,0" IsDefault="True" IsEnabled="False" Click="OnSave" />
-            <Button x:Name="CancelButton" Content="Cancelar" Padding="14,4" IsCancel="True" Click="OnCancel" />
+            <Button x:Name="SaveButton" Content="Guardar recorte" Margin="0,0,8,0" IsDefault="True" IsEnabled="False" Click="OnSave" />
+            <Button x:Name="CancelButton" Content="Cancelar" IsCancel="True" Click="OnCancel" />
         </StackPanel>
     </StackPanel>
 </Window>

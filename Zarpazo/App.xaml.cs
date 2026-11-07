@@ -7,6 +7,7 @@ using Zarpazo.Overlay;
 using Zarpazo.Recording;
 using Zarpazo.Settings;
 using Zarpazo.Shell;
+using Zarpazo.Theme;
 using Application = System.Windows.Application;
 
 namespace Zarpazo;
@@ -44,6 +45,8 @@ public partial class App : Application
         _settings = new SettingsStore(SettingsStore.DefaultPath);
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
             ShowHistory, ShowSettings, () => _recording?.Stop(), Shutdown);
+        ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);
+        ThemeManager.Apply(_settings.Current.AppearanceMode);
         _hotKey = new GlobalHotKey(() => ShowOverlay());
         if (!_hotKey.TryRegister(_settings.Current.HotKey))
         {
@@ -185,6 +188,7 @@ public partial class App : Application
         _settingsWindow.Closed += (_, _) =>
         {
             _settingsWindow = null;
+            ThemeManager.Apply(_settings.Current.AppearanceMode);
             if (!_hotKey.TryRegister(_settings.Current.HotKey))
             {
                 _tray!.ShowWarning($"No se pudo activar {_settings.Current.HotKey.Describe()}: otra aplicación lo usa.");

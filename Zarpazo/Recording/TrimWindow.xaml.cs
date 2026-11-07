@@ -17,6 +17,7 @@ public partial class TrimWindow : Window
     internal TrimWindow(string source)
     {
         InitializeComponent();
+        Theme.TitleBarTheme.Follow(this);
         _ready = true;
         _source = source;
         _timer.Tick += (_, _) => FollowPlayback();

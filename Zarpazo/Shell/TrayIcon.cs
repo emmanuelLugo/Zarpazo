@@ -18,6 +18,8 @@ internal sealed class TrayIcon : IDisposable
     private readonly NotifyIcon _icon;
     private readonly Icon _normalIcon;
     private readonly ToolStripItem _stopRecording;
+    private readonly ContextMenuStrip _menu;
+    private readonly ToolStripMenuItem _delayedMenu;
     private Icon? _recordingIcon;
     private Icon? _pausedIcon;
 
@@ -25,6 +27,7 @@ internal sealed class TrayIcon : IDisposable
         Action onHistory, Action onSettings, Action onStopRecording, Action onExit)
     {
         var menu = new ContextMenuStrip();
+        _menu = menu;
         menu.Items.Add("Capturar", null, (_, _) => onCapture());
         menu.Items.Add("Pantalla completa", null, (_, _) => onFullScreen());
         ToolStripItem repeat = menu.Items.Add("Repetir la última zona", null, (_, _) => onRepeatLast());
@@ -35,6 +38,7 @@ internal sealed class TrayIcon : IDisposable
             delayed.DropDownItems.Add($"{seconds} segundos", null, (_, _) => onDelayed(seconds));
         }
         menu.Items.Add(delayed);
+        _delayedMenu = delayed;
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Historial…", null, (_, _) => onHistory());
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
@@ -51,6 +55,26 @@ internal sealed class TrayIcon : IDisposable
             ContextMenuStrip = menu,
             Visible = true,
         };
+    }
+
+    /// <summary>Paints the menu dark or back to the colours Windows gives it.</summary>
+    public void SetDark(bool dark)
+    {
+        foreach (ToolStripDropDown dropDown in new ToolStripDropDown[] { _menu, _delayedMenu.DropDown })
+        {
+            if (dark)
+            {
+                dropDown.Renderer = new ToolStripProfessionalRenderer(new DarkMenuColors()) { RoundedEdges = false };
+                dropDown.BackColor = DarkMenuColors.Background;
+                dropDown.ForeColor = DarkMenuColors.Text;
+            }
+            else
+            {
+                dropDown.RenderMode = ToolStripRenderMode.ManagerRenderMode;
+                dropDown.ResetBackColor();
+                dropDown.ResetForeColor();
+            }
+        }
     }
 
     public void ShowWarning(string message) =>

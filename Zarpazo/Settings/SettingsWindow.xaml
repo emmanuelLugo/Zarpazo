@@ -3,37 +3,51 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Zarpazo.Settings"
         Title="Configuración de Zarpazo"
-        Width="480"
+        Width="500"
         SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI"
         FontSize="13">
     <Window.Resources>
-        <Style x:Key="Section" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,14,0,6" />
-        </Style>
-        <Style x:Key="Hint" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FF666666" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,4,0,0" />
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="14,4" />
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="Section" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="0,16,0,6" />
+            </Style>
+            <Style x:Key="Hint" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Margin" Value="0,5,0,0" />
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <DockPanel Margin="14">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Aceptar" IsDefault="True" Click="OnAccept" Margin="0,0,8,0" />
-            <Button Content="Cancelar" IsCancel="True" Click="OnCancel" />
+    <DockPanel Margin="18,14,18,16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Aceptar" IsDefault="True" Click="OnAccept" MinWidth="88" Margin="0,0,8,0" />
+            <Button Content="Cancelar" IsCancel="True" Click="OnCancel" MinWidth="88" />
         </StackPanel>
 
         <TabControl>
             <TabItem Header="General">
-                <StackPanel Margin="14,0,14,14">
+                <StackPanel Margin="4,0,4,14">
+                    <TextBlock Style="{StaticResource Section}" Text="Apariencia" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Tema" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox x:Name="ThemeBox" Width="190">
+                            <ComboBoxItem Content="Igual que Windows" />
+                            <ComboBoxItem Content="Claro" />
+                            <ComboBoxItem Content="Oscuro" />
+                        </ComboBox>
+                    </StackPanel>
+
                     <TextBlock Style="{StaticResource Section}" Text="Inicio" />
                     <CheckBox x:Name="StartupBox" Content="Iniciar Zarpazo con Windows" />
 
@@ -51,7 +65,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="FolderBox" Padding="4,3" />
+                        <TextBox x:Name="FolderBox" />
                         <Button Grid.Column="1" Content="Examinar…" Margin="8,0,0,0" Click="OnBrowseFolder" />
                     </Grid>
                     <TextBlock Style="{StaticResource Hint}" Text="Carpeta donde se abre el cuadro de guardar. Vacía usa Imágenes." />
@@ -73,7 +87,7 @@
             </TabItem>
 
             <TabItem Header="Grabación">
-                <StackPanel Margin="14,0,14,14">
+                <StackPanel Margin="4,0,4,14">
                     <TextBlock Style="{StaticResource Section}" Text="Atajo" />
                     <local:HotKeyPicker x:Name="RecordHotKey" Margin="0,4,0,0" />
                     <TextBlock Style="{StaticResource Hint}"
@@ -107,7 +121,7 @@
             </TabItem>
 
             <TabItem Header="Calidad">
-                <StackPanel Margin="14,0,14,14">
+                <StackPanel Margin="4,0,4,14">
                     <TextBlock Style="{StaticResource Section}" Text="Imágenes" />
                     <StackPanel Orientation="Horizontal" >
                         <TextBlock Text="Calidad del JPG" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -176,7 +190,7 @@
             </TabItem>
 
             <TabItem Header="Guardado">
-                <StackPanel Margin="14,0,14,14">
+                <StackPanel Margin="4,0,4,14">
                     <TextBlock Style="{StaticResource Section}" Text="Guardado automático" />
                     <CheckBox x:Name="AutoSaveBox" Content="Guardar cada captura que copio y cada grabación" />
                     <TextBlock Style="{StaticResource Hint}"
@@ -188,13 +202,13 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="AutoFolderBox" Padding="4,3" />
+                        <TextBox x:Name="AutoFolderBox" />
                         <Button Grid.Column="1" Content="Examinar…" Margin="8,0,0,0" Click="OnBrowseAutoFolder" />
                     </Grid>
                     <TextBlock Style="{StaticResource Hint}" Text="Vacía usa Imágenes\Zarpazo. Se crea si no existe." />
 
                     <TextBlock Style="{StaticResource Section}" Text="Nombre del archivo" />
-                    <TextBox x:Name="TemplateBox" Padding="4,3" TextChanged="OnTemplateChanged" />
+                    <TextBox x:Name="TemplateBox" TextChanged="OnTemplateChanged" />
                     <TextBlock x:Name="TemplatePreview" Style="{StaticResource Hint}" FontFamily="Consolas" />
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Puedes usar {fecha} (2026-11-07), {hora} (14-30-05) y {n}, un contador que sube solo. {n:000} lo rellena con ceros: 001, 002… Si ya existe un archivo con ese nombre, se añade (2), (3)…" />
@@ -203,10 +217,10 @@
             </TabItem>
 
             <TabItem Header="Acerca de">
-                <StackPanel Margin="14">
+                <StackPanel Margin="4,10,4,14">
                     <TextBlock Text="Zarpazo" FontSize="24" FontWeight="SemiBold" />
-                    <TextBlock x:Name="VersionText" Foreground="#FF666666" Margin="0,2,0,0" />
-                    <TextBlock Text="Desarrollado por provisorio43" Foreground="#FF666666" Margin="0,2,0,12" />
+                    <TextBlock x:Name="VersionText" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
+                    <TextBlock Text="Desarrollado por provisorio43" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,12" />
                     <TextBlock TextWrapping="Wrap"
                                Text="Capturas de pantalla rápidas para Windows, con anotaciones, regla y cuentagotas." />
 

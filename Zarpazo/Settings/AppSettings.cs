@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Zarpazo.Shell;
+using Zarpazo.Theme;
 
 namespace Zarpazo.Settings;
 
@@ -25,6 +26,16 @@ internal sealed class AppSettings
     public uint RecordHotKeyModifiers { get; set; } = HotKeyBinding.DefaultRecord.Modifiers;
     public uint RecordHotKeyVirtualKey { get; set; } = HotKeyBinding.DefaultRecord.VirtualKey;
     public bool CopyAsFile { get; set; } = true;
+
+    /// <summary>"system", "light" or "dark": the colours of the windows. "system" follows Windows.</summary>
+    public string Appearance { get; set; } = "system";
+
+    [JsonIgnore]
+    internal ThemeMode AppearanceMode
+    {
+        get => Appearance?.ToLowerInvariant() switch { "light" => ThemeMode.Light, "dark" => ThemeMode.Dark, _ => ThemeMode.System };
+        set => Appearance = value switch { ThemeMode.Light => "light", ThemeMode.Dark => "dark", _ => "system" };
+    }
 
     /// <summary>Where the Save dialog opens. Empty means the Pictures folder.</summary>
     public string SaveFolder { get; set; } = "";
@@ -183,6 +194,7 @@ internal sealed class AppSettings
                 HotKey = HotKeyBinding.Default; // the capture shortcut was set to the default recording one: it gives way
             }
         }
+        AppearanceMode = AppearanceMode; // anything that isn't light or dark becomes "system"
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";
         if (HistoryLimit < 1)

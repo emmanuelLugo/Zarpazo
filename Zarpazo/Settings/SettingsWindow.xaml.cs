@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using Zarpazo.Editor;
 using Zarpazo.Recording;
 using Zarpazo.Shell;
+using Zarpazo.Theme;
 
 namespace Zarpazo.Settings;
 
@@ -22,12 +23,14 @@ public partial class SettingsWindow : Window
         Func<HotKeyBinding, bool> tryRegisterRecordHotKey)
     {
         InitializeComponent();
+        TitleBarTheme.Follow(this);
         _store = store;
         _startup = startup;
         _tryRegisterHotKey = tryRegisterHotKey;
         _tryRegisterRecordHotKey = tryRegisterRecordHotKey;
 
         AppSettings settings = store.Current;
+        ThemeBox.SelectedIndex = (int)settings.AppearanceMode;
         CaptureHotKey.DefaultValue = HotKeyBinding.Default;
         CaptureHotKey.Value = settings.HotKey;
         RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
@@ -141,6 +144,7 @@ public partial class SettingsWindow : Window
                 "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
+        settings.AppearanceMode = (ThemeMode)Math.Max(0, ThemeBox.SelectedIndex);
         settings.HotKey = CaptureHotKey.Value;
         settings.RecordHotKey = RecordHotKey.Value;
         settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];

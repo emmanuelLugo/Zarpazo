@@ -21,6 +21,7 @@ public partial class HistoryWindow : Window
     internal HistoryWindow(CaptureHistory history, SettingsStore settings, Action<string> onEdit)
     {
         InitializeComponent();
+        Theme.TitleBarTheme.Follow(this);
         _history = history;
         _settings = settings;
         _onEdit = onEdit;
