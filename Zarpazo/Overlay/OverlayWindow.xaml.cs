@@ -731,16 +731,25 @@ public partial class OverlayWindow : Window
         foreach (Rectangle window in _windows)
         {
             Rectangle visible = Rectangle.Intersect(window, _bounds); // maximized windows reach past the screen edge
-            if (visible.Contains(x, y) && !SelectionGeometry.FillsAMonitor(visible, MonitorBounds))
+            if (!visible.Contains(x, y))
             {
-                _hoverRect = new Rect(
-                    (visible.X - _bounds.X) / scaleX,
-                    (visible.Y - _bounds.Y) / scaleY,
-                    visible.Width / scaleX,
-                    visible.Height / scaleY);
-                Selection.Rect = _hoverRect.Value;
-                return;
+                continue;
             }
+
+            // This one is on top here. If it fills the monitor, nothing is highlighted: carrying on down the list would
+            // outline a window that is hidden behind it.
+            if (SelectionGeometry.FillsAMonitor(visible, MonitorBounds))
+            {
+                break;
+            }
+
+            _hoverRect = new Rect(
+                (visible.X - _bounds.X) / scaleX,
+                (visible.Y - _bounds.Y) / scaleY,
+                visible.Width / scaleX,
+                visible.Height / scaleY);
+            Selection.Rect = _hoverRect.Value;
+            return;
         }
 
         _hoverRect = null;
