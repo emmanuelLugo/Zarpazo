@@ -27,7 +27,7 @@
     <DockPanel Margin="14">
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="Aceptar" IsDefault="True" Click="OnAccept" Margin="0,0,8,0" />
-            <Button Content="Cancelar" IsCancel="True" />
+            <Button Content="Cancelar" IsCancel="True" Click="OnCancel" />
         </StackPanel>
 
         <TabControl>

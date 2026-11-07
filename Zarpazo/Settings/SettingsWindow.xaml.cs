@@ -106,6 +106,9 @@ public partial class SettingsWindow : Window
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
     }
 
+    // IsCancel only closes windows shown with ShowDialog; this one is modeless, so it has to close itself (Esc too).
+    private void OnCancel(object sender, RoutedEventArgs e) => Close();
+
     private void OnAccept(object sender, RoutedEventArgs e)
     {
         AppSettings settings = _store.Current;
