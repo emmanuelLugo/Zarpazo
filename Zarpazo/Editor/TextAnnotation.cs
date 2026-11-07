@@ -14,6 +14,10 @@ internal sealed class TextAnnotation(Color color, double thickness, Point origin
     /// <summary>The thickness buttons double as text sizes: thin, medium and thick give small, medium and large text.</summary>
     public static double SizeFor(double thickness) => 10 + thickness * 3;
 
+    public Point Origin => origin;
+
+    public string Text => text;
+
     public override bool IsEmpty => string.IsNullOrWhiteSpace(text);
 
     public override Rect Bounds

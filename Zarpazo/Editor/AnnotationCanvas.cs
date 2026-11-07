@@ -39,6 +39,15 @@ internal sealed class AnnotationCanvas : FrameworkElement
         }
     }
 
+    public IReadOnlyList<Annotation> Items => _done;
+
+    /// <summary>Puts annotations restored from a saved capture on the canvas. They are not part of the undo history.</summary>
+    public void Load(IEnumerable<Annotation> annotations)
+    {
+        _done.AddRange(annotations);
+        InvalidateVisual();
+    }
+
     /// <summary>The number the next step badge gets: one above the highest on screen, so numbers never repeat.</summary>
     public int NextStepNumber => _done.OfType<NumberAnnotation>().Select(badge => badge.Number).DefaultIfEmpty(0).Max() + 1;
 

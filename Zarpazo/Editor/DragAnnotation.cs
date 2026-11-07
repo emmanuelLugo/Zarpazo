@@ -15,6 +15,10 @@ internal abstract class DragAnnotation : Annotation
         End = start;
     }
 
+    public Point From => Start;
+
+    public Point To => End;
+
     public override bool IsEmpty => Start == End;
 
     public override Rect Bounds

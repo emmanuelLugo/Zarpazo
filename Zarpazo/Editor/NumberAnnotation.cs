@@ -12,6 +12,8 @@ internal sealed class NumberAnnotation(Color color, double thickness, Point cent
 
     public int Number => number;
 
+    public Point Center => center;
+
     public override bool IsEmpty => false;
 
     private double Radius => 8 + Stroke.Thickness * 2;

@@ -67,9 +67,49 @@ public partial class App : Application
             return;
         }
 
-        _historyWindow = new HistoryWindow(_history, _settings);
+        _historyWindow = new HistoryWindow(_history, _settings, EditFromHistory);
         _historyWindow.Closed += (_, _) => _historyWindow = null;
         _historyWindow.Show();
+    }
+
+    // Opens an earlier capture in the overlay: the old image goes back where it was on a fresh picture of the screen.
+    private async void EditFromHistory(string path)
+    {
+        if (_overlay != null)
+        {
+            return;
+        }
+
+        if (_history.LoadEditable(path) is not (var state, var image))
+        {
+            _tray!.ShowWarning("Esta captura no se puede abrir para editar.");
+            return;
+        }
+
+        // Out of the way, or it would be part of the picture of the screen.
+        _historyWindow?.Hide();
+        await Task.Delay(MenuCloseDelayMs);
+
+        try
+        {
+            List<Rectangle> windows = WindowFinder.GetVisibleWindowBounds();
+            (BitmapSource screen, Rectangle bounds) = ScreenCapture.CaptureVirtualScreen();
+            (BitmapSource backdrop, System.Drawing.Point origin) = EditBackdrop.Place(screen, bounds, image, state.Left, state.Top);
+
+            _overlay = new OverlayWindow(backdrop, bounds, windows, _settings, _history, new EditRestore(state, origin.X, origin.Y, path));
+            _overlay.Closed += (_, _) =>
+            {
+                _overlay = null;
+                _historyWindow?.Reload(); // the edited capture replaced the old one
+                _historyWindow?.Show();
+            };
+            _overlay.Show();
+        }
+        catch (Exception ex)
+        {
+            _historyWindow?.Show();
+            _tray!.ShowWarning($"No se pudo abrir la captura: {ex.Message}");
+        }
     }
 
     private void ShowSettings()

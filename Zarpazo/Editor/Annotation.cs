@@ -21,6 +21,10 @@ internal abstract class Annotation
         Stroke.Freeze();
     }
 
+    public Color Color => ((SolidColorBrush)Stroke.Brush).Color;
+
+    public double Thickness => Stroke.Thickness;
+
     /// <summary>True while nothing visible was drawn yet, such as a click without dragging.</summary>
     public abstract bool IsEmpty { get; }
 

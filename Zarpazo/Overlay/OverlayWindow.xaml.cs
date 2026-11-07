@@ -33,6 +33,7 @@ public partial class OverlayWindow : Window
     private readonly IReadOnlyList<Rectangle> _windows;
     private readonly SettingsStore _settings;
     private readonly CaptureHistory _history;
+    private readonly EditRestore? _restore;
     private Rect? _hoverRect;   // the window under the cursor, while no area has been chosen yet
     private Rect? _pendingWindow; // that window as it was when the button went down
     private Point _dragStart;
@@ -51,10 +52,16 @@ public partial class OverlayWindow : Window
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
     /// <param name="windows">Window bounds in physical pixels at the moment of the capture, topmost first.</param>
-    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings, CaptureHistory history)
+    /// <param name="restore">Set when an earlier capture is opened again: its area and annotations are put back.</param>
+    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings, CaptureHistory history, EditRestore? restore = null)
     {
         InitializeComponent();
         _history = history;
+        _restore = restore;
+        if (restore != null)
+        {
+            Loaded += (_, _) => RestoreEdit(restore); // the layout size is known by now
+        }
         _screenshot = screenshot;
         _bounds = bounds;
         _windows = windows;
@@ -154,7 +161,7 @@ public partial class OverlayWindow : Window
     private void Finish(Func<BitmapSource, bool> output)
     {
         CommitText(); // text still being typed belongs in the result
-        BitmapSource? crop = CropSelection();
+        Crop? crop = CropSelection();
         if (crop == null)
         {
             return;
@@ -162,7 +169,7 @@ public partial class OverlayWindow : Window
 
         try
         {
-            if (!output(crop))
+            if (!output(crop.Final))
             {
                 return;
             }
@@ -178,7 +185,7 @@ public partial class OverlayWindow : Window
     }
 
     // The capture is already copied or saved, so a full disk or a locked folder must not turn that into an error.
-    private void AddToHistory(BitmapSource image)
+    private void AddToHistory(Crop crop)
     {
         if (!_settings.Current.KeepHistory)
         {
@@ -187,14 +194,66 @@ public partial class OverlayWindow : Window
 
         try
         {
-            _history.Add(image, _settings.Current.HistoryLimit);
+            // Screen pixels, so the annotations stay valid even if the screens are arranged differently next time.
+            Point ToScreenPixels(Point point) => new(_bounds.X + point.X * crop.ScaleX, _bounds.Y + point.Y * crop.ScaleY);
+
+            // Pixelate hides data that must not be recoverable, so a capture that uses it keeps only the finished
+            // picture (still editable on top of it, but the pixelated area can't be undone).
+            bool restorable = Annotations.Items.All(AnnotationData.CanRestore);
+            var state = new EditState
+            {
+                Left = _bounds.X + crop.Pixels.X,
+                Top = _bounds.Y + crop.Pixels.Y,
+                Width = crop.Pixels.Width,
+                Height = crop.Pixels.Height,
+                Annotations = restorable
+                    ? Annotations.Items.Select(item => AnnotationData.From(item, ToScreenPixels, crop.ScaleX)).ToList()
+                    : [],
+            };
+            BitmapSource? clean = restorable && state.Annotations.Count > 0 ? crop.Clean : null;
+
+            _history.Add(crop.Final, _settings.Current.HistoryLimit, state, clean);
+            if (_restore != null)
+            {
+                _history.Delete(_restore.ReplacesPath); // the edited capture takes the place of the one it came from
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
         }
     }
 
-    private BitmapSource? CropSelection()
+    /// <summary>Puts back the area and the annotations of a capture that is being edited again.</summary>
+    private void RestoreEdit(EditRestore restore)
+    {
+        // Image pixels per layout unit; the window may be scaled for DPI, so don't assume 1.
+        double scaleX = _screenshot.PixelWidth / ActualWidth;
+        double scaleY = _screenshot.PixelHeight / ActualHeight;
+        int shiftX = restore.Left - restore.State.Left; // not zero if the capture had to be moved to fit the screens
+        int shiftY = restore.Top - restore.State.Top;
+        Point ToLayout(Point screenPixel) => new((screenPixel.X + shiftX - _bounds.X) / scaleX, (screenPixel.Y + shiftY - _bounds.Y) / scaleY);
+
+        Selection.Rect = new Rect(
+            ToLayout(new Point(restore.State.Left, restore.State.Top)),
+            new Size(restore.State.Width / scaleX, restore.State.Height / scaleY));
+        Annotations.ClipArea = Selection.Rect;
+
+        try
+        {
+            var screen = new ScreenSource(_screenshot, scaleX, scaleY);
+            Annotations.Load(restore.State.Annotations.Select(data => data.ToAnnotation(ToLayout, scaleX, screen)).ToList());
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            // A damaged annotation: the picture still opens, just without the annotations.
+        }
+        ShowToolbar();
+    }
+
+    /// <summary>The selected area as it was on the screen, and with the annotations drawn on it.</summary>
+    private sealed record Crop(BitmapSource Clean, BitmapSource Final, Int32Rect Pixels, double ScaleX, double ScaleY);
+
+    private Crop? CropSelection()
     {
         if (!HasSelection)
         {
@@ -216,7 +275,7 @@ public partial class OverlayWindow : Window
 
         var crop = new CroppedBitmap(_screenshot, new Int32Rect(x, y, width, height));
         crop.Freeze();
-        return Annotations.Compose(crop, x, y, scaleX, scaleY);
+        return new Crop(crop, Annotations.Compose(crop, x, y, scaleX, scaleY), new Int32Rect(x, y, width, height), scaleX, scaleY);
     }
 
     // A click without dragging leaves a zero-size rectangle, which is not a selection.

@@ -1,12 +1,22 @@
 using System.IO;
+using System.Text.Json;
 using System.Windows.Media.Imaging;
 using Zarpazo.Output;
 
 namespace Zarpazo.History;
 
-/// <summary>The finished captures, kept as PNG files in one folder. File names sort by time, so the name is the order.</summary>
+/// <summary>
+/// The finished captures, kept as PNG files in one folder. File names sort by time, so the name is the order.
+/// A capture that can be opened again has two more files with the same name: <c>.json</c> (<see cref="EditState"/>) and,
+/// when annotations were drawn, <c>.clean</c> (the same area without them).
+/// </summary>
 internal sealed class CaptureHistory
 {
+    private const string StateExtension = ".json";
+    private const string CleanExtension = ".clean";
+
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
     private readonly string _folder;
 
     public static string DefaultFolder { get; } =
@@ -17,9 +27,11 @@ internal sealed class CaptureHistory
     public string Folder => _folder;
 
     /// <summary>Stores the image and drops the oldest ones beyond <paramref name="limit"/>.</summary>
+    /// <param name="state">Makes the capture editable again. Without it the capture is only a picture.</param>
+    /// <param name="clean">The area without annotations, for editing them later. Without it the picture itself is the base.</param>
     /// <exception cref="IOException">The file could not be written.</exception>
     /// <exception cref="UnauthorizedAccessException">The folder is not writable.</exception>
-    public string Add(BitmapSource image, int limit)
+    public string Add(BitmapSource image, int limit, EditState? state = null, BitmapSource? clean = null)
     {
         Directory.CreateDirectory(_folder);
         string stamp = $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
@@ -28,7 +40,16 @@ internal sealed class CaptureHistory
         {
             path = Path.Combine(_folder, $"{stamp}_{copy}.png"); // same millisecond: "_1" still sorts after the plain name
         }
+
         ImageOutput.Write(path, image);
+        if (clean != null)
+        {
+            ImageOutput.Write(Path.ChangeExtension(path, CleanExtension), clean); // not a .png name, so List ignores it
+        }
+        if (state != null)
+        {
+            File.WriteAllText(Path.ChangeExtension(path, StateExtension), JsonSerializer.Serialize(state, JsonOptions));
+        }
         Prune(limit);
         return path;
     }
@@ -43,15 +64,39 @@ internal sealed class CaptureHistory
 
         return Directory.EnumerateFiles(_folder, "Zarpazo_*.png")
             .OrderByDescending(path => path, StringComparer.Ordinal)
-            .Select(path => new HistoryEntry(path, File.GetLastWriteTime(path)))
+            .Select(path => new HistoryEntry(path, File.GetLastWriteTime(path), File.Exists(Path.ChangeExtension(path, StateExtension))))
             .ToList();
     }
 
+    /// <summary>Removes the capture and the files that belong to it.</summary>
     public void Delete(string path)
     {
-        if (File.Exists(path))
+        foreach (string file in new[] { path, Path.ChangeExtension(path, StateExtension), Path.ChangeExtension(path, CleanExtension) })
         {
-            File.Delete(path);
+            if (File.Exists(file))
+            {
+                File.Delete(file);
+            }
+        }
+    }
+
+    /// <summary>The saved state and the image to edit on top of. Null if the capture can't be opened again.</summary>
+    public (EditState State, BitmapSource Base)? LoadEditable(string path)
+    {
+        string statePath = Path.ChangeExtension(path, StateExtension);
+        string cleanPath = Path.ChangeExtension(path, CleanExtension);
+        try
+        {
+            EditState? state = JsonSerializer.Deserialize<EditState>(File.ReadAllText(statePath));
+            if (state is not { Width: > 0, Height: > 0 })
+            {
+                return null;
+            }
+            return (state, Load(File.Exists(cleanPath) ? cleanPath : path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException or FileFormatException)
+        {
+            return null; // missing or damaged: the capture is still usable as a picture
         }
     }
 

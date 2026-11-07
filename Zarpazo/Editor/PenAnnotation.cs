@@ -10,6 +10,8 @@ internal sealed class PenAnnotation : Annotation
     public PenAnnotation(Color color, double thickness, Point start) : base(color, thickness) =>
         _points = [start];
 
+    public IReadOnlyList<Point> Points => _points;
+
     public override bool IsEmpty => _points.Count < 2;
 
     public override Rect Bounds

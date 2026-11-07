@@ -14,23 +14,26 @@ public partial class HistoryWindow : Window
 
     private readonly CaptureHistory _history;
     private readonly SettingsStore _settings;
+    private readonly Action<string> _onEdit;
 
-    internal HistoryWindow(CaptureHistory history, SettingsStore settings)
+    /// <param name="onEdit">Opens a capture in the editor. The window is hidden by the caller while that lasts.</param>
+    internal HistoryWindow(CaptureHistory history, SettingsStore settings, Action<string> onEdit)
     {
         InitializeComponent();
         _history = history;
         _settings = settings;
+        _onEdit = onEdit;
         Reload();
     }
 
-    private void Reload()
+    internal void Reload()
     {
         var items = new List<Item>();
         foreach (HistoryEntry entry in _history.List())
         {
             try
             {
-                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}"));
+                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit));
             }
             catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException)
             {
@@ -49,6 +52,15 @@ public partial class HistoryWindow : Window
     {
         bool any = Selected != null;
         CopyButton.IsEnabled = SaveButton.IsEnabled = OpenButton.IsEnabled = DeleteButton.IsEnabled = any;
+        EditButton.IsEnabled = Selected?.CanEdit == true; // captures from before the history could reopen them have no saved state
+    }
+
+    private void OnEdit(object sender, RoutedEventArgs e)
+    {
+        if (Selected is { CanEdit: true } item)
+        {
+            _onEdit(item.Path);
+        }
     }
 
     private void OnCopy(object sender, RoutedEventArgs e)
@@ -125,5 +137,5 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption);
+    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit);
 }
