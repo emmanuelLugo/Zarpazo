@@ -61,6 +61,25 @@
             <Setter Property="Margin" Value="2,10,0,3" />
         </Style>
 
+        <Style x:Key="Bar" TargetType="Border">
+            <Setter Property="Background" Value="#F2202124" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="BorderBrush" Value="#26FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.45" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DividerH" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="6,6" />
+            <Setter Property="Background" Value="#33FFFFFF" />
+        </Style>
+
         <Style x:Key="Divider" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Margin" Value="6,6" />
@@ -79,11 +98,11 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Background="#F2202124" CornerRadius="10" Padding="5" BorderBrush="#26FFFFFF" BorderThickness="1">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.45" />
-        </Border.Effect>
-        <StackPanel Orientation="Horizontal" RadioButton.Checked="OnChoice">
+    <!-- Two bars on a transparent layer the size of the screen: the drawing tools stand beside the area, the actions under it.
+         Where each goes is worked out in Place, so neither covers the other or leaves the screen. -->
+    <Canvas x:Name="Layer" RadioButton.Checked="OnChoice">
+    <Border x:Name="ToolsBar" Style="{StaticResource Bar}">
+        <StackPanel Orientation="Vertical">
             <RadioButton x:Name="SelectTool" GroupName="tool" Tag="Select" IsChecked="True" Style="{StaticResource Choice}"
                          AutomationProperties.Name="Ajustar zona"
                          ToolTip="Ajustar la zona: arrastra las asas o el interior. Arrastrar fuera elige otra zona y borra las anotaciones">
@@ -96,7 +115,7 @@
                       Data="M8,1.5 V14.5 M1.5,8 H14.5 M6,3.5 L8,1.5 L10,3.5 M6,12.5 L8,14.5 L10,12.5 M3.5,6 L1.5,8 L3.5,10 M12.5,6 L14.5,8 L12.5,10" />
             </RadioButton>
 
-            <Border Style="{StaticResource Divider}" />
+            <Border Style="{StaticResource DividerH}" />
 
             <RadioButton GroupName="tool" Tag="Rectangle" Style="{StaticResource Choice}"
                          AutomationProperties.Name="Rectángulo" ToolTip="Rectángulo">
@@ -155,22 +174,21 @@
                       Data="M2.5,13.5 L3.2,10.3 L9.3,4.2 L11.8,6.7 L5.7,12.8 Z M8.5,5 L11,2.5 Q12.5,1 14,2.5 Q15.5,4 13.5,5.5 L11.5,7.5" />
             </RadioButton>
 
-            <Border Style="{StaticResource Divider}" />
+            <Border Style="{StaticResource DividerH}" />
 
             <!-- Color and thickness are one button each showing the current choice; the options live in popups so they
                  don't take bar space. -->
             <Button x:Name="ColorButton" Style="{StaticResource Action}" ToolTip="Color" AutomationProperties.Name="Color" Click="OnColorButton">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse x:Name="ColorSwatch" Width="16" Height="16" Fill="#E53935" Stroke="#88FFFFFF" StrokeThickness="1" />
-                    <TextBlock Text="▾" Margin="5,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
             <Popup x:Name="ColorPopup"
                    PlacementTarget="{Binding ElementName=ColorButton}"
-                   Placement="Top"
+                   Placement="Right"
                    StaysOpen="False"
                    AllowsTransparency="True">
-                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="0,0,0,6">
+                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="6">
                     <StackPanel RadioButton.Checked="OnChoice">
                         <WrapPanel Width="204">
                             <RadioButton GroupName="color" Tag="#E53935" IsChecked="True" Style="{StaticResource Choice}" ToolTip="Rojo">
@@ -226,15 +244,14 @@
                     <Grid Width="16" Height="16">
                         <Ellipse x:Name="SizeSwatch" Width="8" Height="8" Fill="White" />
                     </Grid>
-                    <TextBlock Text="▾" Margin="5,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
             <Popup x:Name="SizePopup"
                    PlacementTarget="{Binding ElementName=SizeButton}"
-                   Placement="Top"
+                   Placement="Right"
                    StaysOpen="False"
                    AllowsTransparency="True">
-                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="0,0,0,6">
+                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="6">
                     <StackPanel Orientation="Horizontal" RadioButton.Checked="OnChoice">
                         <RadioButton GroupName="size" Tag="2" Style="{StaticResource Choice}" ToolTip="Fino">
                             <Ellipse Width="4" Height="4" Fill="White" />
@@ -249,8 +266,11 @@
                 </Border>
             </Popup>
 
-            <Border Style="{StaticResource Divider}" />
+        </StackPanel>
+    </Border>
 
+    <Border x:Name="ActionsBar" Style="{StaticResource Bar}">
+        <StackPanel Orientation="Horizontal">
             <Button Style="{StaticResource Action}" ToolTip="Deshacer (Ctrl+Z)" AutomationProperties.Name="Deshacer" Click="OnUndo">
                 <Path Style="{StaticResource Icon}" Data="M5,3 L2,6 L5,9 M2,6 H9.5 A3.5,3.5 0 0 1 9.5,13 H6" />
             </Button>
@@ -413,4 +433,5 @@
             </Button>
         </StackPanel>
     </Border>
+    </Canvas>
 </UserControl>

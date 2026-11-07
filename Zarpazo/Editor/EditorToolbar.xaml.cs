@@ -36,6 +36,30 @@ public partial class EditorToolbar : UserControl
         _recordingReady = true;
     }
 
+    /// <summary>
+    /// Puts the tools column and the actions row around the chosen area. The control covers the whole screen but only the two bars
+    /// take clicks; everywhere else they reach the window behind.
+    /// </summary>
+    internal void Place(Rect area, Size screen)
+    {
+        Width = screen.Width;
+        Height = screen.Height;
+        var unbounded = new Size(double.PositiveInfinity, double.PositiveInfinity);
+        ToolsBar.Measure(unbounded);
+        ActionsBar.Measure(unbounded);
+
+        ToolbarPlacement placement = ToolbarLayout.Place(area, screen, ToolsBar.DesiredSize, ActionsBar.DesiredSize);
+        Canvas.SetLeft(ToolsBar, placement.Tools.X);
+        Canvas.SetTop(ToolsBar, placement.Tools.Y);
+        Canvas.SetLeft(ActionsBar, placement.Actions.X);
+        Canvas.SetTop(ActionsBar, placement.Actions.Y);
+
+        // The color and thickness pop-ups open away from the area.
+        var side = placement.ToolsOnRight ? System.Windows.Controls.Primitives.PlacementMode.Right : System.Windows.Controls.Primitives.PlacementMode.Left;
+        ColorPopup.Placement = side;
+        SizePopup.Placement = side;
+    }
+
     /// <summary>What the recording panel is set to: the kind of file and the sound sources.</summary>
     internal RecordingOptions RecordingOptions => _recording;
 

@@ -836,22 +836,7 @@ public partial class OverlayWindow : Window
     {
         Rect area = Selection.Rect;
         Toolbar.Visibility = Visibility.Visible;
-        Toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        Size size = Toolbar.DesiredSize;
-
-        // Under the selection, right-aligned; above it if there is no room; inside it if the selection fills the screen.
-        double left = Math.Clamp(area.Right - size.Width, 0, Math.Max(0, ActualWidth - size.Width));
-        double top = area.Bottom + ToolbarGap;
-        if (top + size.Height > ActualHeight)
-        {
-            top = area.Top - size.Height - ToolbarGap;
-        }
-        if (top < 0)
-        {
-            top = Math.Max(0, area.Bottom - size.Height - ToolbarGap);
-        }
-        Canvas.SetLeft(Toolbar, left);
-        Canvas.SetTop(Toolbar, top);
+        Toolbar.Place(area, new Size(ActualWidth, ActualHeight)); // the tools beside the area, the actions under it
         UpdateHandles(area);
     }
 
