@@ -396,5 +396,25 @@ public class EditorToolbarTests
             Assert.Equal(Visibility.Visible, toolbar.BeautifyState.Visibility); // and spelled out in the menu
         });
     }
+
+    [Fact]
+    public void Releasing_the_button_over_an_entry_of_a_group_menu_picks_it()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            RadioButton ellipse = Find(toolbar, "tool", "Ellipse");
+
+            // The menu opened when the button went down on the corner; the release lands on the entry without a press on it.
+            ellipse.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent,
+                Source = ellipse,
+            });
+
+            Assert.Equal(AnnotationTool.Ellipse, toolbar.Tool);
+            Assert.True(ellipse.IsChecked);
+        });
+    }
 }
 

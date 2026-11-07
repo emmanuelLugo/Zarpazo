@@ -149,6 +149,16 @@ public partial class EditorToolbar : UserControl
                 Content = label,
             };
             AutomationProperties.SetName(item, entry.Label);
+            // The menu opens on press, so the button can also be released over an entry (press, drag, release). Such a release
+            // never pressed the entry, so it would not count as a click; a normal click has pressed it and is left alone.
+            item.PreviewMouseLeftButtonUp += (_, e) =>
+            {
+                if (!item.IsPressed)
+                {
+                    e.Handled = true;
+                    ApplyTool(entry.Tool);
+                }
+            };
             list.Children.Add(item);
         }
 
