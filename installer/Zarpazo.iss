@@ -33,7 +33,7 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear un acceso directo en el &escritorio"; Flags: unchecked
-Name: "startup"; Description: "Iniciar Zarpazo con &Windows"; Flags: unchecked
+Name: "startup"; Description: "Iniciar Zarpazo con &Windows"
 
 [Files]
 Source: "..\publish\Zarpazo.exe"; DestDir: "{app}"; Flags: ignoreversion
