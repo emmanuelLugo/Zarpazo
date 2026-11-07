@@ -416,5 +416,29 @@ public class EditorToolbarTests
             Assert.True(ellipse.IsChecked);
         });
     }
+
+    [Fact]
+    public void A_quick_click_on_the_corner_leaves_the_menu_open_for_the_next_click()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            (System.Windows.Controls.Primitives.Popup menu, UIElement corner) = toolbar.GroupParts("Formas");
+
+            corner.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                Source = corner,
+            });
+            Assert.True(menu.StaysOpen); // or the release would close it (a pop-up outside a window can't open, so only this is checked)
+
+            corner.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent,
+                Source = corner,
+            });
+            Assert.False(menu.StaysOpen);  // after the release it closes on a click outside again, like any menu
+        });
+    }
 }
 

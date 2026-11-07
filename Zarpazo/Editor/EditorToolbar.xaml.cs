@@ -102,6 +102,14 @@ public partial class EditorToolbar : UserControl
         public required ContentControl Icon { get; init; }
         public required Button Face { get; init; }
         public required Popup Menu { get; init; }
+        public required Border Corner { get; init; }
+    }
+
+    /// <summary>The menu of a group and the corner that opens it; for the tests, which can't point a real mouse.</summary>
+    internal (Popup Menu, UIElement Corner) GroupParts(string title)
+    {
+        ToolGroup group = _groups.First(g => g.Title == title);
+        return (group.Menu, group.Corner);
     }
 
     // One button for tools that belong together: it shows the one used last, a click uses it (or leaves it when it is already
@@ -134,6 +142,7 @@ public partial class EditorToolbar : UserControl
         box.Child = new Grid { Children = { face, triangle, corner } };
 
         var list = new StackPanel();
+        var rows = new List<(RadioButton Row, ToolEntry Entry)>();
         list.AddHandler(RadioButton.CheckedEvent, new RoutedEventHandler(OnChoice)); // a pop-up's events don't reach the bar's handler
         foreach (ToolEntry entry in entries)
         {
@@ -160,6 +169,7 @@ public partial class EditorToolbar : UserControl
                 }
             };
             list.Children.Add(item);
+            rows.Add((item, entry));
         }
 
         var menu = new Popup
@@ -178,17 +188,34 @@ public partial class EditorToolbar : UserControl
             },
         };
 
-        var group = new ToolGroup { Title = title, Entries = entries, Remembered = first, Box = box, Icon = icon, Face = face, Menu = menu };
+        var group = new ToolGroup { Title = title, Entries = entries, Remembered = first, Box = box, Icon = icon, Face = face, Menu = menu, Corner = corner };
         face.Click += (_, _) => ApplyTool(group.Entries.Any(entry => entry.Tool == Tool) ? AnnotationTool.Select : group.Remembered);
         face.MouseRightButtonUp += (_, e) =>
         {
             menu.IsOpen = true;
             e.Handled = true;
         };
+        // The menu opens on press. Left to close itself on outside clicks it would also close on the release, which lands on the
+        // corner and not on the menu, so it stays open until the button is up. The corner keeps the mouse meanwhile so the release
+        // is seen wherever it happens: over an entry it picks that tool (press, drag, release); anywhere else the menu stays open
+        // for a normal click on an entry.
         corner.PreviewMouseLeftButtonDown += (_, e) =>
         {
             e.Handled = true; // not a click on the button underneath
+            menu.StaysOpen = true;
             menu.IsOpen = true;
+            corner.CaptureMouse();
+        };
+        corner.PreviewMouseLeftButtonUp += (_, e) =>
+        {
+            corner.ReleaseMouseCapture();
+            menu.StaysOpen = false; // from here on it closes on a click outside, like any menu
+            (RadioButton Row, ToolEntry Entry) over = rows.FirstOrDefault(r => r.Row.IsVisible && new Rect(r.Row.RenderSize).Contains(e.GetPosition(r.Row)));
+            if (over.Row != null)
+            {
+                ApplyTool(over.Entry.Tool);
+            }
+            e.Handled = true;
         };
 
         slot.Content = new Grid { Children = { box, menu } };
