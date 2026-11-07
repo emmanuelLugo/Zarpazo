@@ -17,6 +17,15 @@ if (-not $SkipPublish) {
 }
 if (-not (Test-Path (Join-Path $root 'publish\Zarpazo.exe'))) { throw 'publish\Zarpazo.exe is missing.' }
 
+# publish.ps1 only warns when Zarpazo.exe is running and can't be replaced, so check that it really is current:
+# an installer built from an old exe would silently ship old code.
+$exe = Get-Item (Join-Path $root 'publish\Zarpazo.exe')
+$newest = Get-ChildItem (Join-Path $root 'Zarpazo') -Recurse -File -Include *.cs, *.xaml, *.csproj, *.manifest, *.ico |
+    Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($newest -and $exe.LastWriteTime -lt $newest.LastWriteTime) {
+    throw "publish\Zarpazo.exe is older than $($newest.Name). Close Zarpazo from the tray and run this again."
+}
+
 # One source of truth for the version: the project file.
 $version = ([xml](Get-Content (Join-Path $root 'Zarpazo\Zarpazo.csproj'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 
