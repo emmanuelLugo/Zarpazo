@@ -21,6 +21,8 @@ public partial class App : Application
     private GlobalHotKey? _hotKey;
     private GlobalHotKey? _recordHotKey;
     private Rectangle? _lastRecordingRegion; // what the recording shortcut repeats
+    private Rectangle? _lastArea; // the last area copied, saved, pinned or recorded, for "Repetir la última zona"
+    private bool _delayPending; // a delayed capture is counting down
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
@@ -40,8 +42,9 @@ public partial class App : Application
         }
 
         _settings = new SettingsStore(SettingsStore.DefaultPath);
-        _tray = new TrayIcon(CaptureFromMenu, ShowHistory, ShowSettings, () => _recording?.Stop(), Shutdown);
-        _hotKey = new GlobalHotKey(ShowOverlay);
+        _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
+            ShowHistory, ShowSettings, () => _recording?.Stop(), Shutdown);
+        _hotKey = new GlobalHotKey(() => ShowOverlay());
         if (!_hotKey.TryRegister(_settings.Current.HotKey))
         {
             _tray.ShowWarning($"Otra aplicación ya usa {_settings.Current.HotKey.Describe()}. Puedes cambiar el atajo en Configuración o capturar desde este icono.");
@@ -66,6 +69,50 @@ public partial class App : Application
     {
         // The tray menu is still on screen for a moment after the click and would end up in the capture.
         await Task.Delay(MenuCloseDelayMs);
+        ShowOverlay();
+    }
+
+    // The whole monitor the pointer is on, already chosen: Enter copies it, or the bars can be used first.
+    private async void CaptureFullScreen()
+    {
+        await Task.Delay(MenuCloseDelayMs);
+        ShowOverlay(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds);
+    }
+
+    // The same place again, on a fresh picture of the screen: for taking the same shot of something that changes.
+    private async void RepeatLastArea()
+    {
+        await Task.Delay(MenuCloseDelayMs);
+        ShowOverlay(_lastArea);
+    }
+
+    // Counts down on the monitor the pointer is on, so a menu can be opened or something hovered, then captures.
+    private async void CaptureAfterDelay(int seconds)
+    {
+        if (_delayPending || _overlay != null || _recording is { IsRecording: true } or { IsCountingDown: true })
+        {
+            return;
+        }
+
+        _delayPending = true;
+        var countdown = new RecordingCountdown(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds);
+        try
+        {
+            await Task.Delay(MenuCloseDelayMs);
+            countdown.Show();
+            for (int left = seconds; left > 0 && _overlay == null; left--) // the shortcut during the wait captures right away
+            {
+                countdown.ShowNumber(left);
+                await Task.Delay(1000);
+            }
+        }
+        finally
+        {
+            countdown.Close();
+            _delayPending = false;
+        }
+
+        await Task.Delay(MenuCloseDelayMs / 2); // the number is excluded from the picture, but older Windows versions ignore that
         ShowOverlay();
     }
 
@@ -192,7 +239,7 @@ public partial class App : Application
         }
     }
 
-    private void ShowOverlay()
+    private void ShowOverlay(Rectangle? area = null)
     {
         // The same shortcut that starts a capture stops a recording: it is the one key that is always within reach.
         if (_recording is { IsRecording: true } or { IsCountingDown: true })
@@ -219,7 +266,8 @@ public partial class App : Application
             return;
         }
 
-        _overlay = new OverlayWindow(image, bounds, windows, _settings, _history);
+        _overlay = new OverlayWindow(image, bounds, windows, _settings, _history, initialArea: area);
+        _overlay.AreaUsed += used => _lastArea = used;
         _overlay.RecordRequested += BeginRecording;
         _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
         _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");

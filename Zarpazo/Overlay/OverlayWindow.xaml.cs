@@ -60,7 +60,8 @@ public partial class OverlayWindow : Window
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
     /// <param name="windows">Window bounds in physical pixels at the moment of the capture, topmost first.</param>
     /// <param name="restore">Set when an earlier capture is opened again: its area and annotations are put back.</param>
-    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings, CaptureHistory history, EditRestore? restore = null)
+    /// <param name="initialArea">An area, in physical screen pixels, to start with: the whole monitor, or the last one captured.</param>
+    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings, CaptureHistory history, EditRestore? restore = null, Rectangle? initialArea = null)
     {
         InitializeComponent();
         _history = history;
@@ -73,6 +74,10 @@ public partial class OverlayWindow : Window
         _bounds = bounds;
         _windows = windows;
         _settings = settings;
+        if (initialArea is { } area)
+        {
+            Loaded += (_, _) => SelectArea(area);
+        }
         if (settings.Current.RememberStyle)
         {
             Toolbar.Restore(settings.Current.Color, settings.Current.Thickness);
@@ -149,7 +154,33 @@ public partial class OverlayWindow : Window
         {
             Probe.ToggleFormat();
         }
+        else if (e.Key == Key.F && !ctrl && _textBox == null)
+        {
+            SelectArea(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds); // F: the whole monitor
+        }
     }
+
+    /// <summary>Chooses an area given in physical screen pixels, as if it had been dragged, and shows the bars.</summary>
+    private void SelectArea(Rectangle pixels)
+    {
+        double scaleX = _screenshot.PixelWidth / ActualWidth;
+        double scaleY = _screenshot.PixelHeight / ActualHeight;
+        Rect area = SelectionGeometry.FromScreenPixels(pixels, _bounds, scaleX, scaleY);
+        if (area.IsEmpty)
+        {
+            return;
+        }
+
+        CommitText();
+        Annotations.Clear(); // like dragging a new area: what was drawn belonged to the old one
+        _hoverRect = null;
+        Selection.Rect = area;
+        Annotations.ClipArea = area;
+        ShowToolbar();
+    }
+
+    /// <summary>An area was copied, saved, pinned or recorded: its place in physical screen pixels, so it can be repeated.</summary>
+    internal event Action<Rectangle>? AreaUsed;
 
     /// <summary>The capture was also saved by itself (the path); raised after the overlay has done its work.</summary>
     internal event Action<string>? AutoSaved;
@@ -217,9 +248,9 @@ public partial class OverlayWindow : Window
         }
 
         // The overlay has to be gone before the first picture, or it would be in every frame of the recording.
-        RecordRequested?.Invoke(
-            new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height),
-            Toolbar.RecordingOptions);
+        var region = new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height);
+        AreaUsed?.Invoke(region);
+        RecordRequested?.Invoke(region, Toolbar.RecordingOptions);
         Close();
     }
 
@@ -361,6 +392,7 @@ public partial class OverlayWindow : Window
         }
 
         AddToHistory(crop);
+        AreaUsed?.Invoke(new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height));
         Close();
     }
 

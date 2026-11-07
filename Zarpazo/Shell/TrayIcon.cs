@@ -12,16 +12,30 @@ internal sealed class TrayIcon : IDisposable
     private static readonly Color RecordingColor = Color.FromArgb(0xE5, 0x39, 0x35);
     private static readonly Color PausedColor = Color.FromArgb(0xFD, 0xD8, 0x35);
 
+    /// <summary>Seconds to wait before a delayed capture; long enough to open a menu or hover over something.</summary>
+    internal static readonly int[] DelayChoices = [3, 5, 10];
+
     private readonly NotifyIcon _icon;
     private readonly Icon _normalIcon;
     private readonly ToolStripItem _stopRecording;
     private Icon? _recordingIcon;
     private Icon? _pausedIcon;
 
-    public TrayIcon(Action onCapture, Action onHistory, Action onSettings, Action onStopRecording, Action onExit)
+    public TrayIcon(Action onCapture, Action onFullScreen, Action onRepeatLast, Func<bool> canRepeatLast, Action<int> onDelayed,
+        Action onHistory, Action onSettings, Action onStopRecording, Action onExit)
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Capturar", null, (_, _) => onCapture());
+        menu.Items.Add("Pantalla completa", null, (_, _) => onFullScreen());
+        ToolStripItem repeat = menu.Items.Add("Repetir la última zona", null, (_, _) => onRepeatLast());
+        menu.Opening += (_, _) => repeat.Enabled = canRepeatLast(); // there is nothing to repeat until one has been captured
+        var delayed = new ToolStripMenuItem("Capturar con retardo");
+        foreach (int seconds in DelayChoices)
+        {
+            delayed.DropDownItems.Add($"{seconds} segundos", null, (_, _) => onDelayed(seconds));
+        }
+        menu.Items.Add(delayed);
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Historial…", null, (_, _) => onHistory());
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
         _stopRecording = menu.Items.Add("Detener grabación", null, (_, _) => onStopRecording());

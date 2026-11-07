@@ -48,6 +48,7 @@ internal sealed class RecordingCountdown : Window
 
         IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
         WindowNative.MakeClickThrough(hwnd);
+        WindowNative.ExcludeFromScreenCapture(hwnd); // a delayed capture must not show its own countdown
         int side = Math.Min(SizePixels, Math.Min(region.Width, region.Height)); // never bigger than a small area
         WindowNative.Place(hwnd, new Rectangle(region.X + (region.Width - side) / 2, region.Y + (region.Height - side) / 2, side, side));
     }

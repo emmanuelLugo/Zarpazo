@@ -107,3 +107,46 @@ public class ToolbarLayoutTests
         });
     }
 }
+
+public class AreaFromPixelsTests
+{
+    private static readonly System.Drawing.Rectangle Screens = new(-1920, 0, 3286, 1080); // a monitor to the left of the main one
+
+    [Fact]
+    public void A_monitor_becomes_the_matching_part_of_the_overlay()
+    {
+        var monitor = new System.Drawing.Rectangle(0, 0, 1366, 768);
+
+        Rect area = Zarpazo.Overlay.SelectionGeometry.FromScreenPixels(monitor, Screens, 1, 1);
+
+        Assert.Equal(new Rect(1920, 0, 1366, 768), area);
+    }
+
+    [Fact]
+    public void Scaling_turns_pixels_into_layout_units()
+    {
+        var pixels = new System.Drawing.Rectangle(-1920, 0, 1920, 1080);
+
+        Rect area = Zarpazo.Overlay.SelectionGeometry.FromScreenPixels(pixels, Screens, 1.5, 1.5);
+
+        Assert.Equal(new Rect(0, 0, 1280, 720), area);
+    }
+
+    [Fact]
+    public void An_area_partly_outside_the_screens_is_cut_to_them()
+    {
+        var pixels = new System.Drawing.Rectangle(1200, 900, 400, 400);
+
+        Rect area = Zarpazo.Overlay.SelectionGeometry.FromScreenPixels(pixels, Screens, 1, 1);
+
+        Assert.Equal(new Rect(3120, 900, 166, 180), area);
+    }
+
+    [Fact]
+    public void An_area_on_a_monitor_that_is_gone_gives_nothing()
+    {
+        var pixels = new System.Drawing.Rectangle(4000, 100, 300, 200);
+
+        Assert.True(Zarpazo.Overlay.SelectionGeometry.FromScreenPixels(pixels, Screens, 1, 1).IsEmpty);
+    }
+}

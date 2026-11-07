@@ -15,10 +15,10 @@ El MVP cubre la captura de área con atajo global; las capturas de ventana, scro
 | Captura de área arrastrando el mouse (pantalla congelada y oscurecida) | MVP |
 | Atajo global configurable (PrtScn por defecto) | MVP |
 | Soporte multi-monitor y distinto escalado DPI | MVP |
-| Captura de pantalla completa | Después |
+| Captura de pantalla completa | Después (hecho: menú de la bandeja y tecla F en la captura) |
 | Captura de ventana (detecta la ventana bajo el cursor y la resalta) | Después |
-| Captura con retardo (3, 5 o 10 segundos) | Después |
-| Repetir la última región capturada | Después |
+| Captura con retardo (3, 5 o 10 segundos) | Después (hecho: menú de la bandeja, cuenta atrás que no sale en la captura) |
+| Repetir la última región capturada | Después (hecho: menú de la bandeja, mientras la app siga abierta) |
 | Lupa con zoom de píxeles y coordenadas para afinar la selección | Después |
 | Captura con scroll (páginas largas) | Avanzado |
 | Captura de GIF y video de pantalla | Avanzado (hecho: botón Grabar, Ctrl+G; GIF y video MP4 con micrófono y sonido de Windows) |

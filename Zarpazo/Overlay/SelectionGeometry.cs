@@ -4,6 +4,21 @@ namespace Zarpazo.Overlay;
 
 internal static class SelectionGeometry
 {
+    /// <summary>
+    /// A rectangle in physical screen pixels as an area of the overlay, cut to the screens that are there now. Empty when nothing
+    /// of it is left (a remembered area on a monitor that has since been unplugged).
+    /// </summary>
+    public static Rect FromScreenPixels(System.Drawing.Rectangle pixels, System.Drawing.Rectangle bounds, double scaleX, double scaleY)
+    {
+        System.Drawing.Rectangle visible = System.Drawing.Rectangle.Intersect(pixels, bounds);
+        if (visible.Width < 2 || visible.Height < 2)
+        {
+            return Rect.Empty;
+        }
+
+        return new Rect((visible.X - bounds.X) / scaleX, (visible.Y - bounds.Y) / scaleY, visible.Width / scaleX, visible.Height / scaleY);
+    }
+
     /// <summary>The area can't be shrunk below this, so there is always something left to grab.</summary>
     public const double MinSize = 8;
 
