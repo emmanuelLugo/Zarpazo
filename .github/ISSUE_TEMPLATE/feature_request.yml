@@ -1,0 +1,28 @@
+name: Sugerir una mejora
+description: Una idea para que Zarpazo sea mejor
+title: "[Mejora] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema quieres resolver
+      description: Cuéntame qué intentas hacer y qué te lo dificulta hoy.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Cómo te gustaría que funcionara
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas que probaste
+      description: Otras apps (Lightshot, Snagit, ShareX...) o formas de resolverlo hoy.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Más información
+      description: Capturas, ejemplos o enlaces.

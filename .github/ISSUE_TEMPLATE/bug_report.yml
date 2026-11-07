@@ -1,0 +1,60 @@
+name: Reportar un fallo
+description: Algo no funciona como debería
+title: "[Fallo] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Gracias por avisar. Cuantos más datos des, más rápido se arregla.
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasó
+      description: Describe el fallo y qué esperabas que pasara.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Pulso Impr Pant
+        2. Selecciono un área
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Zarpazo
+      description: Está en Configuración → Acerca de.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Versión de Windows
+      placeholder: Windows 11 23H2
+    validations:
+      required: true
+  - type: input
+    id: monitors
+    attributes:
+      label: Monitores y escalado
+      description: Cuántos monitores usas y el escalado de cada uno (100 %, 125 %...). Importa sobre todo si el fallo es de posición o tamaño.
+      placeholder: 2 monitores, 100 % y 150 %
+  - type: dropdown
+    id: install
+    attributes:
+      label: Cómo lo instalaste
+      options:
+        - Instalador (Zarpazo-Setup.exe)
+        - Zarpazo.exe suelto
+        - Zarpazo-ligero.exe
+        - Compilado desde el código
+  - type: textarea
+    id: extra
+    attributes:
+      label: Capturas o más información
+      description: Puedes arrastrar imágenes o archivos aquí.
