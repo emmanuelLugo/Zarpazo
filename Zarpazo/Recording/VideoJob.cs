@@ -122,6 +122,7 @@ internal sealed class VideoJob : RecordingJob
         if (_firstPicture != null)
         {
             Thumbnail = PictureOf(_firstPicture, _width, _height);
+            _firstPicture = null;
         }
         return _path;
     }
@@ -191,8 +192,8 @@ internal sealed class VideoJob : RecordingJob
                 continue;
             }
 
-            // The array goes into the encoder's queue and stays there, so every picture needs its own.
-            var pixels = new byte[grabber.Width * grabber.Height * 4];
+            // The array goes into the encoder's queue and comes back for reuse once it has been encoded.
+            byte[] pixels = _writer!.RentPicture();
             grabber.Grab(pixels, now);
             _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
             _writer!.AddVideo(pixels, TimeSpan.FromMilliseconds(now)); // dropped, not queued, if the encoder is a second behind

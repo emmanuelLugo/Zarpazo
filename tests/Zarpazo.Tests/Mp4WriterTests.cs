@@ -133,7 +133,7 @@ public sealed class Mp4WriterTests : IDisposable
             }
         }
 
-        Assert.Equal(30, accepted);
+        Assert.Equal(12, accepted);
         await Task.CompletedTask;
     }
 

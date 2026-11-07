@@ -204,6 +204,8 @@ internal sealed class RecordingSession
             }
             _filePath = path;
             _historyPath = AddToHistory(path);
+            _job.ReleaseThumbnail();
+            MemoryTrim.Release();
             string saved = AutoSave(path);
             _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{saved}", _job.CanTrim);
         }
@@ -373,6 +375,7 @@ internal sealed class RecordingSession
         _outline?.Close();
         _bar?.Close();
         _closed();
+        MemoryTrim.Release();
         StateChanged?.Invoke();
     }
 }

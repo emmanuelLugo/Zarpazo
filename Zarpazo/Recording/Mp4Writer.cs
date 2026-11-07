@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Channels;
@@ -16,7 +17,7 @@ internal sealed class Mp4Writer
     public const int AudioSampleRate = 48000;
     public const int AudioChannels = 2;
 
-    private const int VideoQueueSize = 30; // about a second; when the encoder falls further behind, frames are dropped rather than memory growing
+    private const int VideoQueueSize = 12; // a third of a second; when the encoder falls further behind, frames are dropped rather than memory growing
     private const uint MinBitrate = 1_500_000;
     private const uint MaxBitrate = 24_000_000;
     private const uint AudioBitrate = 128_000;
@@ -29,6 +30,9 @@ internal sealed class Mp4Writer
     private readonly Channel<MediaStreamSample>? _audio;
     private readonly MediaStreamSource _source;
     private readonly MediaEncodingProfile _profile;
+    private readonly ConcurrentBag<byte[]> _spareBuffers = new(); // pictures are 8 MB at 1080p: new arrays every frame would fill the large object heap
+    private readonly int _pictureBytes;
+    private volatile bool _finished;
     private Task? _encoding;
 
     /// <param name="width">Both sizes must be even: H.264 stores the picture in blocks of two pixels.</param>
@@ -42,6 +46,7 @@ internal sealed class Mp4Writer
 
         _path = path;
         _fps = fps;
+        _pictureBytes = width * height * 4;
         _withAudio = withAudio;
         _video = Channel.CreateBounded<MediaStreamSample>(new BoundedChannelOptions(VideoQueueSize)
         {
@@ -77,14 +82,31 @@ internal sealed class Mp4Writer
     /// <summary>Starts encoding. Pictures and sound added from here on are written as they come.</summary>
     public void Start() => _encoding = EncodeAsync();
 
-    /// <param name="bgra">The picture, tightly packed; the writer keeps the array, so it must not be reused.</param>
+    /// <summary>An array for a picture: a recycled one when the encoder has finished with it. Hand it back through <see cref="AddVideo"/>.</summary>
+    public byte[] RentPicture() => _spareBuffers.TryTake(out byte[]? spare) ? spare : new byte[_pictureBytes];
+
+    /// <param name="bgra">The picture, tightly packed, from <see cref="RentPicture"/>; the writer owns the array from here on.</param>
     /// <param name="time">When it was taken, from the start of the recording.</param>
     /// <returns>False when the encoder is too far behind and the picture was dropped.</returns>
     public bool AddVideo(byte[] bgra, TimeSpan time)
     {
         MediaStreamSample sample = MediaStreamSample.CreateFromBuffer(bgra.AsBuffer(), time);
         sample.Duration = TimeSpan.FromSeconds(1.0 / _fps);
-        return _video.Writer.TryWrite(sample);
+        sample.Processed += (_, _) => Recycle(bgra);
+        if (_video.Writer.TryWrite(sample))
+        {
+            return true;
+        }
+        Recycle(bgra);
+        return false;
+    }
+
+    private void Recycle(byte[] picture)
+    {
+        if (!_finished && picture.Length == _pictureBytes)
+        {
+            _spareBuffers.Add(picture);
+        }
     }
 
     /// <param name="pcm">16-bit stereo sound at 48 kHz; the writer keeps the array.</param>
@@ -105,9 +127,17 @@ internal sealed class Mp4Writer
     {
         _video.Writer.TryComplete();
         _audio?.Writer.TryComplete();
-        if (_encoding != null)
+        try
         {
-            await _encoding;
+            if (_encoding != null)
+            {
+                await _encoding;
+            }
+        }
+        finally
+        {
+            _finished = true;
+            _spareBuffers.Clear();
         }
     }
 
