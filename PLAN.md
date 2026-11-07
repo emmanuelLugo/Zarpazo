@@ -103,7 +103,7 @@ Todas las opciones de configuración quedan para después del MVP, que arranca c
 - **Overlay:** ventana `WindowStyle=None`, `Topmost`, `ShowInTaskbar=False`, que cubra el escritorio virtual completo.
 - **Selección de ventana bajo el cursor:** `WindowFromPoint` más `DwmGetWindowAttribute` con `DWMWA_EXTENDED_FRAME_BOUNDS`.
 - **Editor:** cada anotación se guarda como objeto vectorial para poder deshacer, mover y editar.
-- **Distribución:** self-contained single file; inicio con Windows mediante la clave `Run` del registro; una sola instancia con mutex.
+- **Distribución:** self-contained single file; instalador por usuario con Inno Setup (`tools/build-installer.ps1`, genera `publish/Zarpazo-Setup-<versión>.exe`); inicio con Windows mediante la clave `Run` del registro; una sola instancia con mutex.
 
 ## Puntos delicados
 
