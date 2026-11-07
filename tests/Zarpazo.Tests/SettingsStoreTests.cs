@@ -92,4 +92,38 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.True(File.Exists(FilePath));
     }
+
+    [Fact]
+    public void Beautify_starts_off_with_the_default_style()
+    {
+        AppSettings settings = new SettingsStore(FilePath).Current;
+
+        Assert.False(settings.BeautifyEnabled);
+        Assert.Equal(Zarpazo.Output.BeautifyStyle.Default, settings.BeautifyStyle);
+    }
+
+    [Fact]
+    public void The_beautify_choices_are_read_back_by_the_next_run()
+    {
+        var first = new SettingsStore(FilePath);
+        first.Current.BeautifyEnabled = true;
+        first.Current.BeautifyStyle = new Zarpazo.Output.BeautifyStyle("oceano", 80, 24, Shadow: false);
+        first.Save();
+
+        AppSettings second = new SettingsStore(FilePath).Current;
+
+        Assert.True(second.BeautifyEnabled);
+        Assert.Equal(new Zarpazo.Output.BeautifyStyle("oceano", 80, 24, Shadow: false), second.BeautifyStyle);
+    }
+
+    [Fact]
+    public void Hand_edited_beautify_values_snap_to_what_the_panel_offers()
+    {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(FilePath, """{ "BeautifyBackground": "rosa-fuerte", "BeautifyPadding": 55, "BeautifyRadius": 500 }""");
+
+        AppSettings settings = new SettingsStore(FilePath).Current;
+
+        Assert.Equal(new Zarpazo.Output.BeautifyStyle("violeta", 48, 24, Shadow: true), settings.BeautifyStyle);
+    }
 }

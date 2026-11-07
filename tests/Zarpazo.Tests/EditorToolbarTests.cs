@@ -162,4 +162,52 @@ public class EditorToolbarTests
             Assert.True(red.IsChecked);
         });
     }
+
+    [Fact]
+    public void The_beautify_panel_offers_every_background_and_starts_off_with_the_default_style()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Assert.Equal(Zarpazo.Output.BeautifyBackground.All.Count, RadioButtons(toolbar).Count(r => r.GroupName == "beautyBackground"));
+            Assert.False(toolbar.BeautifyEnabled);
+            Assert.Equal(Zarpazo.Output.BeautifyStyle.Default, toolbar.BeautifyStyle);
+            Assert.True(Find(toolbar, "beautyBackground", "violeta").IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Restoring_the_beautify_choices_checks_their_buttons_without_changing_them()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            var style = new Zarpazo.Output.BeautifyStyle("bosque", 80, 0, Shadow: false);
+
+            toolbar.RestoreBeautify(enabled: true, style);
+
+            Assert.True(toolbar.BeautifyEnabled);
+            Assert.Equal(style, toolbar.BeautifyStyle); // the radio buttons firing Checked must not overwrite it
+            Assert.True(Find(toolbar, "beautyBackground", "bosque").IsChecked);
+            Assert.True(Find(toolbar, "beautyPadding", "80").IsChecked);
+            Assert.True(Find(toolbar, "beautyRadius", "0").IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Choosing_an_option_in_the_panel_changes_the_style()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Find(toolbar, "beautyBackground", "oceano").IsChecked = true;
+            Find(toolbar, "beautyPadding", "24").IsChecked = true;
+
+            Assert.Equal("oceano", toolbar.BeautifyStyle.Background);
+            Assert.Equal(24, toolbar.BeautifyStyle.Padding);
+            Assert.Equal(12, toolbar.BeautifyStyle.Radius); // untouched
+        });
+    }
 }

@@ -54,6 +54,13 @@
             </Setter>
         </Style>
 
+        <Style x:Key="PanelLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#AAFFFFFF" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="2,10,0,3" />
+        </Style>
+
         <Style x:Key="Divider" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Margin" Value="6,6" />
@@ -260,6 +267,69 @@
             <Button Style="{StaticResource Action}" ToolTip="Fijar sobre la pantalla (Ctrl+P)" AutomationProperties.Name="Fijar" Click="OnPin">
                 <Path Style="{StaticResource Icon}" Data="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14" />
             </Button>
+
+            <Button x:Name="BeautifyButton" Style="{StaticResource Action}" ToolTip="Embellecer: fondo, margen, esquinas y sombra al copiar y guardar"
+                    AutomationProperties.Name="Embellecer" Click="OnBeautifyButton">
+                <Grid Width="16" Height="16">
+                    <Path Style="{StaticResource Icon}" Data="M2,2.5 H14 V13.5 H2 Z M5.5,5.5 H10.5 V10.5 H5.5 Z" />
+                    <!-- Shows when it is on, so a forgotten setting doesn't surprise anyone. -->
+                    <Ellipse x:Name="BeautifyDot" Width="7" Height="7" Fill="#FDD835" Stroke="#F2202124" StrokeThickness="1"
+                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0" Visibility="Collapsed" />
+                </Grid>
+            </Button>
+            <Popup x:Name="BeautifyPopup"
+                   PlacementTarget="{Binding ElementName=BeautifyButton}"
+                   Placement="Top"
+                   StaysOpen="False"
+                   AllowsTransparency="True">
+                <Border Background="#F2202124" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                    <StackPanel Width="288" RadioButton.Checked="OnBeautifyChoice">
+                        <CheckBox x:Name="BeautifyEnabledBox" Content="Embellecer al copiar y guardar" Foreground="White"
+                                  FontFamily="Segoe UI" FontSize="13" Focusable="False" Click="OnBeautifyEnabled" />
+
+                        <Border Height="170" Margin="0,8,0,0" CornerRadius="6" Background="#26FFFFFF" ClipToBounds="True">
+                            <Grid>
+                                <Image x:Name="BeautifyPreview" Margin="6" Stretch="Uniform" RenderOptions.BitmapScalingMode="Fant" />
+                                <TextBlock x:Name="BeautifyEmpty" Text="Elige una zona para ver la vista previa" Foreground="#AAFFFFFF"
+                                           FontFamily="Segoe UI" FontSize="12" TextWrapping="Wrap" TextAlignment="Center"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12" />
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Fondo" Style="{StaticResource PanelLabel}" />
+                        <WrapPanel x:Name="BeautifyBackgrounds" />
+
+                        <TextBlock Text="Margen" Style="{StaticResource PanelLabel}" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton GroupName="beautyPadding" Tag="24" Style="{StaticResource Choice}">
+                                <TextBlock Text="Pequeño" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="beautyPadding" Tag="48" Style="{StaticResource Choice}">
+                                <TextBlock Text="Medio" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="beautyPadding" Tag="80" Style="{StaticResource Choice}">
+                                <TextBlock Text="Grande" Margin="8,0" />
+                            </RadioButton>
+                        </StackPanel>
+
+                        <TextBlock Text="Esquinas" Style="{StaticResource PanelLabel}" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton GroupName="beautyRadius" Tag="0" Style="{StaticResource Choice}">
+                                <TextBlock Text="Rectas" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="beautyRadius" Tag="12" Style="{StaticResource Choice}">
+                                <TextBlock Text="Suaves" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="beautyRadius" Tag="24" Style="{StaticResource Choice}">
+                                <TextBlock Text="Redondas" Margin="8,0" />
+                            </RadioButton>
+                        </StackPanel>
+
+                        <CheckBox x:Name="BeautifyShadowBox" Content="Sombra" Foreground="White" Margin="0,10,0,0"
+                                  FontFamily="Segoe UI" FontSize="13" Focusable="False" Click="OnBeautifyShadow" />
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <Border Style="{StaticResource Divider}" />
 

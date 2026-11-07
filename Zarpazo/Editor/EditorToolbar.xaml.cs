@@ -4,7 +4,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Zarpazo.Output;
 
 namespace Zarpazo.Editor;
 
@@ -13,7 +15,126 @@ public partial class EditorToolbar : UserControl
     // The dialog's 16 custom color slots, kept so colors mixed earlier are still there next time.
     private int[]? _customColors;
 
-    public EditorToolbar() => InitializeComponent();
+    // The panel's own size: what the preview has to fit in.
+    private const double PreviewWidth = 256;
+    private const double PreviewHeight = 158;
+
+    private BeautifyStyle _beautify = BeautifyStyle.Default;
+    private bool _beautifyEnabled;
+    private bool _beautifyReady; // the radio buttons fire Checked while they are being set up and restored
+
+    public EditorToolbar()
+    {
+        InitializeComponent();
+        BuildBackgroundChoices();
+        ShowBeautify();
+        _beautifyReady = true;
+    }
+
+    /// <summary>The style chosen in the Embellecer panel, whether or not it is switched on.</summary>
+    internal BeautifyStyle BeautifyStyle => _beautify;
+
+    /// <summary>True when copying and saving put the capture on the background.</summary>
+    public bool BeautifyEnabled => _beautifyEnabled;
+
+    /// <summary>Gives the panel the capture to show on its preview; null when no area is chosen.</summary>
+    public Func<BitmapSource?>? PreviewSource { get; set; }
+
+    internal void RestoreBeautify(bool enabled, BeautifyStyle style)
+    {
+        _beautifyReady = false;
+        _beautify = style;
+        _beautifyEnabled = enabled;
+        ShowBeautify();
+        _beautifyReady = true;
+    }
+
+    private void BuildBackgroundChoices()
+    {
+        foreach (BeautifyBackground background in BeautifyBackground.All)
+        {
+            var swatch = new Ellipse { Width = 18, Height = 18, Stroke = new SolidColorBrush(Color.FromArgb(0x88, 0xFF, 0xFF, 0xFF)), StrokeThickness = 1 };
+            swatch.Fill = new LinearGradientBrush(background.From, background.To, new Point(0, 0), new Point(1, 1));
+            BeautifyBackgrounds.Children.Add(new RadioButton
+            {
+                GroupName = "beautyBackground",
+                Tag = background.Key,
+                ToolTip = background.Name,
+                Style = (Style)FindResource("Choice"),
+                Content = swatch,
+            });
+        }
+    }
+
+    // Puts the current style on the controls: the checked options, the boxes, the dot on the button and the preview.
+    private void ShowBeautify()
+    {
+        FindChoice(this, "beautyBackground", _beautify.Background)?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+        FindChoice(this, "beautyPadding", _beautify.Padding.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+        FindChoice(this, "beautyRadius", _beautify.Radius.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+        BeautifyShadowBox.IsChecked = _beautify.Shadow;
+        BeautifyEnabledBox.IsChecked = _beautifyEnabled;
+        BeautifyDot.Visibility = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
+        RefreshBeautifyPreview();
+    }
+
+    private void RefreshBeautifyPreview()
+    {
+        BitmapSource? source = PreviewSource?.Invoke();
+        BeautifyEmpty.Visibility = source == null ? Visibility.Visible : Visibility.Collapsed;
+        if (source == null)
+        {
+            BeautifyPreview.Source = null;
+            return;
+        }
+
+        // Drawn small: the whole screenshot at full size would make every click on an option wait.
+        double width = source.PixelWidth + 2 * _beautify.Padding;
+        double height = source.PixelHeight + 2 * _beautify.Padding;
+        double scale = Math.Min(1, Math.Min(PreviewWidth / width, PreviewHeight / height));
+        BeautifyPreview.Source = ImageBeautifier.Apply(source, _beautify, scale);
+    }
+
+    private void OnBeautifyEdited()
+    {
+        BeautifyDot.Visibility = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
+        RefreshBeautifyPreview();
+    }
+
+    private void OnBeautifyButton(object sender, RoutedEventArgs e)
+    {
+        RefreshBeautifyPreview(); // the area may have changed since the panel was last open
+        BeautifyPopup.IsOpen = true;
+    }
+
+    private void OnBeautifyEnabled(object sender, RoutedEventArgs e)
+    {
+        _beautifyEnabled = BeautifyEnabledBox.IsChecked == true;
+        OnBeautifyEdited();
+    }
+
+    private void OnBeautifyShadow(object sender, RoutedEventArgs e)
+    {
+        _beautify = _beautify with { Shadow = BeautifyShadowBox.IsChecked == true };
+        OnBeautifyEdited();
+    }
+
+    private void OnBeautifyChoice(object sender, RoutedEventArgs e)
+    {
+        if (!_beautifyReady || e.OriginalSource is not RadioButton { Tag: string tag } choice)
+        {
+            return;
+        }
+
+        _beautify = choice.GroupName switch
+        {
+            "beautyBackground" => _beautify with { Background = tag },
+            "beautyPadding" => _beautify with { Padding = int.Parse(tag, CultureInfo.InvariantCulture) },
+            "beautyRadius" => _beautify with { Radius = int.Parse(tag, CultureInfo.InvariantCulture) },
+            _ => _beautify,
+        };
+        OnBeautifyEdited();
+    }
 
     // Defaults match the buttons checked in the XAML.
     public AnnotationTool Tool { get; private set; } = AnnotationTool.Select;
@@ -76,7 +197,11 @@ public partial class EditorToolbar : UserControl
     // This also fires while the XAML loads, before the swatches and popups exist, hence the null checks.
     private void OnChoice(object sender, RoutedEventArgs e)
     {
-        var choice = (RadioButton)e.OriginalSource;
+        // CheckBox raises the same Checked event, and the Embellecer panel has some.
+        if (e.OriginalSource is not RadioButton choice)
+        {
+            return;
+        }
         var value = (string)choice.Tag;
         switch (choice.GroupName)
         {

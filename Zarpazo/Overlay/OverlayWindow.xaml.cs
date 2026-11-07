@@ -75,6 +75,12 @@ public partial class OverlayWindow : Window
         {
             Toolbar.Restore(settings.Current.Color, settings.Current.Thickness);
         }
+        Toolbar.RestoreBeautify(settings.Current.BeautifyEnabled, settings.Current.BeautifyStyle);
+        Toolbar.PreviewSource = () =>
+        {
+            CommitText(); // so the preview matches what copying would give
+            return CropSelection()?.Final;
+        };
         Closed += (_, _) => RememberStyle();
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
@@ -139,9 +145,13 @@ public partial class OverlayWindow : Window
     }
 
     private void OnCopy(object? sender, EventArgs e) =>
-        Finish(image => ImageOutput.CopyToClipboard(image, _settings.Current.CopyAsFile));
+        Finish(image => ImageOutput.CopyToClipboard(Embellished(image), _settings.Current.CopyAsFile));
 
-    private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this, _settings.Current));
+    private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(Embellished(image), this, _settings.Current));
+
+    // Only what leaves the app is dressed up. The history, the pinned copy and the text reading keep the plain capture.
+    private BitmapSource Embellished(BitmapSource image) =>
+        Toolbar.BeautifyEnabled ? ImageBeautifier.Apply(image, Toolbar.BeautifyStyle) : image;
 
     /// <summary>Leaves the capture floating over the screen, exactly where the area was.</summary>
     private void OnPin(object? sender, EventArgs e) => FinishWithCrop(crop =>
@@ -224,13 +234,24 @@ public partial class OverlayWindow : Window
     private void RememberStyle()
     {
         AppSettings settings = _settings.Current;
-        if (!settings.RememberStyle || (settings.Color == Toolbar.ColorHex && settings.Thickness == Toolbar.Thickness))
+        bool changed = false;
+        if (settings.RememberStyle && (settings.Color != Toolbar.ColorHex || settings.Thickness != Toolbar.Thickness))
+        {
+            settings.Color = Toolbar.ColorHex;
+            settings.Thickness = Toolbar.Thickness;
+            changed = true;
+        }
+        if (settings.BeautifyEnabled != Toolbar.BeautifyEnabled || settings.BeautifyStyle != Toolbar.BeautifyStyle)
+        {
+            settings.BeautifyEnabled = Toolbar.BeautifyEnabled;
+            settings.BeautifyStyle = Toolbar.BeautifyStyle;
+            changed = true;
+        }
+        if (!changed)
         {
             return;
         }
 
-        settings.Color = Toolbar.ColorHex;
-        settings.Thickness = Toolbar.Thickness;
         try
         {
             _settings.Save();

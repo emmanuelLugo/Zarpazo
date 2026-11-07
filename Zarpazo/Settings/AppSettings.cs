@@ -30,6 +30,26 @@ internal sealed class AppSettings
     public string Color { get; set; } = DefaultColor;
     public double Thickness { get; set; } = DefaultThickness;
 
+    /// <summary>Put every copied or saved capture on a background. The style is kept between captures.</summary>
+    public bool BeautifyEnabled { get; set; }
+    public string BeautifyBackground { get; set; } = Output.BeautifyStyle.Default.Background;
+    public int BeautifyPadding { get; set; } = Output.BeautifyStyle.Default.Padding;
+    public int BeautifyRadius { get; set; } = Output.BeautifyStyle.Default.Radius;
+    public bool BeautifyShadow { get; set; } = Output.BeautifyStyle.Default.Shadow;
+
+    [JsonIgnore]
+    public Output.BeautifyStyle BeautifyStyle
+    {
+        get => new(BeautifyBackground, BeautifyPadding, BeautifyRadius, BeautifyShadow);
+        set
+        {
+            BeautifyBackground = value.Background;
+            BeautifyPadding = value.Padding;
+            BeautifyRadius = value.Radius;
+            BeautifyShadow = value.Shadow;
+        }
+    }
+
     [JsonIgnore]
     public HotKeyBinding HotKey
     {
@@ -55,5 +75,10 @@ internal sealed class AppSettings
             HistoryLimit = DefaultHistoryLimit;
         }
         Color ??= DefaultColor;
+        BeautifyStyle = new Output.BeautifyStyle(
+            Output.BeautifyBackground.Find(BeautifyBackground).Key,
+            Output.BeautifyStyle.Nearest(BeautifyPadding, Output.BeautifyStyle.PaddingChoices),
+            Output.BeautifyStyle.Nearest(BeautifyRadius, Output.BeautifyStyle.RadiusChoices),
+            BeautifyShadow);
     }
 }
