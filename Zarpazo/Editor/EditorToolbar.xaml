@@ -302,6 +302,9 @@
                                   ToolTip="El micrófono que se graba. 'Predeterminado de Windows' usa el que Windows tenga elegido." />
                         <CheckBox x:Name="RecordSystemSoundBox" Content="Sonido de Windows" ToolTip="Lo que suena por tus altavoces o auriculares: música, videollamadas, el propio video que veas" Foreground="White" FontFamily="Segoe UI" FontSize="13"
                                   Margin="0,6,0,0" Focusable="False" Click="OnRecordSystemSound" />
+                        <ComboBox x:Name="RecordSpeakersList" Margin="20,4,0,2" FontFamily="Segoe UI" FontSize="12"
+                                  DisplayMemberPath="Name" SelectionChanged="OnRecordSpeakersChosen"
+                                  ToolTip="De qué altavoces o auriculares se toma el sonido. 'Predeterminado de Windows' usa los que Windows tenga elegidos." />
 
                         <Button Margin="0,12,0,0" Focusable="False" Click="OnRecordStart" AutomationProperties.Name="Empezar a grabar">
                             <Button.Template>

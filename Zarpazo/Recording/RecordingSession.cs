@@ -36,7 +36,9 @@ internal sealed class RecordingSession
         _history = history;
         _closed = closed;
         _folder = folder ?? Path.Combine(Path.GetTempPath(), "Zarpazo");
-        _job = options.Format == RecordingFormat.Video ? new VideoJob(region, options) : new GifJob(region);
+        _job = options.Format == RecordingFormat.Video
+            ? new VideoJob(region, options, settings.Current.RecordAudioOffsetMs)
+            : new GifJob(region);
     }
 
     public bool IsCountingDown { get; private set; }
@@ -61,6 +63,7 @@ internal sealed class RecordingSession
         _outline = new RecordingOutline(_region);
         _bar = new RecordingBar();
         _bar.PauseRequested += (_, _) => TogglePause();
+        _bar.GainChanged += (source, gain) => _job.SetSourceGain(source, gain);
         _bar.StopRequested += (_, _) => Stop();
         _bar.CancelRequested += (_, _) => Close();
         _bar.CopyRequested += (_, _) => Copy();

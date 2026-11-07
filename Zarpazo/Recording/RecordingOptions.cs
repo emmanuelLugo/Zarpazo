@@ -10,7 +10,8 @@ internal enum RecordingFormat
 /// <param name="Microphone">Put the microphone in the video.</param>
 /// <param name="SystemSound">Put what Windows is playing (the speakers or headphones) in the video.</param>
 /// <param name="MicrophoneId">Which microphone; empty for the one Windows uses by default.</param>
-internal sealed record RecordingOptions(RecordingFormat Format, bool Microphone, bool SystemSound, string MicrophoneId = "")
+/// <param name="SystemSoundId">Which speakers or headphones to take the sound from; empty for the default ones.</param>
+internal sealed record RecordingOptions(RecordingFormat Format, bool Microphone, bool SystemSound, string MicrophoneId = "", string SystemSoundId = "")
 {
     /// <summary>A GIF has no sound, so the choices only count for a video.</summary>
     public bool HasSound => Format == RecordingFormat.Video && (Microphone || SystemSound);

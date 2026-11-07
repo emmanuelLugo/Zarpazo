@@ -53,25 +53,41 @@ public partial class EditorToolbar : UserControl
         RecordMicrophoneBox.IsChecked = _recording.Microphone;
         RecordSystemSoundBox.IsChecked = _recording.SystemSound;
         // A GIF has no sound, so the boxes only mean something for a video.
-        RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = _recording.Format == RecordingFormat.Video;
+        RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = RecordSpeakersList.IsEnabled
+            = _recording.Format == RecordingFormat.Video;
     }
 
     private void OnRecordButton(object sender, RoutedEventArgs e)
     {
-        FillMicrophones(); // devices come and go, so the list is read each time the panel opens
+        FillDevices(); // devices come and go, so the lists are read each time the panel opens
         RecordPopup.IsOpen = true;
     }
 
-    private void FillMicrophones()
+    private void FillDevices()
     {
         bool wasReady = _recordingReady;
-        _recordingReady = false; // filling the list fires SelectionChanged, which must not overwrite the saved choice
-        var items = new List<AudioDeviceInfo> { new("", "Predeterminado de Windows") };
-        items.AddRange(AudioDevices.Microphones());
-        RecordMicrophoneList.ItemsSource = items;
-        // A microphone that is no longer connected falls back to the default in the list; it is only replaced once the person picks.
-        RecordMicrophoneList.SelectedItem = items.FirstOrDefault(item => item.Id == _recording.MicrophoneId) ?? items[0];
+        _recordingReady = false; // filling a list fires SelectionChanged, which must not overwrite the saved choice
+        Fill(RecordMicrophoneList, AudioDevices.Microphones(), _recording.MicrophoneId);
+        Fill(RecordSpeakersList, AudioDevices.Speakers(), _recording.SystemSoundId);
         _recordingReady = wasReady;
+    }
+
+    private static void Fill(ComboBox list, IReadOnlyList<AudioDeviceInfo> devices, string chosenId)
+    {
+        var items = new List<AudioDeviceInfo> { new("", "Predeterminado de Windows") };
+        items.AddRange(devices);
+        list.ItemsSource = items;
+        // A device that is no longer connected falls back to the default in the list; it is only replaced once the person picks.
+        list.SelectedItem = items.FirstOrDefault(item => item.Id == chosenId) ?? items[0];
+    }
+
+    private void OnRecordSpeakersChosen(object sender, SelectionChangedEventArgs e)
+    {
+        if (_recordingReady && RecordSpeakersList.SelectedItem is AudioDeviceInfo device)
+        {
+            _recording = _recording with { SystemSoundId = device.Id, SystemSound = true };
+            RecordSystemSoundBox.IsChecked = true; // choosing a device means wanting its sound
+        }
     }
 
     private void OnRecordMicrophoneChosen(object sender, SelectionChangedEventArgs e)

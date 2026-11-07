@@ -206,4 +206,20 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.NotEqual(settings.HotKey, settings.RecordHotKey);
     }
+
+    [Fact]
+    public void The_sound_sync_offset_and_output_device_are_read_back_and_odd_offsets_snap_to_the_offered_ones()
+    {
+        var first = new SettingsStore(FilePath);
+        first.Current.RecordAudioOffsetMs = -100;
+        first.Current.RecordingOptions = new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, false, true, "", "speakers-id");
+        first.Save();
+
+        AppSettings second = new SettingsStore(FilePath).Current;
+        Assert.Equal(-100, second.RecordAudioOffsetMs);
+        Assert.Equal("speakers-id", second.RecordingOptions.SystemSoundId);
+
+        File.WriteAllText(FilePath, """{ "RecordAudioOffsetMs": 90 }""");
+        Assert.Equal(100, new SettingsStore(FilePath).Current.RecordAudioOffsetMs);
+    }
 }

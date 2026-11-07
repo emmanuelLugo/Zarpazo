@@ -13,6 +13,7 @@ internal sealed class VideoJob : RecordingJob
 
     private readonly Rectangle _region;
     private readonly RecordingOptions _options;
+    private readonly int _audioOffsetMs;
     private readonly RecordingClock _clock = new();
     private Mp4Writer? _writer;
     private RegionGrabber? _grabber;
@@ -25,10 +26,12 @@ internal sealed class VideoJob : RecordingJob
     private int _width;
     private int _height;
 
-    public VideoJob(Rectangle region, RecordingOptions options)
+    /// <param name="audioOffsetMs">Moves the sound against the picture: negative plays it earlier, positive later.</param>
+    public VideoJob(Rectangle region, RecordingOptions options, int audioOffsetMs = 0)
     {
         _region = region;
         _options = options;
+        _audioOffsetMs = audioOffsetMs;
     }
 
     public override string Label => "video";
@@ -62,7 +65,7 @@ internal sealed class VideoJob : RecordingJob
             }
             if (_options.SystemSound)
             {
-                inputs.Add(AudioInput.SystemSound());
+                inputs.Add(AudioInput.SystemSound(_options.SystemSoundId));
             }
         }
         catch
@@ -78,7 +81,7 @@ internal sealed class VideoJob : RecordingJob
         _grabber = new RegionGrabber(_region, width, height);
         if (inputs.Count > 0)
         {
-            _audio = new AudioRecorder(inputs, _writer, _clock);
+            _audio = new AudioRecorder(inputs, _writer, _clock, _audioOffsetMs);
         }
 
     }
@@ -94,6 +97,8 @@ internal sealed class VideoJob : RecordingJob
         _thread = new Thread(Capture) { IsBackground = true, Name = "Zarpazo video" };
         _thread.Start();
     }
+
+    public override void SetSourceGain(int source, float gain) => _audio?.SetGain(source, gain);
 
     public override void Pause() => _clock.Pause();
 

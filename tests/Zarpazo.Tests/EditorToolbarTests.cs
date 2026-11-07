@@ -257,4 +257,20 @@ public class EditorToolbarTests
             Assert.True(toolbar.RecordSystemSoundBox.IsChecked);
         });
     }
+
+    [Fact]
+    public void Restoring_a_chosen_output_device_keeps_it_and_the_list_waits_for_a_video()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            Assert.False(toolbar.RecordSpeakersList.IsEnabled);
+
+            var saved = new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, false, true, "", "some-speakers");
+            toolbar.RestoreRecording(saved);
+
+            Assert.True(toolbar.RecordSpeakersList.IsEnabled);
+            Assert.Equal(saved, toolbar.RecordingOptions);
+        });
+    }
 }

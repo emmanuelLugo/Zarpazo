@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using Cursors = System.Windows.Input.Cursors;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Brushes = System.Windows.Media.Brushes;
@@ -21,7 +22,12 @@ public partial class RecordingBar : Window
 
     private const double MeterWidth = 44;
 
+    private const float GainStep = 0.1f;
+
     private readonly List<Border> _meterFills = [];
+    private readonly List<(TextBlock Icon, StackPanel Group, AudioMeter Meter)> _meterIcons = [];
+    private readonly List<float> _gains = [];
+    private readonly List<float> _gainBeforeMute = [];
     private Rectangle _region;
 
     public RecordingBar()
@@ -32,6 +38,9 @@ public partial class RecordingBar : Window
         // Only matters when the bar has to sit over the recorded area (a full-screen recording); otherwise it is outside it.
         WindowNative.ExcludeFromScreenCapture(hwnd);
     }
+
+    /// <summary>A source's volume was changed (0 is muted): its position in the list of meters, and the new volume.</summary>
+    internal event Action<int, float>? GainChanged;
 
     internal event EventHandler? PauseRequested;
     internal event EventHandler? StopRequested;
@@ -63,16 +72,7 @@ public partial class RecordingBar : Window
     {
         if (_meterFills.Count != meters.Count)
         {
-            MetersPanel.Children.Clear();
-            _meterFills.Clear();
-            foreach (AudioMeter meter in meters)
-            {
-                var fill = new Border { Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Background = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A)) };
-                var track = new Border { Width = MeterWidth, Height = 6, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Child = fill, ToolTip = meter.Name, VerticalAlignment = VerticalAlignment.Center };
-                var icon = new TextBlock { Text = meter.IsMicrophone ? "\U0001F3A4" : "\U0001F50A", FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 12, Foreground = Brushes.White, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = meter.Name };
-                MetersPanel.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 10, 0), Children = { icon, track } });
-                _meterFills.Add(fill);
-            }
+            BuildMeters(meters);
         }
 
         for (int i = 0; i < meters.Count; i++)
@@ -80,6 +80,82 @@ public partial class RecordingBar : Window
             // Square root: quiet speech is far below full scale and would barely show on a straight scale.
             _meterFills[i].Width = MeterWidth * Math.Clamp(Math.Sqrt(meters[i].Level), 0, 1);
         }
+    }
+
+    // One icon and one bar per source. Clicking the icon mutes it; the wheel over it raises or lowers its volume.
+    private void BuildMeters(IReadOnlyList<AudioMeter> meters)
+    {
+        MetersPanel.Children.Clear();
+        _meterFills.Clear();
+        _meterIcons.Clear();
+        _gains.Clear();
+        _gainBeforeMute.Clear();
+
+        for (int i = 0; i < meters.Count; i++)
+        {
+            int source = i;
+            AudioMeter meter = meters[i];
+            var fill = new Border { Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Background = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A)) };
+            var track = new Border { Width = MeterWidth, Height = 6, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Child = fill, VerticalAlignment = VerticalAlignment.Center };
+            var icon = new TextBlock { FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 12, Foreground = Brushes.White, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand };
+            var group = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 10, 0), Background = Brushes.Transparent, Children = { icon, track } };
+            icon.MouseLeftButtonDown += (_, e) =>
+            {
+                ToggleMute(source);
+                e.Handled = true;
+            };
+            group.MouseWheel += (_, e) =>
+            {
+                SetGain(source, _gains[source] + (e.Delta > 0 ? GainStep : -GainStep));
+                e.Handled = true;
+            };
+
+            MetersPanel.Children.Add(group);
+            _meterFills.Add(fill);
+            _meterIcons.Add((icon, group, meter));
+            _gains.Add(meter.Gain);
+            _gainBeforeMute.Add(meter.Gain > 0 ? meter.Gain : 1f);
+            ShowSource(source);
+        }
+    }
+
+    private void ToggleMute(int source)
+    {
+        if (_gains[source] > 0)
+        {
+            _gainBeforeMute[source] = _gains[source];
+            SetGain(source, 0);
+        }
+        else
+        {
+            SetGain(source, _gainBeforeMute[source]);
+        }
+    }
+
+    private void SetGain(int source, float gain)
+    {
+        gain = (float)Math.Clamp(Math.Round(gain * 10) / 10, 0, AudioMixer.MaxGain); // steps of 10 %, so the label stays tidy
+        if (gain == _gains[source])
+        {
+            return;
+        }
+
+        _gains[source] = gain;
+        ShowSource(source);
+        GainChanged?.Invoke(source, gain);
+    }
+
+    // The icon, the hint and the dimming say whether a source is muted, and how loud it is otherwise.
+    private void ShowSource(int source)
+    {
+        (TextBlock icon, StackPanel group, AudioMeter meter) = _meterIcons[source];
+        float gain = _gains[source];
+        icon.Text = gain == 0 ? "\U0001F507" : meter.IsMicrophone ? "\U0001F3A4" : "\U0001F50A";
+        string state = gain == 0 ? "silenciado" : $"{gain:P0}";
+        string hint = $"{meter.Name} · {state}\nClic: silenciar · Rueda: volumen";
+        icon.ToolTip = hint;
+        group.ToolTip = hint;
+        group.Opacity = gain == 0 ? 0.5 : 1;
     }
 
     internal void ShowEncoding(string message)

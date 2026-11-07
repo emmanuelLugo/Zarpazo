@@ -114,4 +114,52 @@ public sealed class AudioMixerTests
         }
         Assert.True(mixer.Levels[0] < 0.01f, "it should fade out to nothing");
     }
+
+    [Fact]
+    public void A_muted_source_is_not_heard_but_the_others_are()
+    {
+        var mixer = new AudioMixer([new Constant(0.5f), new Constant(0.25f)]);
+        mixer.SetGain(0, 0f);
+
+        short[] samples = Samples(mixer.NextChunk());
+
+        Assert.All(samples, s => Assert.InRange(s, 8185, 8195)); // only the 0.25 one
+    }
+
+    [Fact]
+    public void The_volume_scales_a_source_and_can_be_changed_while_mixing()
+    {
+        var mixer = new AudioMixer([new Constant(0.4f)]);
+
+        mixer.SetGain(0, 0.5f);
+        short[] half = Samples(mixer.NextChunk());
+        mixer.SetGain(0, 2f);
+        short[] doubled = Samples(mixer.NextChunk());
+
+        Assert.All(half, s => Assert.InRange(s, 6550, 6560));     // 0.2
+        Assert.All(doubled, s => Assert.InRange(s, 26210, 26220)); // 0.8
+    }
+
+    [Fact]
+    public void The_volume_is_kept_between_nothing_and_twice_as_loud()
+    {
+        var mixer = new AudioMixer([new Constant(0.1f)]);
+
+        mixer.SetGain(0, -3f);
+        Assert.Equal(0f, mixer.Gains[0]);
+        mixer.SetGain(0, 50f);
+
+        Assert.Equal(AudioMixer.MaxGain, mixer.Gains[0]);
+    }
+
+    [Fact]
+    public void The_level_shown_is_what_is_recorded_so_a_muted_source_shows_none()
+    {
+        var mixer = new AudioMixer([new Constant(0.8f)]);
+        mixer.SetGain(0, 0f);
+
+        mixer.NextChunk();
+
+        Assert.Equal(0f, mixer.Levels[0]);
+    }
 }

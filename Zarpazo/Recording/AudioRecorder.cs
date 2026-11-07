@@ -7,12 +7,15 @@ internal sealed class AudioRecorder : IDisposable
     private readonly Mp4Writer _writer;
     private readonly RecordingClock _clock;
     private readonly AudioMixer _mixer;
+    private readonly int _offsetMs;
     private Thread? _thread;
     private volatile bool _stopRequested;
 
     /// <param name="clock">The recording's clock, shared with the video so that picture and sound start together.</param>
-    public AudioRecorder(IReadOnlyList<AudioInput> inputs, Mp4Writer writer, RecordingClock clock)
+    /// <param name="offsetMs">Moves the sound against the picture: negative plays it earlier, positive later.</param>
+    public AudioRecorder(IReadOnlyList<AudioInput> inputs, Mp4Writer writer, RecordingClock clock, int offsetMs = 0)
     {
+        _offsetMs = offsetMs;
         _inputs = inputs;
         _writer = writer;
         _clock = clock;
@@ -21,7 +24,10 @@ internal sealed class AudioRecorder : IDisposable
 
     /// <summary>How loud each source is at the moment.</summary>
     public IReadOnlyList<AudioMeter> Meters =>
-        _inputs.Select((input, i) => new AudioMeter(input.Name, input.IsMicrophone, _mixer.Levels[i])).ToList();
+        _inputs.Select((input, i) => new AudioMeter(input.Name, input.IsMicrophone, _mixer.Levels[i], _mixer.Gains[i])).ToList();
+
+    /// <summary>Changes the volume of one source (0 mutes it) while recording.</summary>
+    public void SetGain(int source, float gain) => _mixer.SetGain(source, gain);
 
     public void Start()
     {
@@ -51,6 +57,10 @@ internal sealed class AudioRecorder : IDisposable
     private void Run()
     {
         long chunk = 0;
+        if (_offsetMs > 0)
+        {
+            _writer.AddAudio(AudioTiming.Silence(_offsetMs), TimeSpan.Zero); // the sound starts late, so what comes before it is silent
+        }
         while (!_stopRequested)
         {
             if (_clock.IsPaused)
@@ -73,7 +83,10 @@ internal sealed class AudioRecorder : IDisposable
                 input.TrimBacklog();
             }
             // The time stamp comes from counting chunks, not from the clock: the sound stays one unbroken stream.
-            _writer.AddAudio(_mixer.NextChunk(), TimeSpan.FromMilliseconds(chunk * AudioMixer.ChunkMilliseconds));
+            if (AudioTiming.Shift(_mixer.NextChunk(), chunk * AudioMixer.ChunkMilliseconds, _offsetMs) is var (pcm, time))
+            {
+                _writer.AddAudio(pcm, TimeSpan.FromMilliseconds(time));
+            }
             chunk++;
         }
     }

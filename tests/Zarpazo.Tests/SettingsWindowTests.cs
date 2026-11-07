@@ -23,4 +23,20 @@ public sealed class SettingsWindowTests
             window.Close();
         });
     }
+
+    [Fact]
+    public void The_window_shows_the_saved_sound_offset()
+    {
+        Sta.Run(() =>
+        {
+            string path = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"), "settings.json");
+            var store = new SettingsStore(path);
+            store.Current.RecordAudioOffsetMs = -50;
+
+            var window = new SettingsWindow(store, new StartupRegistration(@"Software\Zarpazo.Tests", "Zarpazo", @"C:\Zarpazo\Zarpazo.exe"), _ => true, _ => true);
+
+            Assert.Equal(2, window.AudioOffsetBox.SelectedIndex); // the third option: "adelantar 50 ms"
+            window.Close();
+        });
+    }
 }

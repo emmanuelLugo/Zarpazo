@@ -62,6 +62,9 @@ internal sealed class AudioInput : IDisposable
     /// <summary>The sound as 48 kHz stereo floats.</summary>
     public ISampleProvider Samples { get; }
 
+    /// <summary>An input fed by any source of sound; the tests use it to play a known sound without any hardware.</summary>
+    internal static AudioInput FromCapture(IWaveIn capture, string name, bool isMicrophone) => new(capture, name, isMicrophone);
+
     /// <param name="deviceId">The microphone to use, or empty for the one Windows uses by default.</param>
     /// <exception cref="InvalidOperationException">There is no such microphone.</exception>
     public static AudioInput Microphone(string deviceId = "")
@@ -82,17 +85,25 @@ internal sealed class AudioInput : IDisposable
         }
     }
 
-    /// <summary>Whatever is coming out of the default speakers or headphones.</summary>
-    /// <exception cref="InvalidOperationException">There is no output device.</exception>
-    public static AudioInput SystemSound()
+    /// <param name="deviceId">The speakers or headphones to take the sound from, or empty for the ones Windows uses by default.</param>
+    /// <exception cref="InvalidOperationException">There is no such output device.</exception>
+    public static AudioInput SystemSound(string deviceId = "")
     {
         try
         {
-            return new AudioInput(new WasapiLoopbackCapture(), "Sonido de Windows", isMicrophone: false);
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                return new AudioInput(new WasapiLoopbackCapture(), "Sonido de Windows", isMicrophone: false);
+            }
+
+            using var enumerator = new MMDeviceEnumerator();
+            return new AudioInput(new WasapiLoopbackCapture(enumerator.GetDevice(deviceId)), "Sonido de Windows", isMicrophone: false);
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            throw new InvalidOperationException("No se encontró un dispositivo de salida de sonido.");
+            throw new InvalidOperationException(string.IsNullOrEmpty(deviceId)
+                ? "No se encontró un dispositivo de salida de sonido."
+                : "El dispositivo de sonido elegido no está disponible. Elige otro en el panel de grabación.");
         }
     }
 

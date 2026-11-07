@@ -24,6 +24,11 @@ internal abstract class RecordingJob
     /// <summary>The first picture of the recording, for the history; available once <see cref="FinishAsync"/> has run.</summary>
     public BitmapSource? Thumbnail { get; protected set; }
 
+    /// <summary>Changes the volume of a sound source while recording; 0 mutes it. Does nothing when there is no sound.</summary>
+    public virtual void SetSourceGain(int source, float gain)
+    {
+    }
+
     /// <summary>The sound sources and how loud each is, for the bar while recording; none for a GIF or a silent video.</summary>
     public virtual IReadOnlyList<AudioMeter> Meters => [];
 

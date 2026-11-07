@@ -32,6 +32,7 @@ public partial class SettingsWindow : Window
         RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
         RecordHotKey.Value = settings.RecordHotKey;
         CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
+        AudioOffsetBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.AudioOffsetChoices, settings.RecordAudioOffsetMs));
         StartupBox.IsChecked = startup.IsEnabled;
         CopyAsFileBox.IsChecked = settings.CopyAsFile;
         FolderBox.Text = settings.SaveFolder;
@@ -107,6 +108,7 @@ public partial class SettingsWindow : Window
         settings.HotKey = CaptureHotKey.Value;
         settings.RecordHotKey = RecordHotKey.Value;
         settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];
+        settings.RecordAudioOffsetMs = AppSettings.AudioOffsetChoices[Math.Max(0, AudioOffsetBox.SelectedIndex)];
         settings.CopyAsFile = CopyAsFileBox.IsChecked == true;
         settings.SaveFolder = FolderBox.Text.Trim();
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";

@@ -88,6 +88,22 @@
                         </ComboBox>
                     </StackPanel>
 
+                    <TextBlock Style="{StaticResource Section}" Text="Sonido en los videos" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Ajuste de sincronía" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox x:Name="AudioOffsetBox" Width="190">
+                            <ComboBoxItem Content="Adelantar el sonido 200 ms" />
+                            <ComboBoxItem Content="Adelantar el sonido 100 ms" />
+                            <ComboBoxItem Content="Adelantar el sonido 50 ms" />
+                            <ComboBoxItem Content="Sin ajuste" />
+                            <ComboBoxItem Content="Retrasar el sonido 50 ms" />
+                            <ComboBoxItem Content="Retrasar el sonido 100 ms" />
+                            <ComboBoxItem Content="Retrasar el sonido 200 ms" />
+                        </ComboBox>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Si al ver un video el sonido llega más tarde que la imagen, adelántalo; si llega antes, retrásalo. Depende del equipo (por ejemplo, los auriculares Bluetooth suelen ir con retraso)." />
+
                 </StackPanel>
             </TabItem>
 

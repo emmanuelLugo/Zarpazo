@@ -9,10 +9,17 @@ internal sealed class AudioMixer(IReadOnlyList<ISampleProvider> sources)
     public const int FramesPerChunk = Mp4Writer.AudioSampleRate * ChunkMilliseconds / 1000;
 
     private const int SamplesPerChunk = FramesPerChunk * Mp4Writer.AudioChannels;
+    public const float MaxGain = 2f;
     private const float LevelDecay = 0.92f; // per chunk: about a third of the peak is left after a quarter of a second
     private readonly float[] _mix = new float[SamplesPerChunk];
     private readonly float[] _read = new float[SamplesPerChunk];
     private readonly float[] _levels = new float[sources.Count];
+    private readonly float[] _gains = Enumerable.Repeat(1f, sources.Count).ToArray();
+
+    /// <summary>The volume of each source: 0 mutes it, 1 leaves it as it comes. Can be changed while recording.</summary>
+    public IReadOnlyList<float> Gains => _gains;
+
+    public void SetGain(int source, float gain) => _gains[source] = Math.Clamp(gain, 0f, MaxGain);
 
     /// <summary>How loud each source is right now (0 to 1, in the order given), falling off gradually so that it can be read by eye.</summary>
     public IReadOnlyList<float> Levels => _levels;
@@ -29,10 +36,12 @@ internal sealed class AudioMixer(IReadOnlyList<ISampleProvider> sources)
             Array.Clear(_read);
             int count = sources[s].Read(_read, 0, SamplesPerChunk);
             float peak = 0;
+            float gain = _gains[s];
             for (int i = 0; i < count; i++)
             {
-                _mix[i] += _read[i];
-                peak = Math.Max(peak, Math.Abs(_read[i]));
+                float value = _read[i] * gain;
+                _mix[i] += value;
+                peak = Math.Max(peak, Math.Abs(value));
             }
             _levels[s] = Math.Max(peak, _levels[s] * LevelDecay);
         }

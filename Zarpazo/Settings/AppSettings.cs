@@ -13,6 +13,9 @@ internal sealed class AppSettings
     /// <summary>The countdowns the settings window offers.</summary>
     public static readonly int[] CountdownChoices = [0, 3, 5];
 
+    /// <summary>The sound offsets the settings window offers, in milliseconds.</summary>
+    public static readonly int[] AudioOffsetChoices = [-200, -100, -50, 0, 50, 100, 200];
+
     public uint HotKeyModifiers { get; set; } = HotKeyBinding.Default.Modifiers;
     public uint HotKeyVirtualKey { get; set; } = HotKeyBinding.Default.VirtualKey;
     public uint RecordHotKeyModifiers { get; set; } = HotKeyBinding.DefaultRecord.Modifiers;
@@ -50,19 +53,29 @@ internal sealed class AppSettings
     /// <summary>Seconds counted down before a recording starts: 0, 3 or 5.</summary>
     public int RecordCountdownSeconds { get; set; } = 3;
 
+    /// <summary>The speakers or headphones "Sonido de Windows" is taken from; empty means the default ones.</summary>
+    public string RecordSystemSoundId { get; set; } = "";
+
+    /// <summary>
+    /// Milliseconds the sound is moved against the picture in a video: negative plays it earlier, positive later.
+    /// For when the sound comes out of step, which depends on the equipment.
+    /// </summary>
+    public int RecordAudioOffsetMs { get; set; }
+
     /// <summary>The microphone chosen for videos; empty means the one Windows uses by default.</summary>
     public string RecordMicrophoneId { get; set; } = "";
 
     [JsonIgnore]
     public Recording.RecordingOptions RecordingOptions
     {
-        get => new(RecordFormat == "video" ? Recording.RecordingFormat.Video : Recording.RecordingFormat.Gif, RecordMicrophone, RecordSystemSound, RecordMicrophoneId ?? "");
+        get => new(RecordFormat == "video" ? Recording.RecordingFormat.Video : Recording.RecordingFormat.Gif, RecordMicrophone, RecordSystemSound, RecordMicrophoneId ?? "", RecordSystemSoundId ?? "");
         set
         {
             RecordFormat = value.Format == Recording.RecordingFormat.Video ? "video" : "gif";
             RecordMicrophone = value.Microphone;
             RecordSystemSound = value.SystemSound;
             RecordMicrophoneId = value.MicrophoneId;
+            RecordSystemSoundId = value.SystemSoundId;
         }
     }
 
@@ -125,6 +138,7 @@ internal sealed class AppSettings
         Color ??= DefaultColor;
         RecordFormat = RecordFormat?.ToLowerInvariant() == "video" ? "video" : "gif";
         RecordCountdownSeconds = CountdownChoices.MinBy(choice => Math.Abs(choice - RecordCountdownSeconds));
+        RecordAudioOffsetMs = AudioOffsetChoices.MinBy(choice => Math.Abs(choice - RecordAudioOffsetMs));
         BeautifyStyle = new Output.BeautifyStyle(
             Output.BeautifyBackground.Find(BeautifyBackground).Key,
             Output.BeautifyStyle.Nearest(BeautifyPadding, Output.BeautifyStyle.PaddingChoices),
