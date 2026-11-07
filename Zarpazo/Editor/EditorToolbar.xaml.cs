@@ -52,6 +52,8 @@ public partial class EditorToolbar : UserControl
         (_recording.Format == RecordingFormat.Video ? RecordVideoChoice : RecordGifChoice).IsChecked = true;
         RecordMicrophoneBox.IsChecked = _recording.Microphone;
         RecordSystemSoundBox.IsChecked = _recording.SystemSound;
+        RecordHighlightBox.IsChecked = _recording.HighlightCursor;
+        RecordKeysBox.IsChecked = _recording.ShowKeys;
         // A GIF has no sound, so the boxes only mean something for a video.
         RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = RecordSpeakersList.IsEnabled
             = _recording.Format == RecordingFormat.Video;
@@ -112,6 +114,12 @@ public partial class EditorToolbar : UserControl
 
     private void OnRecordMicrophone(object sender, RoutedEventArgs e) =>
         _recording = _recording with { Microphone = RecordMicrophoneBox.IsChecked == true };
+
+    private void OnRecordHighlight(object sender, RoutedEventArgs e) =>
+        _recording = _recording with { HighlightCursor = RecordHighlightBox.IsChecked == true };
+
+    private void OnRecordKeys(object sender, RoutedEventArgs e) =>
+        _recording = _recording with { ShowKeys = RecordKeysBox.IsChecked == true };
 
     private void OnRecordSystemSound(object sender, RoutedEventArgs e) =>
         _recording = _recording with { SystemSound = RecordSystemSoundBox.IsChecked == true };

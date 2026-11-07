@@ -11,11 +11,14 @@ internal sealed class RegionGrabber : IDisposable
     private readonly Rectangle _region;
     private readonly Bitmap _full;
     private readonly Bitmap? _scaled; // only when the output is not the size of the area
+    private readonly RecordingEffects? _effects;
 
     /// <param name="region">The part of the screen, in physical pixels.</param>
-    public RegionGrabber(Rectangle region, int width, int height)
+    /// <param name="effects">What to draw over the pictures (a halo around the pointer, the shortcuts pressed); none for plain pictures.</param>
+    public RegionGrabber(Rectangle region, int width, int height, RecordingEffects? effects = null)
     {
         _region = region;
+        _effects = effects;
         Width = width;
         Height = height;
         _full = new Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb);
@@ -45,12 +48,16 @@ internal sealed class RegionGrabber : IDisposable
     }
 
     /// <summary>Fills <paramref name="into"/> (Width x Height x 4 bytes, BGRA) with what the area shows right now.</summary>
-    public void Grab(byte[] into)
+    /// <param name="timeMs">The time in the recording, for effects that move (the ring that fades after a click).</param>
+    public void Grab(byte[] into, long timeMs = 0)
     {
+        _effects?.Update(timeMs);
         using (Graphics graphics = Graphics.FromImage(_full))
         {
             graphics.CopyFromScreen(_region.Location, Point.Empty, _region.Size);
+            _effects?.DrawUnderPointer(graphics, _region.Location, timeMs);
             CursorPainter.Draw(graphics, _region.Location);
+            _effects?.DrawKeys(graphics, _region.Size);
         }
 
         Bitmap source = _full;

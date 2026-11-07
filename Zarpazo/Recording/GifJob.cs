@@ -12,9 +12,9 @@ internal sealed class GifJob : RecordingJob
     private readonly ScreenRecorder _recorder;
     private string _folder = "";
 
-    public GifJob(Rectangle region)
+    public GifJob(Rectangle region, RecordingEffects? effects = null)
     {
-        _recorder = new ScreenRecorder(region, TimeSpan.FromSeconds(MaxSeconds), MaxBytes);
+        _recorder = new ScreenRecorder(region, TimeSpan.FromSeconds(MaxSeconds), MaxBytes, effects);
     }
 
     public override string Label => "GIF";

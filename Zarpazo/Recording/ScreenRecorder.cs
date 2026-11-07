@@ -12,6 +12,7 @@ internal sealed class ScreenRecorder
     private readonly Rectangle _region;
     private readonly TimeSpan _maxDuration;
     private readonly long _maxBytes;
+    private readonly RecordingEffects? _effects;
     private readonly RecordingClock _clock = new();
     private readonly List<RecordedFrame> _frames = [];
     private Thread? _thread;
@@ -19,9 +20,10 @@ internal sealed class ScreenRecorder
     private long _bytes;
 
     /// <param name="region">The part of the screen, in physical pixels.</param>
-    public ScreenRecorder(Rectangle region, TimeSpan maxDuration, long maxBytes)
+    public ScreenRecorder(Rectangle region, TimeSpan maxDuration, long maxBytes, RecordingEffects? effects = null)
     {
         _region = region;
+        _effects = effects;
         _maxDuration = maxDuration;
         _maxBytes = maxBytes;
         (Width, Height) = RegionGrabber.FitSize(region, MaxSide, even: false);
@@ -61,7 +63,7 @@ internal sealed class ScreenRecorder
 
     private void Run()
     {
-        using var grabber = new RegionGrabber(_region, Width, Height);
+        using var grabber = new RegionGrabber(_region, Width, Height, _effects);
         byte[] current = new byte[Width * Height * BytesPerPixel];
         byte[]? previous = null;
         const int interval = 1000 / FramesPerSecond;
@@ -84,7 +86,7 @@ internal sealed class ScreenRecorder
             // A slow frame doesn't make the following ones rush to catch up.
             next = Math.Max(next + interval, now);
 
-            grabber.Grab(current);
+            grabber.Grab(current, now);
             if (previous == null)
             {
                 Keep(new RecordedFrame(0, 0, Width, Height, (byte[])current.Clone(), (int)now));

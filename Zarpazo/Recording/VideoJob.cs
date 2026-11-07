@@ -78,7 +78,7 @@ internal sealed class VideoJob : RecordingJob
         }
 
         _writer = new Mp4Writer(_path, width, height, FramesPerSecond, withAudio: inputs.Count > 0);
-        _grabber = new RegionGrabber(_region, width, height);
+        _grabber = new RegionGrabber(_region, width, height, RecordingEffects.FromOptions(_options));
         if (inputs.Count > 0)
         {
             _audio = new AudioRecorder(inputs, _writer, _clock, _audioOffsetMs);
@@ -191,7 +191,7 @@ internal sealed class VideoJob : RecordingJob
 
             // The array goes into the encoder's queue and stays there, so every picture needs its own.
             var pixels = new byte[grabber.Width * grabber.Height * 4];
-            grabber.Grab(pixels);
+            grabber.Grab(pixels, now);
             _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
             _writer!.AddVideo(pixels, TimeSpan.FromMilliseconds(now)); // dropped, not queued, if the encoder is a second behind
 

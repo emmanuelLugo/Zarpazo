@@ -38,7 +38,7 @@ internal sealed class RecordingSession
         _folder = folder ?? Path.Combine(Path.GetTempPath(), "Zarpazo");
         _job = options.Format == RecordingFormat.Video
             ? new VideoJob(region, options, settings.Current.RecordAudioOffsetMs)
-            : new GifJob(region);
+            : new GifJob(region, RecordingEffects.FromOptions(options));
     }
 
     public bool IsCountingDown { get; private set; }

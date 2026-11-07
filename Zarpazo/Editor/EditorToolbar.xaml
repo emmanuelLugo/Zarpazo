@@ -306,6 +306,14 @@
                                   DisplayMemberPath="Name" SelectionChanged="OnRecordSpeakersChosen"
                                   ToolTip="De qué altavoces o auriculares se toma el sonido. 'Predeterminado de Windows' usa los que Windows tenga elegidos." />
 
+                        <TextBlock Text="Efectos (GIF y video)" Style="{StaticResource PanelLabel}" />
+                        <CheckBox x:Name="RecordHighlightBox" Content="Resaltar el cursor y los clics" Foreground="White" FontFamily="Segoe UI" FontSize="13"
+                                  ToolTip="Un halo alrededor del puntero y un anillo en cada clic, para que se siga mejor lo que haces"
+                                  Focusable="False" Click="OnRecordHighlight" />
+                        <CheckBox x:Name="RecordKeysBox" Content="Mostrar atajos de teclado" Foreground="White" FontFamily="Segoe UI" FontSize="13"
+                                  ToolTip="Muestra Ctrl+C, Alt+Tab, Enter, F5… Nunca muestra las letras que escribes, para que una contraseña no quede a la vista"
+                                  Margin="0,6,0,0" Focusable="False" Click="OnRecordKeys" />
+
                         <Button Margin="0,12,0,0" Focusable="False" Click="OnRecordStart" AutomationProperties.Name="Empezar a grabar">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">

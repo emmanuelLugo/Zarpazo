@@ -49,6 +49,8 @@ internal sealed class AppSettings
     public string RecordFormat { get; set; } = "gif";
     public bool RecordMicrophone { get; set; }
     public bool RecordSystemSound { get; set; }
+    public bool RecordHighlightCursor { get; set; }
+    public bool RecordShowKeys { get; set; }
 
     /// <summary>Seconds counted down before a recording starts: 0, 3 or 5.</summary>
     public int RecordCountdownSeconds { get; set; } = 3;
@@ -68,7 +70,8 @@ internal sealed class AppSettings
     [JsonIgnore]
     public Recording.RecordingOptions RecordingOptions
     {
-        get => new(RecordFormat == "video" ? Recording.RecordingFormat.Video : Recording.RecordingFormat.Gif, RecordMicrophone, RecordSystemSound, RecordMicrophoneId ?? "", RecordSystemSoundId ?? "");
+        get => new(RecordFormat == "video" ? Recording.RecordingFormat.Video : Recording.RecordingFormat.Gif, RecordMicrophone, RecordSystemSound, RecordMicrophoneId ?? "", RecordSystemSoundId ?? "",
+            RecordHighlightCursor, RecordShowKeys);
         set
         {
             RecordFormat = value.Format == Recording.RecordingFormat.Video ? "video" : "gif";
@@ -76,6 +79,8 @@ internal sealed class AppSettings
             RecordSystemSound = value.SystemSound;
             RecordMicrophoneId = value.MicrophoneId;
             RecordSystemSoundId = value.SystemSoundId;
+            RecordHighlightCursor = value.HighlightCursor;
+            RecordShowKeys = value.ShowKeys;
         }
     }
 
