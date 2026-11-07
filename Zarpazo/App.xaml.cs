@@ -19,6 +19,8 @@ public partial class App : Application
     private Mutex? _instanceMutex;
     private TrayIcon? _tray;
     private GlobalHotKey? _hotKey;
+    private GlobalHotKey? _recordHotKey;
+    private Rectangle? _lastRecordingRegion; // what the recording shortcut repeats
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
@@ -44,11 +46,17 @@ public partial class App : Application
         {
             _tray.ShowWarning($"Otra aplicación ya usa {_settings.Current.HotKey.Describe()}. Puedes cambiar el atajo en Configuración o capturar desde este icono.");
         }
+        _recordHotKey = new GlobalHotKey(RecordFromHotKey);
+        if (!_recordHotKey.TryRegister(_settings.Current.RecordHotKey))
+        {
+            _tray.ShowWarning($"Otra aplicación ya usa {_settings.Current.RecordHotKey.Describe()}, el atajo de grabación. Puedes cambiarlo en Configuración.");
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
         _hotKey?.Dispose();
+        _recordHotKey?.Dispose();
         _tray?.Dispose();
         _instanceMutex?.Dispose();
         base.OnExit(e);
@@ -124,7 +132,8 @@ public partial class App : Application
 
         // While the shortcut is registered Windows keeps the key from the window, so it couldn't be recorded.
         _hotKey!.Unregister();
-        _settingsWindow = new SettingsWindow(_settings, new StartupRegistration(), _hotKey.TryRegister);
+        _recordHotKey!.Unregister();
+        _settingsWindow = new SettingsWindow(_settings, new StartupRegistration(), _hotKey.TryRegister, _recordHotKey.TryRegister);
         _settingsWindow.Closed += (_, _) =>
         {
             _settingsWindow = null;
@@ -132,13 +141,39 @@ public partial class App : Application
             {
                 _tray!.ShowWarning($"No se pudo activar {_settings.Current.HotKey.Describe()}: otra aplicación lo usa.");
             }
+            if (!_recordHotKey.TryRegister(_settings.Current.RecordHotKey))
+            {
+                _tray!.ShowWarning($"No se pudo activar {_settings.Current.RecordHotKey.Describe()}: otra aplicación lo usa.");
+            }
         };
         _settingsWindow.Show();
+    }
+
+    // One key for the whole recording: it stops what is running, repeats the last area, or asks for an area the first time.
+    private void RecordFromHotKey()
+    {
+        if (_recording is { IsRecording: true } or { IsCountingDown: true })
+        {
+            _recording.Stop();
+        }
+        else if (_overlay != null)
+        {
+            return; // choosing an area right now
+        }
+        else if (_lastRecordingRegion is { } region)
+        {
+            BeginRecording(region, _settings.Current.RecordingOptions);
+        }
+        else
+        {
+            ShowOverlay(); // no area yet: pick one, then press the record button
+        }
     }
 
     // Starts recording once the overlay has gone, so it can't end up in the first pictures.
     private async void BeginRecording(Rectangle region, RecordingOptions options)
     {
+        _lastRecordingRegion = region;
         await Task.Delay(MenuCloseDelayMs);
         _recording?.Close(); // a finished one still on screen makes way for the new one
         var session = new RecordingSession(region, options, _settings, () => _recording = null);

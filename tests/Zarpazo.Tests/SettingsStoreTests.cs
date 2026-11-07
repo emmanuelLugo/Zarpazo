@@ -180,4 +180,30 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.Equal(5, new SettingsStore(FilePath).Current.RecordCountdownSeconds);
     }
+
+    [Fact]
+    public void The_recording_shortcut_starts_as_ctrl_alt_r_and_is_read_back()
+    {
+        var first = new SettingsStore(FilePath);
+        Assert.Equal(HotKeyBinding.DefaultRecord, first.Current.RecordHotKey);
+
+        first.Current.RecordHotKey = new HotKeyBinding(HotKeyBinding.Control | HotKeyBinding.Shift, 0x47);
+        first.Save();
+
+        Assert.Equal(new HotKeyBinding(HotKeyBinding.Control | HotKeyBinding.Shift, 0x47), new SettingsStore(FilePath).Current.RecordHotKey);
+    }
+
+    [Fact]
+    public void A_recording_shortcut_that_would_break_typing_or_repeats_the_capture_one_falls_back_to_the_default()
+    {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(FilePath, """{ "RecordHotKeyModifiers": 0, "RecordHotKeyVirtualKey": 82 }"""); // the letter R alone
+        Assert.Equal(HotKeyBinding.DefaultRecord, new SettingsStore(FilePath).Current.RecordHotKey);
+
+        // The same combination as the capture shortcut (Ctrl+Alt+R for both).
+        File.WriteAllText(FilePath, """{ "HotKeyModifiers": 3, "HotKeyVirtualKey": 82, "RecordHotKeyModifiers": 3, "RecordHotKeyVirtualKey": 82 }""");
+        AppSettings settings = new SettingsStore(FilePath).Current;
+
+        Assert.NotEqual(settings.HotKey, settings.RecordHotKey);
+    }
 }

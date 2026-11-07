@@ -14,7 +14,12 @@ internal readonly record struct HotKeyBinding(uint Modifiers, uint VirtualKey)
     private const uint VkF1 = 0x70;
     private const uint VkF24 = 0x87;
 
+    private const uint VkR = 0x52;
+
     public static HotKeyBinding Default => new(0, VkSnapshot);
+
+    /// <summary>Ctrl+Alt+R: starts or stops a recording of the last area.</summary>
+    public static HotKeyBinding DefaultRecord => new(Control | Alt, VkR);
 
     /// <summary>
     /// A shortcut that would break typing is refused: a letter alone, or with only Shift, would be taken from every

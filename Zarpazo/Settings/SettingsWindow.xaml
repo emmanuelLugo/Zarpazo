@@ -1,6 +1,7 @@
 <Window x:Class="Zarpazo.Settings.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Zarpazo.Settings"
         Title="Configuración de Zarpazo"
         Width="480"
         SizeToContent="Height"
@@ -37,12 +38,7 @@
                     <CheckBox x:Name="StartupBox" Content="Iniciar Zarpazo con Windows" />
 
                     <TextBlock Style="{StaticResource Section}" Text="Atajo de captura" />
-                    <StackPanel Orientation="Horizontal">
-                        <TextBox x:Name="HotKeyBox" Width="220" IsReadOnly="True" IsReadOnlyCaretVisible="False"
-                                 Padding="4,3" PreviewKeyDown="OnHotKeyKeyDown" PreviewKeyUp="OnHotKeyKeyUp" />
-                        <Button Content="Restablecer" Margin="8,0,0,0" Click="OnResetHotKey" />
-                    </StackPanel>
-                    <TextBlock x:Name="HotKeyHint" Style="{StaticResource Hint}" />
+                    <local:HotKeyPicker x:Name="CaptureHotKey" />
 
                     <TextBlock Style="{StaticResource Section}" Text="Copiar" />
                     <CheckBox x:Name="CopyAsFileBox" Content="Copiar también como archivo PNG" />
@@ -74,6 +70,24 @@
                     <CheckBox x:Name="KeepHistoryBox" Content="Guardar un historial de las capturas" />
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Guarda en este equipo las últimas 100 capturas que copias o guardas, para volver a usarlas desde el icono de la bandeja. Al desactivarlo no se borra lo ya guardado." />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Grabación">
+                <StackPanel Margin="14,0,14,14">
+                    <TextBlock Style="{StaticResource Section}" Text="Atajo" />
+                    <local:HotKeyPicker x:Name="RecordHotKey" Margin="0,4,0,0" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Empieza una grabación de la última zona grabada, con lo último elegido en el panel de grabación (GIF o video, sonido), y la detiene. La primera vez abre la captura para elegir la zona." />
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Cuenta atrás antes de grabar" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox x:Name="CountdownBox" Width="150">
+                            <ComboBoxItem Content="Sin cuenta atrás" />
+                            <ComboBoxItem Content="3 segundos" />
+                            <ComboBoxItem Content="5 segundos" />
+                        </ComboBox>
+                    </StackPanel>
+
                 </StackPanel>
             </TabItem>
 

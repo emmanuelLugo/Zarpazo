@@ -15,6 +15,8 @@ internal sealed class AppSettings
 
     public uint HotKeyModifiers { get; set; } = HotKeyBinding.Default.Modifiers;
     public uint HotKeyVirtualKey { get; set; } = HotKeyBinding.Default.VirtualKey;
+    public uint RecordHotKeyModifiers { get; set; } = HotKeyBinding.DefaultRecord.Modifiers;
+    public uint RecordHotKeyVirtualKey { get; set; } = HotKeyBinding.DefaultRecord.VirtualKey;
     public bool CopyAsFile { get; set; } = true;
 
     /// <summary>Where the Save dialog opens. Empty means the Pictures folder.</summary>
@@ -78,6 +80,17 @@ internal sealed class AppSettings
     }
 
     [JsonIgnore]
+    public HotKeyBinding RecordHotKey
+    {
+        get => new(RecordHotKeyModifiers, RecordHotKeyVirtualKey);
+        set
+        {
+            RecordHotKeyModifiers = value.Modifiers;
+            RecordHotKeyVirtualKey = value.VirtualKey;
+        }
+    }
+
+    [JsonIgnore]
     public HotKeyBinding HotKey
     {
         get => new(HotKeyModifiers, HotKeyVirtualKey);
@@ -94,6 +107,14 @@ internal sealed class AppSettings
         if (!HotKey.IsAcceptable)
         {
             HotKey = HotKeyBinding.Default;
+        }
+        if (!RecordHotKey.IsAcceptable || RecordHotKey == HotKey)
+        {
+            RecordHotKey = HotKeyBinding.DefaultRecord; // unusable, or the same key as the capture shortcut
+            if (RecordHotKey == HotKey)
+            {
+                HotKey = HotKeyBinding.Default; // the capture shortcut was set to the default recording one: it gives way
+            }
         }
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";

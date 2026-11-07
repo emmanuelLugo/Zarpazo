@@ -1,0 +1,12 @@
+<UserControl x:Class="Zarpazo.Settings.HotKeyPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="Box" Width="220" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                     Padding="4,3" PreviewKeyDown="OnKeyDown" PreviewKeyUp="OnKeyUp" />
+            <Button Content="Restablecer" Padding="14,4" Margin="8,0,0,0" Click="OnReset" />
+        </StackPanel>
+        <TextBlock x:Name="Hint" Foreground="#FF666666" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
+    </StackPanel>
+</UserControl>

@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Interop;
 using Zarpazo.Editor;
 using Zarpazo.Shell;
@@ -11,25 +10,28 @@ namespace Zarpazo.Settings;
 
 public partial class SettingsWindow : Window
 {
-    private const string DefaultHotKeyHint = "Haz clic en el cuadro y pulsa la combinación que quieras.";
-
     private readonly SettingsStore _store;
     private readonly StartupRegistration _startup;
     private readonly Func<HotKeyBinding, bool> _tryRegisterHotKey;
-    private HotKeyBinding _hotKey;
+    private readonly Func<HotKeyBinding, bool> _tryRegisterRecordHotKey;
 
-    /// <param name="tryRegisterHotKey">Makes the combination the active shortcut; false if another program owns it.</param>
-    internal SettingsWindow(SettingsStore store, StartupRegistration startup, Func<HotKeyBinding, bool> tryRegisterHotKey)
+    /// <param name="tryRegisterHotKey">Makes the combination the active capture shortcut; false if another program owns it.</param>
+    /// <param name="tryRegisterRecordHotKey">The same for the recording shortcut.</param>
+    internal SettingsWindow(SettingsStore store, StartupRegistration startup, Func<HotKeyBinding, bool> tryRegisterHotKey,
+        Func<HotKeyBinding, bool> tryRegisterRecordHotKey)
     {
         InitializeComponent();
         _store = store;
         _startup = startup;
         _tryRegisterHotKey = tryRegisterHotKey;
+        _tryRegisterRecordHotKey = tryRegisterRecordHotKey;
 
         AppSettings settings = store.Current;
-        _hotKey = settings.HotKey;
-        HotKeyBox.Text = _hotKey.Describe();
-        HotKeyHint.Text = DefaultHotKeyHint;
+        CaptureHotKey.DefaultValue = HotKeyBinding.Default;
+        CaptureHotKey.Value = settings.HotKey;
+        RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
+        RecordHotKey.Value = settings.RecordHotKey;
+        CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
         StartupBox.IsChecked = startup.IsEnabled;
         CopyAsFileBox.IsChecked = settings.CopyAsFile;
         FolderBox.Text = settings.SaveFolder;
@@ -41,49 +43,6 @@ public partial class SettingsWindow : Window
         string version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
         VersionText.Text = $"Versión {version.Split('+')[0]}";
         SettingsPathText.Text = store.FilePath;
-    }
-
-    private void OnHotKeyKeyDown(object sender, KeyEventArgs e)
-    {
-        e.Handled = true;
-        CaptureHotKey(e.Key == Key.System ? e.SystemKey : e.Key);
-    }
-
-    // Windows reports Print Screen only when the key is released.
-    private void OnHotKeyKeyUp(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Snapshot)
-        {
-            e.Handled = true;
-            CaptureHotKey(Key.Snapshot);
-        }
-    }
-
-    private void CaptureHotKey(Key key)
-    {
-        if (key is Key.None or Key.DeadCharProcessed or Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
-            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
-        {
-            return; // a modifier on its own isn't a shortcut yet
-        }
-
-        HotKeyBinding binding = HotKeyBinding.From(key, Keyboard.Modifiers);
-        if (!binding.IsAcceptable)
-        {
-            HotKeyHint.Text = "Usa Ctrl, Alt o Win junto con la tecla. Solo Impr Pant y F1 a F24 pueden ir solas.";
-            return;
-        }
-
-        _hotKey = binding;
-        HotKeyBox.Text = binding.Describe();
-        HotKeyHint.Text = DefaultHotKeyHint;
-    }
-
-    private void OnResetHotKey(object sender, RoutedEventArgs e)
-    {
-        _hotKey = HotKeyBinding.Default;
-        HotKeyBox.Text = _hotKey.Describe();
-        HotKeyHint.Text = DefaultHotKeyHint;
     }
 
     private void OnBrowseFolder(object sender, RoutedEventArgs e)
@@ -113,9 +72,20 @@ public partial class SettingsWindow : Window
     {
         AppSettings settings = _store.Current;
 
-        if (_hotKey != settings.HotKey && !_tryRegisterHotKey(_hotKey))
+        if (CaptureHotKey.Value == RecordHotKey.Value)
         {
-            MessageBox.Show(this, $"{_hotKey.Describe()} ya la usa otra aplicación o Windows. Elige otra combinación.",
+            MessageBox.Show(this, "El atajo de captura y el de grabación no pueden ser el mismo.", "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (CaptureHotKey.Value != settings.HotKey && !_tryRegisterHotKey(CaptureHotKey.Value))
+        {
+            MessageBox.Show(this, $"{CaptureHotKey.Value.Describe()} ya la usa otra aplicación o Windows. Elige otra combinación.",
+                "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (RecordHotKey.Value != settings.RecordHotKey && !_tryRegisterRecordHotKey(RecordHotKey.Value))
+        {
+            MessageBox.Show(this, $"{RecordHotKey.Value.Describe()} ya la usa otra aplicación o Windows. Elige otra combinación.",
                 "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -134,7 +104,9 @@ public partial class SettingsWindow : Window
                 "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
-        settings.HotKey = _hotKey;
+        settings.HotKey = CaptureHotKey.Value;
+        settings.RecordHotKey = RecordHotKey.Value;
+        settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];
         settings.CopyAsFile = CopyAsFileBox.IsChecked == true;
         settings.SaveFolder = FolderBox.Text.Trim();
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";
