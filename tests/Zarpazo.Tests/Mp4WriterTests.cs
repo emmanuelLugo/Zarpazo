@@ -6,6 +6,7 @@ using Zarpazo.Recording;
 
 namespace Zarpazo.Tests;
 
+[Collection("Recording")]
 public sealed class Mp4WriterTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"));

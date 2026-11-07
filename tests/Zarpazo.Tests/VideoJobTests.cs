@@ -7,6 +7,7 @@ using Zarpazo.Recording;
 namespace Zarpazo.Tests;
 
 /// <summary>Records a real corner of the screen to a video, without sound so that no audio device is needed.</summary>
+[Collection("Recording")]
 public sealed class VideoJobTests : IDisposable
 {
     private static readonly Rectangle Corner = new(0, 0, 321, 181); // odd on purpose: the video has to come out even

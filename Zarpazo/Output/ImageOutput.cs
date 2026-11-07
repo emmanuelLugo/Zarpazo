@@ -74,14 +74,14 @@ internal static class ImageOutput
             return false;
         }
 
-        Write(dialog.FileName, image);
+        Write(dialog.FileName, image, settings.JpegQuality);
         return true;
     }
 
-    internal static void Write(string path, BitmapSource image)
+    internal static void Write(string path, BitmapSource image, int jpegQuality = AppSettings.DefaultJpegQuality)
     {
         BitmapEncoder encoder = Path.GetExtension(path).ToLowerInvariant() is ".jpg" or ".jpeg"
-            ? new JpegBitmapEncoder { QualityLevel = 92 }
+            ? new JpegBitmapEncoder { QualityLevel = jpegQuality }
             : new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(image));
 

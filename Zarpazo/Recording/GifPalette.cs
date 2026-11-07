@@ -9,11 +9,13 @@ internal sealed class GifPalette
     private const int Bins = 1 << 15; // colors are grouped by their top 5 bits per channel to keep this fast
 
     private readonly int[] _binToIndex;
+    private readonly int[] _nearest = new int[Bins]; // for each color bin, the closest entry, worked out when first asked
 
     private GifPalette(byte[] rgb, int[] binToIndex)
     {
         Rgb = rgb;
         _binToIndex = binToIndex;
+        Array.Fill(_nearest, -1);
     }
 
     /// <summary>Red, green, blue for each entry, one after the other.</summary>
@@ -22,6 +24,36 @@ internal sealed class GifPalette
     public int Count => Rgb.Length / 3;
 
     public int IndexOf(byte red, byte green, byte blue) => _binToIndex[Bin(red, green, blue)];
+
+    /// <summary>The entry closest to a color that need not be in the picture (dithering asks for colors that were adjusted).</summary>
+    public int Nearest(int red, int green, int blue)
+    {
+        int bin = Bin(Math.Clamp(red, 0, 255), Math.Clamp(green, 0, 255), Math.Clamp(blue, 0, 255));
+        if (_nearest[bin] >= 0)
+        {
+            return _nearest[bin];
+        }
+
+        // Measured from the middle of the bin so every color in it gets the same answer and the search is done once per bin.
+        int r = Channel(bin, 0) * 8 + 4;
+        int g = Channel(bin, 1) * 8 + 4;
+        int b = Channel(bin, 2) * 8 + 4;
+        int best = 0;
+        int bestDistance = int.MaxValue;
+        for (int i = 0; i < Count; i++)
+        {
+            int dr = Rgb[i * 3] - r;
+            int dg = Rgb[i * 3 + 1] - g;
+            int db = Rgb[i * 3 + 2] - b;
+            int distance = dr * dr + dg * dg + db * db;
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = i;
+            }
+        }
+        return _nearest[bin] = best;
+    }
 
     private static int Bin(int red, int green, int blue) => ((red >> 3) << 10) | ((green >> 3) << 5) | (blue >> 3);
 

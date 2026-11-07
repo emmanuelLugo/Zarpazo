@@ -6,15 +6,16 @@ namespace Zarpazo.Recording;
 /// <summary>Records an area as an animated GIF: the changes are kept in memory and the file is written when it stops.</summary>
 internal sealed class GifJob : RecordingJob
 {
-    private const int MaxSeconds = 30;
     private const long MaxBytes = 400L * 1024 * 1024;
 
     private readonly ScreenRecorder _recorder;
+    private readonly RecordingQuality _quality;
     private string _folder = "";
 
-    public GifJob(Rectangle region, RecordingEffects? effects = null)
+    public GifJob(Rectangle region, RecordingEffects? effects = null, RecordingQuality? quality = null)
     {
-        _recorder = new ScreenRecorder(region, TimeSpan.FromSeconds(MaxSeconds), MaxBytes, effects);
+        _quality = quality ?? RecordingQuality.Default;
+        _recorder = new ScreenRecorder(region, TimeSpan.FromSeconds(_quality.GifMaxSeconds), MaxBytes, effects, _quality.GifFramesPerSecond);
     }
 
     public override string Label => "GIF";
@@ -23,7 +24,7 @@ internal sealed class GifJob : RecordingJob
 
     public override string FileFilter => "Imagen GIF (*.gif)|*.gif";
 
-    public override TimeSpan MaxDuration => TimeSpan.FromSeconds(MaxSeconds);
+    public override TimeSpan MaxDuration => TimeSpan.FromSeconds(_quality.GifMaxSeconds);
 
     public override TimeSpan Elapsed => _recorder.Elapsed;
 
@@ -57,7 +58,7 @@ internal sealed class GifJob : RecordingJob
         {
             string path = NewFilePath(_folder);
             using FileStream file = File.Create(path);
-            GifEncoder.Encode(frames, _recorder.Width, _recorder.Height, durationMs, file);
+            GifEncoder.Encode(frames, _recorder.Width, _recorder.Height, durationMs, file, _quality.GifDither);
             return path;
         });
     }

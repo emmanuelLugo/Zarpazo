@@ -62,7 +62,6 @@
                             <ComboBoxItem Content="JPG" />
                         </ComboBox>
                     </StackPanel>
-
                     <TextBlock Style="{StaticResource Section}" Text="Herramientas" />
                     <CheckBox x:Name="RememberStyleBox" Content="Recordar el último color y grosor" />
 
@@ -103,6 +102,75 @@
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Si al ver un video el sonido llega más tarde que la imagen, adelántalo; si llega antes, retrásalo. Depende del equipo (por ejemplo, los auriculares Bluetooth suelen ir con retraso)." />
+
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Calidad">
+                <StackPanel Margin="14,0,14,14">
+                    <TextBlock Style="{StaticResource Section}" Text="Imágenes" />
+                    <StackPanel Orientation="Horizontal" >
+                        <TextBlock Text="Calidad del JPG" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox x:Name="JpegQualityBox" Width="170">
+                            <ComboBoxItem Content="60 (muy pequeño)" />
+                            <ComboBoxItem Content="75" />
+                            <ComboBoxItem Content="85" />
+                            <ComboBoxItem Content="92 (recomendada)" />
+                            <ComboBoxItem Content="100 (máxima)" />
+                        </ComboBox>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Text="Solo cuenta al guardar en JPG. Más calidad da una imagen más nítida y un archivo más grande." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Calidad del GIF" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cuadros por segundo" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="GifFpsBox" Width="190">
+                            <ComboBoxItem Content="8 (ligero)" />
+                            <ComboBoxItem Content="12 (normal)" />
+                            <ComboBoxItem Content="15" />
+                            <ComboBoxItem Content="20 (más fluido, pesa más)" />
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock Text="Duración máxima" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="GifMaxBox" Width="190">
+                            <ComboBoxItem Content="15 segundos" />
+                            <ComboBoxItem Content="30 segundos" />
+                            <ComboBoxItem Content="1 minuto" />
+                        </ComboBox>
+                    </StackPanel>
+                    <CheckBox x:Name="GifDitherBox" Content="Suavizar los degradados (tramado)" Margin="0,8,0,0" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Un GIF solo tiene 256 colores. Con el tramado los degradados, fotos y sombras se ven más suaves, pero el archivo pesa más. Para capturas de pantalla con colores planos casi no se nota." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Calidad del video" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cuadros por segundo" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="VideoFpsBox" Width="190">
+                            <ComboBoxItem Content="15 (ligero)" />
+                            <ComboBoxItem Content="24" />
+                            <ComboBoxItem Content="30 (fluido)" />
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock Text="Calidad" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="VideoQualityBox" Width="190">
+                            <ComboBoxItem Content="Baja (archivo pequeño)" />
+                            <ComboBoxItem Content="Media" />
+                            <ComboBoxItem Content="Alta (texto más nítido)" />
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock Text="Duración máxima" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="VideoMaxBox" Width="190">
+                            <ComboBoxItem Content="5 minutos" />
+                            <ComboBoxItem Content="10 minutos" />
+                            <ComboBoxItem Content="30 minutos" />
+                            <ComboBoxItem Content="1 hora" />
+                        </ComboBox>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Más calidad y más cuadros por segundo dan un video más nítido y más pesado. El equipo también tiene que poder con ello: a pantalla completa, 30 cuadros ya es mucho para algunos." />
 
                 </StackPanel>
             </TabItem>

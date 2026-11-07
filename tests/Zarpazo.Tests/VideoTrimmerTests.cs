@@ -5,6 +5,7 @@ using Zarpazo.Recording;
 
 namespace Zarpazo.Tests;
 
+[Collection("Recording")]
 public sealed class VideoTrimmerTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"));
@@ -42,7 +43,7 @@ public sealed class VideoTrimmerTests : IDisposable
                 }
                 writer.AddAudio(pcm, TimeSpan.FromSeconds((frame - 2) / 30.0));
             }
-            await Task.Delay(8);
+            await Task.Delay(33); // real time: written faster, the queue would drop pictures and shorten the video
         }
         await writer.FinishAsync();
         return path;

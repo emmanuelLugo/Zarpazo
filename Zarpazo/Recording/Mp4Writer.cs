@@ -17,9 +17,8 @@ internal sealed class Mp4Writer
     public const int AudioChannels = 2;
 
     private const int VideoQueueSize = 30; // about a second; when the encoder falls further behind, frames are dropped rather than memory growing
-    private const double BitsPerPixelPerFrame = 0.12;
     private const uint MinBitrate = 1_500_000;
-    private const uint MaxBitrate = 16_000_000;
+    private const uint MaxBitrate = 24_000_000;
     private const uint AudioBitrate = 128_000;
     private static readonly Guid MfDefaultStride = new("644b4e48-1e02-4516-b0eb-c01ca9d49ac6");
 
@@ -33,7 +32,8 @@ internal sealed class Mp4Writer
     private Task? _encoding;
 
     /// <param name="width">Both sizes must be even: H.264 stores the picture in blocks of two pixels.</param>
-    public Mp4Writer(string path, int width, int height, int fps, bool withAudio)
+    /// <param name="bitsPerPixelPerFrame">How much data each pixel of each picture gets, which sets the bitrate: more is sharper and bigger.</param>
+    public Mp4Writer(string path, int width, int height, int fps, bool withAudio, double bitsPerPixelPerFrame = 0.12)
     {
         if (width % 2 != 0 || height % 2 != 0)
         {
@@ -70,7 +70,7 @@ internal sealed class Mp4Writer
         _profile.Video.Height = (uint)height;
         _profile.Video.FrameRate.Numerator = (uint)fps;
         _profile.Video.FrameRate.Denominator = 1;
-        _profile.Video.Bitrate = (uint)Math.Clamp(width * height * fps * BitsPerPixelPerFrame, MinBitrate, MaxBitrate);
+        _profile.Video.Bitrate = (uint)Math.Clamp(width * height * fps * bitsPerPixelPerFrame, MinBitrate, MaxBitrate);
         _profile.Audio = withAudio ? AudioEncodingProperties.CreateAac(AudioSampleRate, AudioChannels, AudioBitrate) : null;
     }
 
@@ -114,7 +114,7 @@ internal sealed class Mp4Writer
     private async Task EncodeAsync()
     {
         await using FileStream file = new(_path, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
-        var transcoder = new MediaTranscoder { HardwareAccelerationEnabled = true };
+        var transcoder = new MediaTranscoder { HardwareAccelerationEnabled = true }; // the software encoder ignores the bitrate asked for
         PrepareTranscodeResult prepared = await transcoder.PrepareMediaStreamSourceTranscodeAsync(_source, file.AsRandomAccessStream(), _profile);
         if (!prepared.CanTranscode)
         {

@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Interop;
 using Zarpazo.Editor;
+using Zarpazo.Recording;
 using Zarpazo.Shell;
 
 namespace Zarpazo.Settings;
@@ -33,6 +34,14 @@ public partial class SettingsWindow : Window
         RecordHotKey.Value = settings.RecordHotKey;
         CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
         AudioOffsetBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.AudioOffsetChoices, settings.RecordAudioOffsetMs));
+        JpegQualityBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.JpegQualityChoices, settings.JpegQuality));
+        RecordingQuality quality = settings.RecordingQuality;
+        GifFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.GifFramesPerSecondChoices, quality.GifFramesPerSecond));
+        GifMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.GifMaxSecondsChoices, quality.GifMaxSeconds));
+        GifDitherBox.IsChecked = quality.GifDither;
+        VideoFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoFramesPerSecondChoices, quality.VideoFramesPerSecond));
+        VideoQualityBox.SelectedIndex = (int)quality.VideoQuality;
+        VideoMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoMaxMinutesChoices, quality.VideoMaxMinutes));
         StartupBox.IsChecked = startup.IsEnabled;
         CopyAsFileBox.IsChecked = settings.CopyAsFile;
         FolderBox.Text = settings.SaveFolder;
@@ -136,6 +145,14 @@ public partial class SettingsWindow : Window
         settings.RecordHotKey = RecordHotKey.Value;
         settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];
         settings.RecordAudioOffsetMs = AppSettings.AudioOffsetChoices[Math.Max(0, AudioOffsetBox.SelectedIndex)];
+        settings.JpegQuality = AppSettings.JpegQualityChoices[Math.Max(0, JpegQualityBox.SelectedIndex)];
+        settings.RecordingQuality = new RecordingQuality(
+            RecordingQuality.GifFramesPerSecondChoices[Math.Max(0, GifFpsBox.SelectedIndex)],
+            GifDitherBox.IsChecked == true,
+            RecordingQuality.GifMaxSecondsChoices[Math.Max(0, GifMaxBox.SelectedIndex)],
+            RecordingQuality.VideoFramesPerSecondChoices[Math.Max(0, VideoFpsBox.SelectedIndex)],
+            (VideoQuality)Math.Max(0, VideoQualityBox.SelectedIndex),
+            RecordingQuality.VideoMaxMinutesChoices[Math.Max(0, VideoMaxBox.SelectedIndex)]);
         settings.CopyAsFile = CopyAsFileBox.IsChecked == true;
         settings.SaveFolder = FolderBox.Text.Trim();
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";

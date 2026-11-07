@@ -6,6 +6,7 @@ using Zarpazo.Recording;
 namespace Zarpazo.Tests;
 
 /// <summary>Records a real corner of the screen: nothing is shown, but the desktop has to be available.</summary>
+[Collection("Recording")]
 public sealed class ScreenRecorderTests
 {
     private static readonly Rectangle Corner = new(0, 0, 160, 120);

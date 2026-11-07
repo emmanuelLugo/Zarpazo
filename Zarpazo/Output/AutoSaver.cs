@@ -21,7 +21,7 @@ internal sealed class AutoSaver(SettingsStore settings)
     public string SaveImage(BitmapSource image)
     {
         string path = NextPath(settings.Current.SaveFormat == "jpg" ? ".jpg" : ".png");
-        ImageOutput.Write(path, image);
+        ImageOutput.Write(path, image, settings.Current.JpegQuality);
         return path;
     }
 

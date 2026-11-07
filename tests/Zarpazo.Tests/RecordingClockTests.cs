@@ -2,6 +2,7 @@ using Zarpazo.Recording;
 
 namespace Zarpazo.Tests;
 
+[Collection("Recording")]
 public sealed class RecordingClockTests
 {
     [Fact]

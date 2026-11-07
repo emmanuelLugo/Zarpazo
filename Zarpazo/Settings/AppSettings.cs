@@ -9,6 +9,10 @@ internal sealed class AppSettings
     public const string DefaultColor = "#E53935";
     public const double DefaultThickness = 4;
     public const int DefaultHistoryLimit = 100;
+    public const int DefaultJpegQuality = 92;
+
+    /// <summary>The JPG qualities the settings window offers.</summary>
+    public static readonly int[] JpegQualityChoices = [60, 75, 85, 92, 100];
 
     /// <summary>The countdowns the settings window offers.</summary>
     public static readonly int[] CountdownChoices = [0, 3, 5];
@@ -27,6 +31,9 @@ internal sealed class AppSettings
 
     /// <summary>"png" or "jpg".</summary>
     public string SaveFormat { get; set; } = "png";
+
+    /// <summary>How much a JPG is compressed: lower is smaller and blurrier. Only matters for JPG.</summary>
+    public int JpegQuality { get; set; } = DefaultJpegQuality;
 
     /// <summary>Keep every copied or saved capture in the history.</summary>
     public bool KeepHistory { get; set; } = true;
@@ -66,6 +73,36 @@ internal sealed class AppSettings
 
     /// <summary>Seconds counted down before a recording starts: 0, 3 or 5.</summary>
     public int RecordCountdownSeconds { get; set; } = 3;
+
+    public int GifFramesPerSecond { get; set; } = 12;
+    public bool GifDither { get; set; }
+    public int GifMaxSeconds { get; set; } = 30;
+    public int VideoFramesPerSecond { get; set; } = 30;
+
+    /// <summary>"low", "medium" or "high".</summary>
+    public string VideoQuality { get; set; } = "medium";
+    public int VideoMaxMinutes { get; set; } = 30;
+
+    [JsonIgnore]
+    public Recording.RecordingQuality RecordingQuality
+    {
+        get => new(
+            GifFramesPerSecond,
+            GifDither,
+            GifMaxSeconds,
+            VideoFramesPerSecond,
+            VideoQuality switch { "low" => Recording.VideoQuality.Low, "high" => Recording.VideoQuality.High, _ => Recording.VideoQuality.Medium },
+            VideoMaxMinutes);
+        set
+        {
+            GifFramesPerSecond = value.GifFramesPerSecond;
+            GifDither = value.GifDither;
+            GifMaxSeconds = value.GifMaxSeconds;
+            VideoFramesPerSecond = value.VideoFramesPerSecond;
+            VideoQuality = value.VideoQuality switch { Recording.VideoQuality.Low => "low", Recording.VideoQuality.High => "high", _ => "medium" };
+            VideoMaxMinutes = value.VideoMaxMinutes;
+        }
+    }
 
     /// <summary>The speakers or headphones "Sonido de Windows" is taken from; empty means the default ones.</summary>
     public string RecordSystemSoundId { get; set; } = "";
@@ -159,6 +196,15 @@ internal sealed class AppSettings
             FileNameTemplate = Output.FileNameTemplate.Default;
         }
         AutoSaveCounter = Math.Max(0, AutoSaveCounter);
+        JpegQuality = Recording.RecordingQuality.Nearest(JpegQuality, JpegQualityChoices);
+        VideoQuality = VideoQuality?.ToLowerInvariant() is "low" or "high" ? VideoQuality.ToLowerInvariant() : "medium";
+        RecordingQuality = RecordingQuality with
+        {
+            GifFramesPerSecond = Recording.RecordingQuality.Nearest(GifFramesPerSecond, Recording.RecordingQuality.GifFramesPerSecondChoices),
+            GifMaxSeconds = Recording.RecordingQuality.Nearest(GifMaxSeconds, Recording.RecordingQuality.GifMaxSecondsChoices),
+            VideoFramesPerSecond = Recording.RecordingQuality.Nearest(VideoFramesPerSecond, Recording.RecordingQuality.VideoFramesPerSecondChoices),
+            VideoMaxMinutes = Recording.RecordingQuality.Nearest(VideoMaxMinutes, Recording.RecordingQuality.VideoMaxMinutesChoices),
+        };
         RecordFormat = RecordFormat?.ToLowerInvariant() == "video" ? "video" : "gif";
         RecordCountdownSeconds = CountdownChoices.MinBy(choice => Math.Abs(choice - RecordCountdownSeconds));
         RecordAudioOffsetMs = AudioOffsetChoices.MinBy(choice => Math.Abs(choice - RecordAudioOffsetMs));

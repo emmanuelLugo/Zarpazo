@@ -5,7 +5,7 @@ namespace Zarpazo.Recording;
 /// <summary>Takes pictures of a part of the screen at a steady pace on its own thread, keeping only what changed between them (for a GIF).</summary>
 internal sealed class ScreenRecorder
 {
-    public const int FramesPerSecond = 12; // plenty for showing how something is done, and it keeps the file small
+    public const int DefaultFramesPerSecond = 12; // plenty for showing how something is done, and it keeps the file small
     public const int MaxSide = 1280;       // a larger area is shrunk to this: a full-screen GIF would be enormous
     private const int BytesPerPixel = 4;
 
@@ -20,14 +20,18 @@ internal sealed class ScreenRecorder
     private long _bytes;
 
     /// <param name="region">The part of the screen, in physical pixels.</param>
-    public ScreenRecorder(Rectangle region, TimeSpan maxDuration, long maxBytes, RecordingEffects? effects = null)
+    public ScreenRecorder(Rectangle region, TimeSpan maxDuration, long maxBytes, RecordingEffects? effects = null, int framesPerSecond = DefaultFramesPerSecond)
     {
         _region = region;
+        FramesPerSecond = framesPerSecond;
         _effects = effects;
         _maxDuration = maxDuration;
         _maxBytes = maxBytes;
         (Width, Height) = RegionGrabber.FitSize(region, MaxSide, even: false);
     }
+
+    /// <summary>How many pictures are taken each second.</summary>
+    public int FramesPerSecond { get; }
 
     /// <summary>The size of the pictures it produces.</summary>
     public int Width { get; }
@@ -66,7 +70,7 @@ internal sealed class ScreenRecorder
         using var grabber = new RegionGrabber(_region, Width, Height, _effects);
         byte[] current = new byte[Width * Height * BytesPerPixel];
         byte[]? previous = null;
-        const int interval = 1000 / FramesPerSecond;
+        int interval = 1000 / FramesPerSecond;
         long next = 0;
 
         while (!_stopRequested)

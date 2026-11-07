@@ -7,13 +7,12 @@ namespace Zarpazo.Recording;
 /// <summary>Records an area as an MP4, with sound if asked: pictures and sound are encoded and written while it records.</summary>
 internal sealed class VideoJob : RecordingJob
 {
-    public const int FramesPerSecond = 30;
     public const int MaxSide = 1920;  // a larger area is shrunk to this
-    private const int MaxMinutes = 30; // the video goes to disk as it is made, so this is about patience, not memory
 
     private readonly Rectangle _region;
     private readonly RecordingOptions _options;
     private readonly int _audioOffsetMs;
+    private readonly RecordingQuality _quality;
     private readonly RecordingClock _clock = new();
     private Mp4Writer? _writer;
     private RegionGrabber? _grabber;
@@ -27,8 +26,9 @@ internal sealed class VideoJob : RecordingJob
     private int _height;
 
     /// <param name="audioOffsetMs">Moves the sound against the picture: negative plays it earlier, positive later.</param>
-    public VideoJob(Rectangle region, RecordingOptions options, int audioOffsetMs = 0)
+    public VideoJob(Rectangle region, RecordingOptions options, int audioOffsetMs = 0, RecordingQuality? quality = null)
     {
+        _quality = quality ?? RecordingQuality.Default;
         _region = region;
         _options = options;
         _audioOffsetMs = audioOffsetMs;
@@ -42,7 +42,7 @@ internal sealed class VideoJob : RecordingJob
 
     public override string FileFilter => "Video MP4 (*.mp4)|*.mp4";
 
-    public override TimeSpan MaxDuration => TimeSpan.FromMinutes(MaxMinutes);
+    public override TimeSpan MaxDuration => TimeSpan.FromMinutes(_quality.VideoMaxMinutes); // the video goes to disk as it is made, so this is about patience, not memory
 
     public override TimeSpan Elapsed => _clock.Elapsed;
 
@@ -79,7 +79,7 @@ internal sealed class VideoJob : RecordingJob
             throw;
         }
 
-        _writer = new Mp4Writer(_path, width, height, FramesPerSecond, withAudio: inputs.Count > 0);
+        _writer = new Mp4Writer(_path, width, height, _quality.VideoFramesPerSecond, withAudio: inputs.Count > 0, _quality.BitsPerPixelPerFrame);
         _grabber = new RegionGrabber(_region, width, height, RecordingEffects.FromOptions(_options));
         if (inputs.Count > 0)
         {
@@ -183,7 +183,7 @@ internal sealed class VideoJob : RecordingJob
                 continue;
             }
 
-            long due = frame * 1000 / FramesPerSecond;
+            long due = frame * 1000 / _quality.VideoFramesPerSecond;
             long now = _clock.ElapsedMilliseconds;
             if (now < due)
             {
@@ -198,7 +198,7 @@ internal sealed class VideoJob : RecordingJob
             _writer!.AddVideo(pixels, TimeSpan.FromMilliseconds(now)); // dropped, not queued, if the encoder is a second behind
 
             // After a slow picture the next ones are not rushed: the schedule restarts from where the clock is.
-            frame = Math.Max(frame + 1, now * FramesPerSecond / 1000 + 1);
+            frame = Math.Max(frame + 1, now * _quality.VideoFramesPerSecond / 1000 + 1);
 
             if (now >= MaxDuration.TotalMilliseconds)
             {

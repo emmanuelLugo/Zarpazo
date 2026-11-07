@@ -91,7 +91,7 @@ Todas las opciones de configuración quedan para después del MVP, que arranca c
 | Función | Prioridad |
 | --- | --- |
 | Cambiar atajos de teclado | Después |
-| Elegir formato, calidad y carpeta de guardado | Después |
+| Elegir formato, calidad y carpeta de guardado | Después (hecho: pestañas Calidad y Guardado de Configuración) |
 | Herramienta y color por defecto | Después |
 | Idiomas (español e inglés) | Después |
 | Comportamiento tras capturar: copiar, guardar, abrir editor o subir | Después |

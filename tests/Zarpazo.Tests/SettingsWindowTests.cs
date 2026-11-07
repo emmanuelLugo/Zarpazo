@@ -61,4 +61,27 @@ public sealed class SettingsWindowTests
             window.Close();
         });
     }
+
+    [Fact]
+    public void The_window_shows_the_saved_quality_choices()
+    {
+        Sta.Run(() =>
+        {
+            string path = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"), "settings.json");
+            var store = new SettingsStore(path);
+            store.Current.RecordingQuality = new Zarpazo.Recording.RecordingQuality(20, true, 60, 24, Zarpazo.Recording.VideoQuality.High, 10);
+            store.Current.JpegQuality = 75;
+
+            var window = new SettingsWindow(store, new StartupRegistration(@"Software\Zarpazo.Tests", "Zarpazo", @"C:\Zarpazo\Zarpazo.exe"), _ => true, _ => true);
+
+            Assert.Equal(3, window.GifFpsBox.SelectedIndex);       // 20
+            Assert.Equal(2, window.GifMaxBox.SelectedIndex);       // 60 s
+            Assert.True(window.GifDitherBox.IsChecked);
+            Assert.Equal(1, window.VideoFpsBox.SelectedIndex);     // 24
+            Assert.Equal(2, window.VideoQualityBox.SelectedIndex); // high
+            Assert.Equal(1, window.VideoMaxBox.SelectedIndex);     // 10 min
+            Assert.Equal(1, window.JpegQualityBox.SelectedIndex);  // 75
+            window.Close();
+        });
+    }
 }

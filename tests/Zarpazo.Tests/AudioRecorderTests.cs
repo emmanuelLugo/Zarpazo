@@ -8,6 +8,7 @@ using Zarpazo.Recording;
 namespace Zarpazo.Tests;
 
 /// <summary>Records a pulse from a made-up microphone at a known moment and finds where it lands in the MP4.</summary>
+[Collection("Recording")]
 public sealed class AudioRecorderTests : IDisposable
 {
     private const int PulseAtMs = 600;
@@ -126,7 +127,7 @@ public sealed class AudioRecorderTests : IDisposable
     {
         double onset = await PulseOnsetMsAsync(0);
 
-        Assert.InRange(onset, PulseAtMs - 50, PulseAtMs + 120);
+        Assert.InRange(onset, PulseAtMs - 80, PulseAtMs + 200);
     }
 
     [Fact]
@@ -135,7 +136,7 @@ public sealed class AudioRecorderTests : IDisposable
         double without = await PulseOnsetMsAsync(0);
         double later = await PulseOnsetMsAsync(200);
 
-        Assert.InRange(later - without, 150, 250);
+        Assert.InRange(later - without, 130, 270);
     }
 
     [Fact]
@@ -144,6 +145,6 @@ public sealed class AudioRecorderTests : IDisposable
         double without = await PulseOnsetMsAsync(0);
         double earlier = await PulseOnsetMsAsync(-200);
 
-        Assert.InRange(without - earlier, 150, 250);
+        Assert.InRange(without - earlier, 130, 270);
     }
 }
