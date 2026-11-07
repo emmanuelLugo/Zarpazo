@@ -1,4 +1,8 @@
+using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Zarpazo.Pin;
+using Zarpazo.Settings;
 
 namespace Zarpazo.Tests;
 
@@ -28,5 +32,21 @@ public sealed class PinnedWindowTests
         }
 
         Assert.Equal(0.6, opacity);
+    }
+
+    [Fact]
+    public void The_window_loads_its_xaml_and_takes_the_picture()
+    {
+        Sta.Run(() =>
+        {
+            BitmapSource image = BitmapSource.Create(120, 80, 96, 96, PixelFormats.Bgr32, null, new byte[120 * 80 * 4], 120 * 4);
+            var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"), "settings.json"));
+
+            var window = new PinnedWindow(image, -50, 20, settings); // not shown: it only has to build and be placed
+
+            Assert.NotNull(window.Picture.Fill);
+            Assert.True(window.IsInitialized);
+            window.Close();
+        });
     }
 }

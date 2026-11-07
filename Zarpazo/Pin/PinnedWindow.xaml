@@ -9,23 +9,81 @@
         Topmost="True"
         AllowsTransparency="True"
         Background="Transparent">
+    <Window.Resources>
+        <Style x:Key="Action" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Box" MinWidth="30" Height="30" Padding="6,0" CornerRadius="6" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#26FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#4DFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The same 16 x 16 icon grid as the editor's toolbar. -->
+        <Style x:Key="Icon" TargetType="Path">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="Stroke" Value="White" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+        </Style>
+    </Window.Resources>
+
     <Window.ContextMenu>
         <ContextMenu>
-            <MenuItem Header="Rueda del mouse: opacidad" IsEnabled="False" />
+            <MenuItem Header="Rueda: opacidad · Ctrl + rueda: tamaño" IsEnabled="False" />
             <Separator />
             <MenuItem Header="Copiar" InputGestureText="Ctrl+C" Click="OnCopy" />
             <MenuItem Header="Guardar como…" Click="OnSave" />
+            <MenuItem Header="Tamaño original" InputGestureText="Ctrl+0" Click="OnActualSize" />
             <Separator />
             <MenuItem Header="Cerrar" InputGestureText="Esc" Click="OnClose" />
         </ContextMenu>
     </Window.ContextMenu>
 
-    <Grid>
-        <Image x:Name="Picture" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+    <!-- The margin is the room the shadow needs; the picture itself keeps the size and place it had on the screen. -->
+    <Grid x:Name="Card" Margin="14">
+        <Border CornerRadius="6" Background="Black" IsHitTestVisible="False">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.55" />
+            </Border.Effect>
+        </Border>
 
-        <!-- Two outlines, so the edge shows over both light and dark content. -->
-        <Border BorderBrush="#99000000" BorderThickness="1" IsHitTestVisible="False" />
-        <Border BorderBrush="#66FFFFFF" BorderThickness="1" Margin="1" IsHitTestVisible="False" />
+        <Rectangle x:Name="Picture" RadiusX="6" RadiusY="6" Stroke="#59000000" StrokeThickness="1" />
+
+        <Border x:Name="Tools" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0"
+                Background="#F2202124" CornerRadius="8" Padding="3" BorderBrush="#26FFFFFF" BorderThickness="1">
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource Action}" ToolTip="Copiar (Ctrl+C)" AutomationProperties.Name="Copiar" Click="OnCopy">
+                    <Path Style="{StaticResource Icon}" Stroke="#66BB6A" Data="M5.5,5.5 H13.5 V13.5 H5.5 Z M3.5,10.5 H2.5 V2.5 H10.5 V3.5" />
+                </Button>
+                <Button Style="{StaticResource Action}" ToolTip="Guardar como imagen" AutomationProperties.Name="Guardar" Click="OnSave">
+                    <Path Style="{StaticResource Icon}" Stroke="#42A5F5"
+                          Data="M2.5,2.5 H11 L13.5,5 V13.5 H2.5 Z M5,2.5 V6 H10.5 V2.5 M5,13.5 V9.5 H11 V13.5" />
+                </Button>
+                <Button Style="{StaticResource Action}" ToolTip="Tamaño original (doble clic, Ctrl+0)" AutomationProperties.Name="Tamaño original" Click="OnActualSize">
+                    <TextBlock Text="1:1" FontWeight="SemiBold" />
+                </Button>
+            </StackPanel>
+        </Border>
 
         <Button x:Name="CloseButton"
                 Width="22" Height="22" Margin="6"
@@ -47,5 +105,21 @@
                 </ControlTemplate>
             </Button.Template>
         </Button>
+
+        <!-- Drag it to scale the picture, keeping its proportions. -->
+        <Border x:Name="Grip" Visibility="Collapsed" Width="20" Height="20" Margin="2"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="Transparent" Cursor="SizeNWSE"
+                ToolTip="Arrastra para cambiar el tamaño"
+                MouseLeftButtonDown="OnGripDown" MouseMove="OnGripMove" MouseLeftButtonUp="OnGripUp">
+            <Grid>
+                <Path Data="M17,7 L7,17 M17,12 L12,17" Stroke="#99000000" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                <Path Data="M17,7 L7,17 M17,12 L12,17" Stroke="White" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+            </Grid>
+        </Border>
+
+        <Border x:Name="Toast" Visibility="Collapsed" IsHitTestVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="#E6202124" CornerRadius="6" Padding="12,5">
+            <TextBlock x:Name="ToastText" Foreground="White" FontFamily="Segoe UI" FontSize="14" />
+        </Border>
     </Grid>
 </Window>
