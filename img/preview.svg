@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1280 720" width="1280" height="720" role="img" aria-labelledby="t d">
+  <title id="t">Zarpazo: captura de un área con anotaciones</title>
+  <desc id="d">Ilustración de la interfaz de Zarpazo: el escritorio oscurecido, el área elegida con un rectángulo, una flecha, un paso numerado, un texto y datos ocultos con pixelado, la columna de herramientas a la derecha y la fila de acciones debajo.</desc>
+
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16294d"/>
+      <stop offset="0.55" stop-color="#3b3a7a"/>
+      <stop offset="1" stop-color="#7a3f85"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="bar-shadow" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <!-- Pixelated block that hides the e-mail address -->
+    <pattern id="pixels" width="24" height="24" patternUnits="userSpaceOnUse">
+      <rect width="24" height="24" fill="#9aa3ad"/>
+      <rect x="0" y="0" width="8" height="8" fill="#7d8791"/>
+      <rect x="8" y="0" width="8" height="8" fill="#b7bec6"/>
+      <rect x="16" y="0" width="8" height="8" fill="#8c959f"/>
+      <rect x="0" y="8" width="8" height="8" fill="#b0b7bf"/>
+      <rect x="8" y="8" width="8" height="8" fill="#8a939d"/>
+      <rect x="16" y="8" width="8" height="8" fill="#a3abb4"/>
+      <rect x="0" y="16" width="8" height="8" fill="#939ca6"/>
+      <rect x="8" y="16" width="8" height="8" fill="#b9c0c8"/>
+      <rect x="16" y="16" width="8" height="8" fill="#7f8993"/>
+    </pattern>
+
+    <!-- Icons: the same 16 x 16 paths the app draws -->
+    <g id="i-select"><path d="M2.5,2.5 H13.5 V13.5 H2.5 Z" stroke-dasharray="2 1.6"/></g>
+    <g id="i-move"><path d="M8,1.5 V14.5 M1.5,8 H14.5 M6,3.5 L8,1.5 L10,3.5 M6,12.5 L8,14.5 L10,12.5 M3.5,6 L1.5,8 L3.5,10 M12.5,6 L14.5,8 L12.5,10"/></g>
+    <g id="i-rect"><path d="M2.5,3.5 H13.5 V12.5 H2.5 Z"/></g>
+    <g id="i-ellipse"><path d="M2,8 A6,5 0 1 0 14,8 A6,5 0 1 0 2,8 Z"/></g>
+    <g id="i-line"><path d="M3,13 L13,3"/></g>
+    <g id="i-arrow"><path d="M3,13 L13,3 M6.5,3 H13 V9.5"/></g>
+    <g id="i-pen"><path d="M2.5,13.5 L3.3,10 L10.8,2.5 L13.5,5.2 L6,12.7 Z M9.2,4.1 L11.9,6.8"/></g>
+    <g id="i-highlighter"><path d="M10.5,1.8 L13.7,5 L7.2,11.5 L4,8.3 Z M4,8.3 L2.5,11.7 L6,10.5"/><path d="M8,14.2 H14" stroke="#FDD835" stroke-width="2"/></g>
+    <g id="i-text"><path d="M3,4 V3 H13 V4 M8,3 V13 M6,13 H10"/></g>
+    <g id="i-pixelate"><path d="M2,2 H8 V8 H2 Z M8,8 H14 V14 H8 Z" fill="#fff" fill-opacity="0.55" stroke="none"/><path d="M2.5,2.5 H13.5 V13.5 H2.5 Z M8,2.5 V13.5 M2.5,8 H13.5"/></g>
+    <g id="i-ruler"><path d="M1.5,5.5 H14.5 V10.5 H1.5 Z M4.5,5.5 V8 M8,5.5 V8.5 M11.5,5.5 V8"/></g>
+    <g id="i-dropper"><path d="M2.5,13.5 L3.2,10.3 L9.3,4.2 L11.8,6.7 L5.7,12.8 Z M8.5,5 L11,2.5 Q12.5,1 14,2.5 Q15.5,4 13.5,5.5 L11.5,7.5"/></g>
+    <g id="i-undo"><path d="M5,3 L2,6 L5,9 M2,6 H9.5 A3.5,3.5 0 0 1 9.5,13 H6"/></g>
+    <g id="i-redo"><path d="M11,3 L14,6 L11,9 M14,6 H6.5 A3.5,3.5 0 0 0 6.5,13 H10"/></g>
+    <g id="i-ocr"><path d="M1.5,5 V1.5 H5 M11,1.5 H14.5 V5 M14.5,11 V14.5 H11 M5,14.5 H1.5 V11 M5,5.5 H11 M8,5.5 V11"/></g>
+    <g id="i-pin"><path d="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14"/></g>
+    <g id="i-beautify"><path d="M2,2.5 H14 V13.5 H2 Z M5.5,5.5 H10.5 V10.5 H5.5 Z"/></g>
+    <g id="i-close"><path d="M3.5,3.5 L12.5,12.5 M12.5,3.5 L3.5,12.5" stroke="#EF5350"/></g>
+    <g id="i-save"><path d="M2.5,2.5 H11 L13.5,5 V13.5 H2.5 Z M5,2.5 V6 H10.5 V2.5 M5,13.5 V9.5 H11 V13.5"/></g>
+    <g id="i-copy"><path d="M5.5,5.5 H13.5 V13.5 H5.5 Z M3.5,10.5 H2.5 V2.5 H10.5 V3.5" stroke="#66BB6A"/></g>
+  </defs>
+
+  <!-- Desktop -->
+  <rect width="1280" height="720" fill="url(#wall)"/>
+  <circle cx="1090" cy="120" r="210" fill="#ffffff" fill-opacity="0.05"/>
+  <circle cx="160" cy="640" r="260" fill="#ffffff" fill-opacity="0.04"/>
+  <rect y="684" width="1280" height="36" fill="#1b1b1f" fill-opacity="0.92"/>
+  <g fill="#ffffff" fill-opacity="0.75">
+    <rect x="560" y="694" width="16" height="16" rx="3"/>
+    <rect x="590" y="694" width="16" height="16" rx="3" fill-opacity="0.5"/>
+    <rect x="620" y="694" width="16" height="16" rx="3" fill-opacity="0.5"/>
+    <rect x="650" y="694" width="16" height="16" rx="3" fill-opacity="0.5"/>
+  </g>
+
+  <!-- The window being captured -->
+  <g filter="url(#shadow)">
+    <rect x="200" y="60" width="760" height="500" rx="8" fill="#f5f7fa"/>
+  </g>
+  <path d="M200,68 a8,8 0 0 1 8,-8 H952 a8,8 0 0 1 8,8 V100 H200 Z" fill="#ffffff"/>
+  <text x="580" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#4b5563" text-anchor="middle">Ventas · Panel</text>
+  <g stroke="#6b7280" stroke-width="1.2" fill="none">
+    <path d="M888,80 h12"/><rect x="918" y="75" width="10" height="10"/><path d="M944,75 l10,10 M954,75 l-10,10"/>
+  </g>
+
+  <rect x="226" y="100" width="12" height="440" fill="#eef1f5"/>
+  <text x="290" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#1f2937">Ventas del trimestre</text>
+
+  <!-- Chart card -->
+  <rect x="280" y="170" width="380" height="300" rx="8" fill="#ffffff"/>
+  <g stroke="#e5e7eb" stroke-width="1">
+    <path d="M300,260 H640 M300,320 H640 M300,380 H640"/>
+  </g>
+  <path d="M300,440 H640" stroke="#cbd5e1" stroke-width="1.5"/>
+  <g>
+    <rect x="310" y="350" width="36" height="90" rx="3" fill="#90caf9"/>
+    <rect x="366" y="310" width="36" height="130" rx="3" fill="#64b5f6"/>
+    <rect x="422" y="330" width="36" height="110" rx="3" fill="#90caf9"/>
+    <rect x="478" y="290" width="36" height="150" rx="3" fill="#64b5f6"/>
+    <rect x="534" y="240" width="36" height="200" rx="3" fill="#fb8c00"/>
+    <rect x="590" y="320" width="36" height="120" rx="3" fill="#90caf9"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7280" text-anchor="middle">
+    <text x="328" y="458">Ene</text><text x="384" y="458">Feb</text><text x="440" y="458">Mar</text>
+    <text x="496" y="458">Abr</text><text x="552" y="458">May</text><text x="608" y="458">Jun</text>
+  </g>
+
+  <!-- Detail card -->
+  <rect x="680" y="170" width="200" height="300" rx="8" fill="#ffffff"/>
+  <text x="696" y="198" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#6b7280">Cliente principal</text>
+  <text x="696" y="224" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" fill="#1f2937">Ana Pérez</text>
+  <text x="696" y="266" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#1f2937">ana.perez@correo.com</text>
+  <g fill="#e5e7eb">
+    <rect x="696" y="300" width="160" height="8" rx="4"/>
+    <rect x="696" y="324" width="130" height="8" rx="4"/>
+    <rect x="696" y="348" width="150" height="8" rx="4"/>
+    <rect x="696" y="372" width="100" height="8" rx="4"/>
+    <rect x="696" y="408" width="160" height="30" rx="6" fill="#1e88e5"/>
+  </g>
+
+  <!-- Annotations (vector objects in the app) -->
+  <rect x="284" y="124" width="226" height="28" fill="#FDD835" fill-opacity="0.45"/>
+  <rect x="524" y="230" width="56" height="214" fill="none" stroke="#E53935" stroke-width="4"/>
+  <g stroke="#E53935" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M636,214 L590,246"/>
+    <path d="M590,226 V246 H610"/>
+  </g>
+  <text x="590" y="206" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#E53935">Subió 40 %</text>
+  <circle cx="520" cy="228" r="13" fill="#E53935"/>
+  <text x="520" y="233.5" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" fill="#fff" text-anchor="middle">1</text>
+  <rect x="692" y="250" width="168" height="24" fill="url(#pixels)"/>
+
+  <!-- Dimmed area outside the selection -->
+  <path d="M0,0 H1280 V720 H0 Z M260,100 H900 V500 H260 Z" fill="#000" fill-opacity="0.5" fill-rule="evenodd"/>
+
+  <!-- Selection: border, handles, size label -->
+  <rect x="260.5" y="100.5" width="639" height="399" fill="none" stroke="#ffffff" stroke-opacity="0.9"/>
+  <g fill="#fff" stroke="#404040" stroke-width="1">
+    <rect x="256" y="96" width="8" height="8"/><rect x="576" y="96" width="8" height="8"/><rect x="896" y="96" width="8" height="8"/>
+    <rect x="256" y="296" width="8" height="8"/><rect x="896" y="296" width="8" height="8"/>
+    <rect x="256" y="496" width="8" height="8"/><rect x="576" y="496" width="8" height="8"/><rect x="896" y="496" width="8" height="8"/>
+  </g>
+  <rect x="260" y="72" width="80" height="22" rx="3" fill="#000" fill-opacity="0.8"/>
+  <text x="300" y="87.5" font-family="Consolas, 'Courier New', monospace" font-size="12" fill="#fff" text-anchor="middle">640 × 400</text>
+
+  <!-- Drawing tools: a column beside the area -->
+  <g filter="url(#bar-shadow)">
+    <rect x="912.5" y="100.5" width="42" height="518" rx="10" fill="#202124" fill-opacity="0.95" stroke="#fff" stroke-opacity="0.15"/>
+  </g>
+  <rect x="917" y="173" width="32" height="32" rx="6" fill="#fff" fill-opacity="0.3"/>
+  <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" transform="translate(923,111) scale(1.25)">
+    <use xlink:href="#i-select"/>
+  </g>
+  <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <use xlink:href="#i-move" transform="translate(923,145) scale(1.25)"/>
+    <use xlink:href="#i-rect" transform="translate(923,179) scale(1.25)"/>
+    <use xlink:href="#i-ellipse" transform="translate(923,213) scale(1.25)"/>
+    <use xlink:href="#i-line" transform="translate(923,247) scale(1.25)"/>
+    <use xlink:href="#i-arrow" transform="translate(923,281) scale(1.25)"/>
+    <use xlink:href="#i-pen" transform="translate(923,315) scale(1.25)"/>
+    <use xlink:href="#i-highlighter" transform="translate(923,349) scale(1.25)"/>
+    <use xlink:href="#i-text" transform="translate(923,383) scale(1.25)"/>
+    <circle cx="933" cy="426" r="7.5"/>
+    <use xlink:href="#i-pixelate" transform="translate(923,451) scale(1.25)"/>
+    <use xlink:href="#i-ruler" transform="translate(923,485) scale(1.25)"/>
+    <use xlink:href="#i-dropper" transform="translate(923,519) scale(1.25)"/>
+  </g>
+  <text x="933" y="430.5" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#fff" text-anchor="middle">1</text>
+  <path d="M921,553 H945" stroke="#fff" stroke-opacity="0.2"/>
+  <circle cx="933" cy="574" r="8" fill="#E53935" stroke="#fff" stroke-opacity="0.53"/>
+  <circle cx="933" cy="604" r="4" fill="#fff"/>
+
+  <!-- Actions: a short row under the area -->
+  <g filter="url(#bar-shadow)">
+    <rect x="570.5" y="512.5" width="330" height="42" rx="10" fill="#202124" fill-opacity="0.95" stroke="#fff" stroke-opacity="0.15"/>
+  </g>
+  <g fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <use xlink:href="#i-undo" transform="translate(585,523) scale(1.25)"/>
+    <use xlink:href="#i-redo" transform="translate(619,523) scale(1.25)"/>
+    <use xlink:href="#i-ocr" transform="translate(653,523) scale(1.25)"/>
+    <use xlink:href="#i-pin" transform="translate(687,523) scale(1.25)"/>
+    <circle cx="731" cy="533" r="6.5" stroke="#EF5350" stroke-width="1.5"/>
+    <circle cx="731" cy="533" r="2.6" fill="#EF5350" stroke="none"/>
+    <use xlink:href="#i-beautify" transform="translate(755,523) scale(1.25)"/>
+    <path d="M785,520 V546" stroke="#fff" stroke-opacity="0.2"/>
+    <use xlink:href="#i-close" transform="translate(797,523) scale(1.25)"/>
+    <use xlink:href="#i-save" transform="translate(831,523) scale(1.25)"/>
+    <use xlink:href="#i-copy" transform="translate(865,523) scale(1.25)"/>
+  </g>
+</svg>

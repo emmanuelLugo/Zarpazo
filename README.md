@@ -12,9 +12,10 @@
 
 [🐞 Reportar un fallo](https://github.com/emmanuelLugo/Zarpazo/issues/new?template=bug_report.yml) · [💡 Sugerir una mejora](https://github.com/emmanuelLugo/Zarpazo/issues/new?template=feature_request.yml) · [📋 Cambios por versión](CHANGELOG.md)
 
-<!-- Cuando haya una captura o un GIF de demostración, guárdalo en img/demo.gif y descomenta la línea:
-![Zarpazo en acción](img/demo.gif)
--->
+<p align="center">
+  <img src="img/preview.svg" alt="Zarpazo: un área elegida con un rectángulo, una flecha, un paso numerado, un texto y datos ocultos con pixelado" width="860">
+</p>
+<p align="center"><sub>Ilustración de la interfaz: el área elegida, las herramientas a la derecha y las acciones debajo.</sub></p>
 
 ## ✨ Qué tiene
 
