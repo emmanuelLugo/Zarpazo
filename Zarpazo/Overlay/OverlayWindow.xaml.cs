@@ -30,6 +30,7 @@ public partial class OverlayWindow : Window
     private const double HandleTolerance = 6; // how close to an edge the mouse grabs it
     private const double HandleSize = 7;
     private const double HitTolerance = 6; // how close to an annotation a click picks it
+    private const int MinRecordingSide = 16; // pixels; anything smaller is not worth a GIF
 
     private readonly BitmapSource _screenshot;
     private readonly Rectangle _bounds;
@@ -126,6 +127,10 @@ public partial class OverlayWindow : Window
         {
             OnPin(this, EventArgs.Empty);
         }
+        else if (ctrl && e.Key == Key.G)
+        {
+            OnRecord(this, EventArgs.Empty);
+        }
         else if (ctrl && e.Key == Key.Z)
         {
             OnUndo(this, EventArgs.Empty);
@@ -160,6 +165,28 @@ public partial class OverlayWindow : Window
         new PinnedWindow(crop.Final, _bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, _settings).Show();
         return true;
     });
+
+    /// <summary>Asked to record the chosen area as a GIF. The area is in physical screen pixels.</summary>
+    internal event Action<Rectangle>? RecordRequested;
+
+    private void OnRecord(object? sender, EventArgs e)
+    {
+        CommitText();
+        Crop? crop = CropSelection();
+        if (crop == null)
+        {
+            return;
+        }
+        if (crop.Pixels.Width < MinRecordingSide || crop.Pixels.Height < MinRecordingSide)
+        {
+            ShowNotice("La zona es muy pequeña para grabar");
+            return;
+        }
+
+        // The overlay has to be gone before the first picture, or it would be in every frame of the recording.
+        RecordRequested?.Invoke(new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height));
+        Close();
+    }
 
     /// <summary>Reads the text in the chosen area and copies it. The overlay stays open so the area can be adjusted and tried again.</summary>
     private async void OnOcr(object? sender, EventArgs e)

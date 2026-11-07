@@ -19,7 +19,7 @@ El plan completo de funciones está en PLAN.md.
 - El overlay de captura se muestra solo cuando la captura ya está lista (evitar parpadeo).
 - El overlay cubre el escritorio virtual completo, con soporte de coordenadas negativas y distinto escalado por monitor.
 - Las anotaciones son objetos vectoriales (para deshacer, rehacer y mover), no píxeles pintados.
-- Captura inicial con Graphics.CopyFromScreen; migrar a Windows.Graphics.Capture solo cuando haga falta GIF o video.
+- Captura con Graphics.CopyFromScreen, también para grabar GIF (12 fps; Windows.Graphics.Capture dibuja un borde amarillo en Windows 10). Migrar a Windows.Graphics.Capture cuando haga falta MP4 a 30 fps o audio.
 
 ## Convenciones
 - Código y nombres en inglés; textos de la interfaz en español.

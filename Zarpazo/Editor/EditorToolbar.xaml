@@ -268,6 +268,13 @@
                 <Path Style="{StaticResource Icon}" Data="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14" />
             </Button>
 
+            <Button Style="{StaticResource Action}" ToolTip="Grabar un GIF de esta zona (Ctrl+G)" AutomationProperties.Name="Grabar GIF" Click="OnRecord">
+                <Grid Width="16" Height="16">
+                    <Ellipse Margin="1.5" Stroke="#EF5350" StrokeThickness="1.5" />
+                    <Ellipse Margin="5" Fill="#EF5350" />
+                </Grid>
+            </Button>
+
             <Button x:Name="BeautifyButton" Style="{StaticResource Action}" ToolTip="Embellecer: fondo, margen, esquinas y sombra al copiar y guardar"
                     AutomationProperties.Name="Embellecer" Click="OnBeautifyButton">
                 <Grid Width="16" Height="16">

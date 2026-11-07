@@ -4,6 +4,7 @@ using System.Windows.Media.Imaging;
 using Zarpazo.Capture;
 using Zarpazo.History;
 using Zarpazo.Overlay;
+using Zarpazo.Recording;
 using Zarpazo.Settings;
 using Zarpazo.Shell;
 using Application = System.Windows.Application;
@@ -21,6 +22,7 @@ public partial class App : Application
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
+    private RecordingSession? _recording;
     private readonly CaptureHistory _history = new(CaptureHistory.DefaultFolder);
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
 
@@ -134,8 +136,32 @@ public partial class App : Application
         _settingsWindow.Show();
     }
 
+    // Starts recording once the overlay has gone, so it can't end up in the first pictures.
+    private async void BeginRecording(Rectangle region)
+    {
+        await Task.Delay(MenuCloseDelayMs);
+        _recording?.Close(); // a finished one still on screen makes way for the new one
+        var session = new RecordingSession(region, _settings, () => _recording = null);
+        _recording = session;
+        try
+        {
+            session.Start();
+        }
+        catch (Exception ex)
+        {
+            session.Close();
+            _tray!.ShowWarning($"No se pudo empezar a grabar: {ex.Message}");
+        }
+    }
+
     private void ShowOverlay()
     {
+        // The same shortcut that starts a capture stops a recording: it is the one key that is always within reach.
+        if (_recording is { IsRecording: true })
+        {
+            _recording.Stop();
+            return;
+        }
         if (_overlay != null)
         {
             return;
@@ -156,6 +182,7 @@ public partial class App : Application
         }
 
         _overlay = new OverlayWindow(image, bounds, windows, _settings, _history);
+        _overlay.RecordRequested += BeginRecording;
         _overlay.Closed += (_, _) => _overlay = null;
         _overlay.Show();
     }
