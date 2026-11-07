@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -712,6 +712,8 @@ public partial class OverlayWindow : Window
         };
     }
 
+    private static IEnumerable<Rectangle> MonitorBounds => System.Windows.Forms.Screen.AllScreens.Select(screen => screen.Bounds);
+
     /// <summary>Highlights the window under the cursor, until an area has been chosen.</summary>
     private void HoverWindow(Point point)
     {
@@ -729,7 +731,7 @@ public partial class OverlayWindow : Window
         foreach (Rectangle window in _windows)
         {
             Rectangle visible = Rectangle.Intersect(window, _bounds); // maximized windows reach past the screen edge
-            if (visible.Contains(x, y))
+            if (visible.Contains(x, y) && !SelectionGeometry.FillsAMonitor(visible, MonitorBounds))
             {
                 _hoverRect = new Rect(
                     (visible.X - _bounds.X) / scaleX,

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace Zarpazo.Overlay;
 
@@ -17,6 +17,23 @@ internal static class SelectionGeometry
         }
 
         return new Rect((visible.X - bounds.X) / scaleX, (visible.Y - bounds.Y) / scaleY, visible.Width / scaleX, visible.Height / scaleY);
+    }
+
+    /// <summary>
+    /// Whether a window covers (nearly) a whole monitor, as a maximized one does. Highlighting it would leave the overlay looking
+    /// undimmed, so the overlay starts dark and the area is chosen by dragging.
+    /// </summary>
+    public static bool FillsAMonitor(System.Drawing.Rectangle window, IEnumerable<System.Drawing.Rectangle> monitors)
+    {
+        foreach (System.Drawing.Rectangle monitor in monitors)
+        {
+            System.Drawing.Rectangle shared = System.Drawing.Rectangle.Intersect(window, monitor);
+            if ((long)shared.Width * shared.Height >= 0.9 * monitor.Width * monitor.Height)
+            {
+                return true; // 90%: the taskbar keeps a maximized window from covering all of it
+            }
+        }
+        return false;
     }
 
     /// <summary>The area can't be shrunk below this, so there is always something left to grab.</summary>

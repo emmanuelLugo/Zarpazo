@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using Zarpazo.Overlay;
 
 namespace Zarpazo.Tests;
@@ -72,5 +72,16 @@ public class SelectionGeometryTests
         Assert.Equal(0, resized.Top);
         Assert.Equal(300, resized.Right);
         Assert.Equal(200, resized.Bottom);
+    }
+
+    [Fact]
+    public void A_maximized_window_counts_as_filling_the_monitor_but_a_normal_one_does_not()
+    {
+        var monitors = new[] { new System.Drawing.Rectangle(0, 0, 1920, 1080), new System.Drawing.Rectangle(1920, 0, 1280, 1024) };
+
+        Assert.True(SelectionGeometry.FillsAMonitor(new System.Drawing.Rectangle(0, 0, 1920, 1040), monitors));   // maximized, taskbar below
+        Assert.True(SelectionGeometry.FillsAMonitor(new System.Drawing.Rectangle(1920, 0, 1280, 1024), monitors)); // full screen on the second one
+        Assert.False(SelectionGeometry.FillsAMonitor(new System.Drawing.Rectangle(200, 100, 900, 600), monitors));
+        Assert.False(SelectionGeometry.FillsAMonitor(new System.Drawing.Rectangle(0, 0, 960, 1040), monitors));    // half a monitor
     }
 }
