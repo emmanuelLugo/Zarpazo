@@ -23,21 +23,7 @@ internal static class TextRecognizer
 
         using SoftwareBitmap bitmap = ToSoftwareBitmap(image);
         OcrResult result = await engine.RecognizeAsync(bitmap);
-        return TextLayout.Format(result.Lines.Select(ToBox).Where(box => box.Text.Length > 0).ToList()).TrimEnd();
-    }
-
-    private static OcrLineBox ToBox(OcrLine line)
-    {
-        if (line.Words.Count == 0)
-        {
-            return new OcrLineBox("", 0, 0, 0, 0);
-        }
-
-        double left = line.Words.Min(word => word.BoundingRect.Left);
-        double top = line.Words.Min(word => word.BoundingRect.Top);
-        double right = line.Words.Max(word => word.BoundingRect.Right);
-        double bottom = line.Words.Max(word => word.BoundingRect.Bottom);
-        return new OcrLineBox(line.Text.Trim(), left, top, right - left, bottom - top);
+        return result.Text.Trim();
     }
 
     private static SoftwareBitmap ToSoftwareBitmap(BitmapSource image)
