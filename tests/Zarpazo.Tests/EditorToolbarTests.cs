@@ -210,4 +210,51 @@ public class EditorToolbarTests
             Assert.Equal(12, toolbar.BeautifyStyle.Radius); // untouched
         });
     }
+
+    [Fact]
+    public void The_recording_panel_starts_as_a_gif_and_the_sound_boxes_wait_for_a_video()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Assert.Equal(Zarpazo.Recording.RecordingOptions.Default, toolbar.RecordingOptions);
+            Assert.False(toolbar.RecordMicrophoneBox.IsEnabled);
+            Assert.False(toolbar.RecordSystemSoundBox.IsEnabled);
+            Assert.False(toolbar.RecordMicrophoneList.IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void Choosing_video_turns_the_sound_boxes_on_and_the_choices_are_kept()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            Find(toolbar, "recordFormat", "video").IsChecked = true;
+            toolbar.RecordSystemSoundBox.IsChecked = true;
+            toolbar.RecordSystemSoundBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            Assert.True(toolbar.RecordMicrophoneBox.IsEnabled);
+            Assert.Equal(new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, false, true), toolbar.RecordingOptions);
+        });
+    }
+
+    [Fact]
+    public void Restoring_the_recording_choices_shows_them_without_changing_them()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            var saved = new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, true, true, "some-device-id");
+
+            toolbar.RestoreRecording(saved);
+
+            Assert.Equal(saved, toolbar.RecordingOptions); // including a microphone that is not connected right now
+            Assert.True(Find(toolbar, "recordFormat", "video").IsChecked);
+            Assert.True(toolbar.RecordMicrophoneBox.IsChecked);
+            Assert.True(toolbar.RecordSystemSoundBox.IsChecked);
+        });
+    }
 }

@@ -1,0 +1,19 @@
+namespace Zarpazo.Recording;
+
+internal enum RecordingFormat
+{
+    Gif,
+    Video,
+}
+
+/// <summary>What to record: the kind of file and, for a video, which sound goes into it.</summary>
+/// <param name="Microphone">Put the microphone in the video.</param>
+/// <param name="SystemSound">Put what Windows is playing (the speakers or headphones) in the video.</param>
+/// <param name="MicrophoneId">Which microphone; empty for the one Windows uses by default.</param>
+internal sealed record RecordingOptions(RecordingFormat Format, bool Microphone, bool SystemSound, string MicrophoneId = "")
+{
+    /// <summary>A GIF has no sound, so the choices only count for a video.</summary>
+    public bool HasSound => Format == RecordingFormat.Video && (Microphone || SystemSound);
+
+    public static RecordingOptions Default { get; } = new(RecordingFormat.Gif, Microphone: false, SystemSound: false);
+}

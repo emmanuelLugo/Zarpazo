@@ -37,6 +37,27 @@ internal sealed class AppSettings
     public int BeautifyRadius { get; set; } = Output.BeautifyStyle.Default.Radius;
     public bool BeautifyShadow { get; set; } = Output.BeautifyStyle.Default.Shadow;
 
+    /// <summary>"gif" or "video"; what the recording panel starts with.</summary>
+    public string RecordFormat { get; set; } = "gif";
+    public bool RecordMicrophone { get; set; }
+    public bool RecordSystemSound { get; set; }
+
+    /// <summary>The microphone chosen for videos; empty means the one Windows uses by default.</summary>
+    public string RecordMicrophoneId { get; set; } = "";
+
+    [JsonIgnore]
+    public Recording.RecordingOptions RecordingOptions
+    {
+        get => new(RecordFormat == "video" ? Recording.RecordingFormat.Video : Recording.RecordingFormat.Gif, RecordMicrophone, RecordSystemSound, RecordMicrophoneId ?? "");
+        set
+        {
+            RecordFormat = value.Format == Recording.RecordingFormat.Video ? "video" : "gif";
+            RecordMicrophone = value.Microphone;
+            RecordSystemSound = value.SystemSound;
+            RecordMicrophoneId = value.MicrophoneId;
+        }
+    }
+
     [JsonIgnore]
     public Output.BeautifyStyle BeautifyStyle
     {
@@ -75,6 +96,7 @@ internal sealed class AppSettings
             HistoryLimit = DefaultHistoryLimit;
         }
         Color ??= DefaultColor;
+        RecordFormat = RecordFormat?.ToLowerInvariant() == "video" ? "video" : "gif";
         BeautifyStyle = new Output.BeautifyStyle(
             Output.BeautifyBackground.Find(BeautifyBackground).Key,
             Output.BeautifyStyle.Nearest(BeautifyPadding, Output.BeautifyStyle.PaddingChoices),

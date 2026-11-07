@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Zarpazo.Output;
+using Zarpazo.Recording;
 
 namespace Zarpazo.Editor;
 
@@ -19,6 +20,8 @@ public partial class EditorToolbar : UserControl
     private const double PreviewWidth = 256;
     private const double PreviewHeight = 158;
 
+    private RecordingOptions _recording = RecordingOptions.Default;
+    private bool _recordingReady; // same reason as _beautifyReady
     private BeautifyStyle _beautify = BeautifyStyle.Default;
     private bool _beautifyEnabled;
     private bool _beautifyReady; // the radio buttons fire Checked while they are being set up and restored
@@ -29,6 +32,78 @@ public partial class EditorToolbar : UserControl
         BuildBackgroundChoices();
         ShowBeautify();
         _beautifyReady = true;
+        ShowRecordingChoices();
+        _recordingReady = true;
+    }
+
+    /// <summary>What the recording panel is set to: the kind of file and the sound sources.</summary>
+    internal RecordingOptions RecordingOptions => _recording;
+
+    internal void RestoreRecording(RecordingOptions options)
+    {
+        _recordingReady = false;
+        _recording = options;
+        ShowRecordingChoices();
+        _recordingReady = true;
+    }
+
+    private void ShowRecordingChoices()
+    {
+        (_recording.Format == RecordingFormat.Video ? RecordVideoChoice : RecordGifChoice).IsChecked = true;
+        RecordMicrophoneBox.IsChecked = _recording.Microphone;
+        RecordSystemSoundBox.IsChecked = _recording.SystemSound;
+        // A GIF has no sound, so the boxes only mean something for a video.
+        RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = _recording.Format == RecordingFormat.Video;
+    }
+
+    private void OnRecordButton(object sender, RoutedEventArgs e)
+    {
+        FillMicrophones(); // devices come and go, so the list is read each time the panel opens
+        RecordPopup.IsOpen = true;
+    }
+
+    private void FillMicrophones()
+    {
+        bool wasReady = _recordingReady;
+        _recordingReady = false; // filling the list fires SelectionChanged, which must not overwrite the saved choice
+        var items = new List<AudioDeviceInfo> { new("", "Predeterminado de Windows") };
+        items.AddRange(AudioDevices.Microphones());
+        RecordMicrophoneList.ItemsSource = items;
+        // A microphone that is no longer connected falls back to the default in the list; it is only replaced once the person picks.
+        RecordMicrophoneList.SelectedItem = items.FirstOrDefault(item => item.Id == _recording.MicrophoneId) ?? items[0];
+        _recordingReady = wasReady;
+    }
+
+    private void OnRecordMicrophoneChosen(object sender, SelectionChangedEventArgs e)
+    {
+        if (_recordingReady && RecordMicrophoneList.SelectedItem is AudioDeviceInfo device)
+        {
+            _recording = _recording with { MicrophoneId = device.Id, Microphone = true };
+            RecordMicrophoneBox.IsChecked = true; // choosing a microphone means wanting it
+        }
+    }
+
+    private void OnRecordChoice(object sender, RoutedEventArgs e)
+    {
+        if (!_recordingReady || e.OriginalSource is not RadioButton { GroupName: "recordFormat", Tag: string tag })
+        {
+            return;
+        }
+
+        _recording = _recording with { Format = tag == "video" ? RecordingFormat.Video : RecordingFormat.Gif };
+        ShowRecordingChoices();
+    }
+
+    private void OnRecordMicrophone(object sender, RoutedEventArgs e) =>
+        _recording = _recording with { Microphone = RecordMicrophoneBox.IsChecked == true };
+
+    private void OnRecordSystemSound(object sender, RoutedEventArgs e) =>
+        _recording = _recording with { SystemSound = RecordSystemSoundBox.IsChecked == true };
+
+    private void OnRecordStart(object sender, RoutedEventArgs e)
+    {
+        RecordPopup.IsOpen = false;
+        RecordRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>The style chosen in the Embellecer panel, whether or not it is switched on.</summary>
@@ -298,8 +373,6 @@ public partial class EditorToolbar : UserControl
     private void OnOcr(object sender, RoutedEventArgs e) => OcrRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(this, EventArgs.Empty);
-
-    private void OnRecord(object sender, RoutedEventArgs e) => RecordRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

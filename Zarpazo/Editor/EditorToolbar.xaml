@@ -268,12 +268,61 @@
                 <Path Style="{StaticResource Icon}" Data="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14" />
             </Button>
 
-            <Button Style="{StaticResource Action}" ToolTip="Grabar un GIF de esta zona (Ctrl+G)" AutomationProperties.Name="Grabar GIF" Click="OnRecord">
+            <Button x:Name="RecordButton" Style="{StaticResource Action}" ToolTip="Grabar esta zona como GIF o video, con o sin sonido (Ctrl+G empieza con lo último elegido)"
+                    AutomationProperties.Name="Grabar" Click="OnRecordButton">
                 <Grid Width="16" Height="16">
                     <Ellipse Margin="1.5" Stroke="#EF5350" StrokeThickness="1.5" />
                     <Ellipse Margin="5" Fill="#EF5350" />
                 </Grid>
             </Button>
+            <Popup x:Name="RecordPopup"
+                   PlacementTarget="{Binding ElementName=RecordButton}"
+                   Placement="Top"
+                   StaysOpen="False"
+                   AllowsTransparency="True">
+                <Border Background="#F2202124" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                    <StackPanel Width="250" RadioButton.Checked="OnRecordChoice">
+                        <TextBlock Text="Formato" Style="{StaticResource PanelLabel}" Margin="2,0,0,3" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="RecordGifChoice" GroupName="recordFormat" Tag="gif" Style="{StaticResource Choice}"
+                                         ToolTip="Imagen animada, sin sonido, hasta 30 segundos">
+                                <TextBlock Text="GIF" Margin="10,0" />
+                            </RadioButton>
+                            <RadioButton x:Name="RecordVideoChoice" GroupName="recordFormat" Tag="video" Style="{StaticResource Choice}"
+                                         ToolTip="Video MP4 con sonido opcional, hasta 30 minutos">
+                                <TextBlock Text="Video MP4" Margin="10,0" />
+                            </RadioButton>
+                        </StackPanel>
+
+                        <TextBlock Text="Sonido (solo en video)" Style="{StaticResource PanelLabel}" />
+                        <CheckBox x:Name="RecordMicrophoneBox" Content="Micrófono" Foreground="White" FontFamily="Segoe UI" FontSize="13"
+                                  Focusable="False" Click="OnRecordMicrophone" />
+                        <ComboBox x:Name="RecordMicrophoneList" Margin="20,4,0,2" FontFamily="Segoe UI" FontSize="12"
+                                  DisplayMemberPath="Name" SelectionChanged="OnRecordMicrophoneChosen"
+                                  ToolTip="El micrófono que se graba. 'Predeterminado de Windows' usa el que Windows tenga elegido." />
+                        <CheckBox x:Name="RecordSystemSoundBox" Content="Sonido de Windows" ToolTip="Lo que suena por tus altavoces o auriculares: música, videollamadas, el propio video que veas" Foreground="White" FontFamily="Segoe UI" FontSize="13"
+                                  Margin="0,6,0,0" Focusable="False" Click="OnRecordSystemSound" />
+
+                        <Button Margin="0,12,0,0" Focusable="False" Click="OnRecordStart" AutomationProperties.Name="Empezar a grabar">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Box" Height="32" CornerRadius="6" Background="#E53935">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Ellipse Width="10" Height="10" Fill="White" Margin="0,0,8,0" />
+                                            <TextBlock Text="Empezar a grabar" Foreground="White" FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Box" Property="Background" Value="#EF5350" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <Button x:Name="BeautifyButton" Style="{StaticResource Action}" ToolTip="Embellecer: fondo, margen, esquinas y sombra al copiar y guardar"
                     AutomationProperties.Name="Embellecer" Click="OnBeautifyButton">

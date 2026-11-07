@@ -48,7 +48,8 @@
             <StackPanel x:Name="RecordingPanel" Orientation="Horizontal">
                 <Ellipse Width="10" Height="10" Fill="#E53935" Margin="2,0,8,0" VerticalAlignment="Center" />
                 <TextBlock x:Name="ElapsedText" Style="{StaticResource Label}" FontFamily="Consolas" Margin="0,0,10,0" />
-                <Button Style="{StaticResource Action}" Click="OnStop" ToolTip="Detener y crear el GIF (también Impr Pant)" AutomationProperties.Name="Detener">
+                <StackPanel x:Name="MetersPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+                <Button Style="{StaticResource Action}" Click="OnStop" ToolTip="Detener (también con el atajo de captura)" AutomationProperties.Name="Detener">
                     <StackPanel Orientation="Horizontal">
                         <Rectangle Width="10" Height="10" Fill="White" RadiusX="1.5" RadiusY="1.5" Margin="0,0,6,0" VerticalAlignment="Center" />
                         <TextBlock Text="Detener" Style="{StaticResource Label}" />
@@ -61,17 +62,17 @@
 
             <!-- Making the GIF -->
             <StackPanel x:Name="EncodingPanel" Orientation="Horizontal" Visibility="Collapsed">
-                <TextBlock Text="Creando el GIF…" Style="{StaticResource Label}" Margin="4,0,10,0" />
+                <TextBlock x:Name="EncodingText" Style="{StaticResource Label}" Margin="4,0,10,0" />
                 <ProgressBar IsIndeterminate="True" Width="80" Height="4" VerticalAlignment="Center" Margin="0,0,4,0" />
             </StackPanel>
 
             <!-- Ready -->
             <StackPanel x:Name="DonePanel" Orientation="Horizontal" Visibility="Collapsed">
                 <TextBlock x:Name="DoneText" Style="{StaticResource Label}" Margin="4,0,10,0" />
-                <Button Style="{StaticResource Action}" Click="OnCopy" ToolTip="Copiar el GIF para pegarlo en un chat o un documento" AutomationProperties.Name="Copiar">
+                <Button Style="{StaticResource Action}" Click="OnCopy" ToolTip="Copiar el archivo para pegarlo en un chat o un documento" AutomationProperties.Name="Copiar">
                     <TextBlock Text="Copiar" Style="{StaticResource Label}" />
                 </Button>
-                <Button Style="{StaticResource Action}" Click="OnSave" ToolTip="Guardar el GIF como archivo" AutomationProperties.Name="Guardar">
+                <Button Style="{StaticResource Action}" Click="OnSave" ToolTip="Guardar como archivo" AutomationProperties.Name="Guardar">
                     <TextBlock Text="Guardar…" Style="{StaticResource Label}" />
                 </Button>
                 <Button Style="{StaticResource Action}" Click="OnClose" ToolTip="Cerrar" AutomationProperties.Name="Cerrar">

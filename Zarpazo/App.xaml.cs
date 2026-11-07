@@ -137,17 +137,17 @@ public partial class App : Application
     }
 
     // Starts recording once the overlay has gone, so it can't end up in the first pictures.
-    private async void BeginRecording(Rectangle region)
+    private async void BeginRecording(Rectangle region, RecordingOptions options)
     {
         await Task.Delay(MenuCloseDelayMs);
         _recording?.Close(); // a finished one still on screen makes way for the new one
-        var session = new RecordingSession(region, _settings, () => _recording = null);
+        var session = new RecordingSession(region, options, _settings, () => _recording = null);
         _recording = session;
         try
         {
             session.Start();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             session.Close();
             _tray!.ShowWarning($"No se pudo empezar a grabar: {ex.Message}");

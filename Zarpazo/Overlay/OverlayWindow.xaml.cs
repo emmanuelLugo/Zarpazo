@@ -12,6 +12,7 @@ using Zarpazo.History;
 using Zarpazo.Ocr;
 using Zarpazo.Output;
 using Zarpazo.Pin;
+using Zarpazo.Recording;
 using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -77,6 +78,7 @@ public partial class OverlayWindow : Window
             Toolbar.Restore(settings.Current.Color, settings.Current.Thickness);
         }
         Toolbar.RestoreBeautify(settings.Current.BeautifyEnabled, settings.Current.BeautifyStyle);
+        Toolbar.RestoreRecording(settings.Current.RecordingOptions);
         Toolbar.PreviewSource = () =>
         {
             CommitText(); // so the preview matches what copying would give
@@ -166,8 +168,8 @@ public partial class OverlayWindow : Window
         return true;
     });
 
-    /// <summary>Asked to record the chosen area as a GIF. The area is in physical screen pixels.</summary>
-    internal event Action<Rectangle>? RecordRequested;
+    /// <summary>Asked to record the chosen area, in physical screen pixels, the way the recording panel is set.</summary>
+    internal event Action<Rectangle, RecordingOptions>? RecordRequested;
 
     private void OnRecord(object? sender, EventArgs e)
     {
@@ -184,7 +186,9 @@ public partial class OverlayWindow : Window
         }
 
         // The overlay has to be gone before the first picture, or it would be in every frame of the recording.
-        RecordRequested?.Invoke(new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height));
+        RecordRequested?.Invoke(
+            new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height),
+            Toolbar.RecordingOptions);
         Close();
     }
 
@@ -272,6 +276,11 @@ public partial class OverlayWindow : Window
         {
             settings.BeautifyEnabled = Toolbar.BeautifyEnabled;
             settings.BeautifyStyle = Toolbar.BeautifyStyle;
+            changed = true;
+        }
+        if (settings.RecordingOptions != Toolbar.RecordingOptions)
+        {
+            settings.RecordingOptions = Toolbar.RecordingOptions;
             changed = true;
         }
         if (!changed)

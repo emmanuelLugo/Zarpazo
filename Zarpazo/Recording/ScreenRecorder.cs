@@ -1,12 +1,9 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
 
 namespace Zarpazo.Recording;
 
-/// <summary>Takes pictures of a part of the screen at a steady pace on its own thread, keeping only what changed between them.</summary>
+/// <summary>Takes pictures of a part of the screen at a steady pace on its own thread, keeping only what changed between them (for a GIF).</summary>
 internal sealed class ScreenRecorder
 {
     public const int FramesPerSecond = 12; // plenty for showing how something is done, and it keeps the file small
@@ -28,10 +25,7 @@ internal sealed class ScreenRecorder
         _region = region;
         _maxDuration = maxDuration;
         _maxBytes = maxBytes;
-
-        double scale = Math.Min(1, (double)MaxSide / Math.Max(region.Width, region.Height));
-        Width = Math.Max(1, (int)Math.Round(region.Width * scale));
-        Height = Math.Max(1, (int)Math.Round(region.Height * scale));
+        (Width, Height) = RegionGrabber.FitSize(region, MaxSide, even: false);
     }
 
     /// <summary>The size of the pictures it produces.</summary>
@@ -62,8 +56,7 @@ internal sealed class ScreenRecorder
 
     private void Run()
     {
-        using var full = new Bitmap(_region.Width, _region.Height, PixelFormat.Format32bppArgb);
-        using Bitmap? small = Width != _region.Width || Height != _region.Height ? new Bitmap(Width, Height, PixelFormat.Format32bppArgb) : null;
+        using var grabber = new RegionGrabber(_region, Width, Height);
         byte[] current = new byte[Width * Height * BytesPerPixel];
         byte[]? previous = null;
         const int interval = 1000 / FramesPerSecond;
@@ -80,7 +73,7 @@ internal sealed class ScreenRecorder
             // A slow frame doesn't make the following ones rush to catch up.
             next = Math.Max(next + interval, now);
 
-            Capture(full, small, current);
+            grabber.Grab(current);
             if (previous == null)
             {
                 Keep(new RecordedFrame(0, 0, Width, Height, (byte[])current.Clone(), (int)now));
@@ -111,34 +104,5 @@ internal sealed class ScreenRecorder
     {
         _frames.Add(frame);
         _bytes += frame.Pixels.Length;
-    }
-
-    private void Capture(Bitmap full, Bitmap? small, byte[] into)
-    {
-        using (Graphics graphics = Graphics.FromImage(full))
-        {
-            graphics.CopyFromScreen(_region.Location, Point.Empty, _region.Size);
-            CursorPainter.Draw(graphics, _region.Location);
-        }
-
-        Bitmap source = full;
-        if (small != null)
-        {
-            using Graphics graphics = Graphics.FromImage(small);
-            graphics.InterpolationMode = InterpolationMode.HighQualityBilinear;
-            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            graphics.DrawImage(full, 0, 0, Width, Height);
-            source = small;
-        }
-
-        BitmapData data = source.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        try
-        {
-            Marshal.Copy(data.Scan0, into, 0, into.Length); // 32 bits per pixel: the rows have no padding
-        }
-        finally
-        {
-            source.UnlockBits(data);
-        }
     }
 }

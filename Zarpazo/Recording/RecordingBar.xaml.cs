@@ -1,7 +1,14 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Media;
+using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
+using FontFamily = System.Windows.Media.FontFamily;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using Orientation = System.Windows.Controls.Orientation;
+using VerticalAlignment = System.Windows.VerticalAlignment;
 using Rectangle = System.Drawing.Rectangle;
 
 namespace Zarpazo.Recording;
@@ -12,6 +19,9 @@ public partial class RecordingBar : Window
     private const int WmDpiChanged = 0x02E0;
     private const int GapPixels = 10; // between the recorded area's frame and the bar
 
+    private const double MeterWidth = 44;
+
+    private readonly List<Border> _meterFills = [];
     private Rectangle _region;
 
     public RecordingBar()
@@ -29,13 +39,42 @@ public partial class RecordingBar : Window
     internal event EventHandler? SaveRequested;
     internal event EventHandler? CloseRequested;
 
-    internal void ShowRecording(TimeSpan elapsed, TimeSpan limit)
+    /// <param name="meters">One level bar per sound source, so it is clear at a glance that each one is picking something up.</param>
+    internal void ShowRecording(TimeSpan elapsed, TimeSpan limit, IReadOnlyList<AudioMeter> meters)
     {
         ElapsedText.Text = $"{Format(elapsed)} / {Format(limit)}";
+        UpdateMeters(meters);
         ShowPanel(RecordingPanel);
     }
 
-    internal void ShowEncoding() => ShowPanel(EncodingPanel);
+    private void UpdateMeters(IReadOnlyList<AudioMeter> meters)
+    {
+        if (_meterFills.Count != meters.Count)
+        {
+            MetersPanel.Children.Clear();
+            _meterFills.Clear();
+            foreach (AudioMeter meter in meters)
+            {
+                var fill = new Border { Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Background = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A)) };
+                var track = new Border { Width = MeterWidth, Height = 6, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Child = fill, ToolTip = meter.Name, VerticalAlignment = VerticalAlignment.Center };
+                var icon = new TextBlock { Text = meter.IsMicrophone ? "\U0001F3A4" : "\U0001F50A", FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 12, Foreground = Brushes.White, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = meter.Name };
+                MetersPanel.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 10, 0), Children = { icon, track } });
+                _meterFills.Add(fill);
+            }
+        }
+
+        for (int i = 0; i < meters.Count; i++)
+        {
+            // Square root: quiet speech is far below full scale and would barely show on a straight scale.
+            _meterFills[i].Width = MeterWidth * Math.Clamp(Math.Sqrt(meters[i].Level), 0, 1);
+        }
+    }
+
+    internal void ShowEncoding(string message)
+    {
+        EncodingText.Text = message;
+        ShowPanel(EncodingPanel);
+    }
 
     internal void ShowDone(string message)
     {

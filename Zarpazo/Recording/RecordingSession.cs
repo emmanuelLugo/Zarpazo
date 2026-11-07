@@ -9,37 +9,35 @@ using Rectangle = System.Drawing.Rectangle;
 
 namespace Zarpazo.Recording;
 
-/// <summary>One recording of an area, from the first picture to the finished GIF being copied or saved.</summary>
+/// <summary>One recording of an area, from the first picture to the finished file being copied or saved.</summary>
 internal sealed class RecordingSession
 {
-    private const int MaxSeconds = 30;
-    private const long MaxBytes = 400L * 1024 * 1024;
-    private static readonly TimeSpan TempFileLifetime = TimeSpan.FromDays(7);
-
     private readonly Rectangle _region;
     private readonly SettingsStore _settings;
     private readonly Action _closed;
     private readonly string _folder;
+    private readonly RecordingJob _job;
     private RecordingOutline? _outline;
     private RecordingBar? _bar;
-    private ScreenRecorder? _recorder;
     private DispatcherTimer? _clock;
-    private string? _gifPath;
+    private string? _filePath;
     private bool _closedAlready;
 
     /// <param name="region">The area to record, in physical screen pixels.</param>
     /// <param name="closed">Called when the person is done with it, so the owner can let go of it.</param>
-    /// <param name="folder">Where the GIF is written first; the tests use their own.</param>
-    public RecordingSession(Rectangle region, SettingsStore settings, Action closed, string? folder = null)
+    /// <param name="folder">Where the file is written first; the tests use their own.</param>
+    public RecordingSession(Rectangle region, RecordingOptions options, SettingsStore settings, Action closed, string? folder = null)
     {
         _region = region;
         _settings = settings;
         _closed = closed;
         _folder = folder ?? Path.Combine(Path.GetTempPath(), "Zarpazo");
+        _job = options.Format == RecordingFormat.Video ? new VideoJob(region, options) : new GifJob(region);
     }
 
     public bool IsRecording { get; private set; }
 
+    /// <exception cref="InvalidOperationException">Something the recording needs is missing, such as a microphone.</exception>
     public void Start()
     {
         _outline = new RecordingOutline(_region);
@@ -49,107 +47,87 @@ internal sealed class RecordingSession
         _bar.CopyRequested += (_, _) => Copy();
         _bar.SaveRequested += (_, _) => Save();
         _bar.CloseRequested += (_, _) => Close();
+        // Raised on a capture thread.
+        _job.LimitReached += reason => _bar.Dispatcher.BeginInvoke(() => Finish(reason));
 
-        _recorder = new ScreenRecorder(_region, TimeSpan.FromSeconds(MaxSeconds), MaxBytes);
-        // Raised on the capture thread.
-        _recorder.LimitReached += reason => _bar.Dispatcher.BeginInvoke(() => Finish(reason));
-
-        _bar.ShowRecording(TimeSpan.Zero, TimeSpan.FromSeconds(MaxSeconds));
+        _bar.ShowRecording(TimeSpan.Zero, _job.MaxDuration, _job.Meters);
         _bar.PlaceNear(_region);
         _outline.Show();
         _bar.Show();
 
+        try
+        {
+            _job.Start(_folder);
+        }
+        catch
+        {
+            Close(); // nothing was recorded: the frame and the bar must not stay on screen
+            throw;
+        }
+
         IsRecording = true;
-        _recorder.Start();
         _clock = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _clock.Tick += (_, _) => _bar.ShowRecording(_recorder.Elapsed, TimeSpan.FromSeconds(MaxSeconds));
+        _clock.Tick += (_, _) => _bar.ShowRecording(_job.Elapsed, _job.MaxDuration, _job.Meters);
         _clock.Start();
     }
 
-    /// <summary>Ends the recording and makes the GIF.</summary>
+    /// <summary>Ends the recording and makes the file.</summary>
     public void Stop() => Finish(RecordingEnd.Stopped);
 
     private async void Finish(RecordingEnd reason)
     {
-        if (!IsRecording || _recorder == null || _bar == null)
+        if (!IsRecording || _bar == null)
         {
             return; // already stopped, e.g. the limit and the button at the same moment
         }
         IsRecording = false;
         _clock?.Stop();
-        (IReadOnlyList<RecordedFrame> frames, int durationMs) = _recorder.Stop();
         _outline?.Close();
-        if (frames.Count == 0)
-        {
-            _bar.ShowFailure("La grabación fue demasiado corta."); // stopped before the first picture was taken
-            return;
-        }
-        _bar.ShowEncoding();
+        _bar.ShowEncoding($"Creando el {_job.Label}…");
 
         try
         {
-            string path = await Task.Run(() => WriteGif(frames, durationMs));
+            string? path = await _job.FinishAsync();
             if (_closedAlready)
             {
                 return;
             }
-            _gifPath = path;
-            _bar.ShowDone($"{Describe(reason)}GIF listo · {SizeText(new FileInfo(path).Length)}");
+            if (path == null)
+            {
+                _bar.ShowFailure("La grabación fue demasiado corta.");
+                return;
+            }
+            _filePath = path;
+            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // This runs from an async void method: an exception left uncaught here would take the whole app down.
             if (!_closedAlready)
             {
-                _bar.ShowFailure($"No se pudo crear el GIF: {ex.Message}");
+                _bar.ShowFailure($"No se pudo crear el {_job.Label}: {ex.Message}");
             }
         }
     }
 
-    private string WriteGif(IReadOnlyList<RecordedFrame> frames, int durationMs)
+    private string Describe(RecordingEnd reason) => reason switch
     {
-        Directory.CreateDirectory(_folder);
-        DeleteOldGifs(_folder);
-
-        // No spaces, so a pasted path needs no quotes.
-        string path = Path.Combine(_folder, $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.gif");
-        using FileStream file = File.Create(path);
-        GifEncoder.Encode(frames, _recorder!.Width, _recorder.Height, durationMs, file);
-        return path;
-    }
-
-    private static void DeleteOldGifs(string folder)
-    {
-        foreach (string old in Directory.EnumerateFiles(folder, "*.gif"))
-        {
-            try
-            {
-                if (DateTime.Now - File.GetLastWriteTime(old) > TempFileLifetime)
-                {
-                    File.Delete(old);
-                }
-            }
-            catch (IOException)
-            {
-                // Still open somewhere; it goes next time.
-            }
-        }
-    }
-
-    private static string Describe(RecordingEnd reason) => reason switch
-    {
-        RecordingEnd.TimeLimit => $"Límite de {MaxSeconds} s · ",
+        RecordingEnd.TimeLimit => $"Límite de {LimitText(_job.MaxDuration)} · ",
         RecordingEnd.MemoryLimit => "Límite de memoria · ",
         _ => "",
     };
 
+    private static string LimitText(TimeSpan limit) => limit.TotalMinutes >= 1 ? $"{(int)limit.TotalMinutes} min" : $"{(int)limit.TotalSeconds} s";
+
+    private static string Capitalized(string text) => char.ToUpperInvariant(text[0]) + text[1..];
+
     private static string SizeText(long bytes) =>
         bytes < 1024 * 1024 ? $"{Math.Max(1, bytes / 1024)} KB" : $"{bytes / (1024.0 * 1024.0):0.0} MB";
 
-    // Pasted as a file, which is what chats and documents accept for an animated image.
+    // Pasted as a file, which is what chats and documents accept for an animated image or a video.
     private void Copy()
     {
-        if (_gifPath == null)
+        if (_filePath == null)
         {
             return;
         }
@@ -157,9 +135,9 @@ internal sealed class RecordingSession
         try
         {
             var data = new DataObject();
-            data.SetFileDropList(new StringCollection { _gifPath });
+            data.SetFileDropList(new StringCollection { _filePath });
             Clipboard.SetDataObject(data, copy: true);
-            _bar?.ShowDone($"GIF copiado · {SizeText(new FileInfo(_gifPath).Length)}");
+            _bar?.ShowDone($"{Capitalized(_job.Label)} copiado · {SizeText(new FileInfo(_filePath).Length)}");
         }
         catch (System.Runtime.InteropServices.COMException)
         {
@@ -169,18 +147,18 @@ internal sealed class RecordingSession
 
     private void Save()
     {
-        if (_gifPath == null || _bar == null)
+        if (_filePath == null || _bar == null)
         {
             return;
         }
 
         var dialog = new SaveFileDialog
         {
-            Title = "Guardar GIF",
+            Title = $"Guardar {_job.Label}",
             FileName = $"Zarpazo {DateTime.Now:yyyy-MM-dd HH-mm-ss}",
-            Filter = "Imagen GIF (*.gif)|*.gif",
+            Filter = _job.FileFilter,
             AddExtension = true,
-            DefaultExt = ".gif",
+            DefaultExt = _job.Extension,
             InitialDirectory = Directory.Exists(_settings.Current.SaveFolder)
                 ? _settings.Current.SaveFolder
                 : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
@@ -192,7 +170,7 @@ internal sealed class RecordingSession
 
         try
         {
-            File.Copy(_gifPath, dialog.FileName, overwrite: true);
+            File.Copy(_filePath, dialog.FileName, overwrite: true);
             Close();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -201,7 +179,7 @@ internal sealed class RecordingSession
         }
     }
 
-    /// <summary>Drops a recording in progress, or closes the window once the GIF has been dealt with.</summary>
+    /// <summary>Drops a recording in progress, or closes the window once the file has been dealt with.</summary>
     public void Close()
     {
         if (_closedAlready)
@@ -213,7 +191,7 @@ internal sealed class RecordingSession
         {
             IsRecording = false;
             _clock?.Stop();
-            _recorder?.Stop();
+            _job.Abort();
         }
         _outline?.Close();
         _bar?.Close();

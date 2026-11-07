@@ -126,4 +126,47 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.Equal(new Zarpazo.Output.BeautifyStyle("violeta", 48, 24, Shadow: true), settings.BeautifyStyle);
     }
+
+    [Fact]
+    public void Recording_starts_as_a_gif_without_sound()
+    {
+        AppSettings settings = new SettingsStore(FilePath).Current;
+
+        Assert.Equal(Zarpazo.Recording.RecordingOptions.Default, settings.RecordingOptions);
+    }
+
+    [Fact]
+    public void The_recording_choices_are_read_back_by_the_next_run()
+    {
+        var first = new SettingsStore(FilePath);
+        first.Current.RecordingOptions = new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, Microphone: true, SystemSound: true);
+        first.Save();
+
+        AppSettings second = new SettingsStore(FilePath).Current;
+
+        Assert.Equal(new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, true, true), second.RecordingOptions);
+    }
+
+    [Fact]
+    public void An_unknown_recording_format_in_the_file_means_gif()
+    {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(FilePath, """{ "RecordFormat": "avi", "RecordMicrophone": true }""");
+
+        AppSettings settings = new SettingsStore(FilePath).Current;
+
+        Assert.Equal(Zarpazo.Recording.RecordingFormat.Gif, settings.RecordingOptions.Format);
+    }
+
+    [Fact]
+    public void The_chosen_microphone_is_read_back_by_the_next_run()
+    {
+        var first = new SettingsStore(FilePath);
+        first.Current.RecordingOptions = new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, true, false, "{0.0.1.00000000}.{abc}");
+        first.Save();
+
+        AppSettings second = new SettingsStore(FilePath).Current;
+
+        Assert.Equal("{0.0.1.00000000}.{abc}", second.RecordingOptions.MicrophoneId);
+    }
 }

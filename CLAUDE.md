@@ -19,7 +19,8 @@ El plan completo de funciones está en PLAN.md.
 - El overlay de captura se muestra solo cuando la captura ya está lista (evitar parpadeo).
 - El overlay cubre el escritorio virtual completo, con soporte de coordenadas negativas y distinto escalado por monitor.
 - Las anotaciones son objetos vectoriales (para deshacer, rehacer y mover), no píxeles pintados.
-- Captura con Graphics.CopyFromScreen, también para grabar GIF (12 fps; Windows.Graphics.Capture dibuja un borde amarillo en Windows 10). Migrar a Windows.Graphics.Capture cuando haga falta MP4 a 30 fps o audio.
+- Captura con Graphics.CopyFromScreen también para grabar: GIF a 12 fps y MP4 a 30 fps (unos 17 ms por cuadro hasta 720p y 33 ms en 1080p, medido). Windows.Graphics.Capture dibuja un borde amarillo en Windows 10, así que solo se migra si el rendimiento en pantallas grandes lo exige.
+- El MP4 se codifica en vivo con Media Foundation (MediaStreamSource + MediaTranscoder); el audio (micrófono y sonido de Windows) se captura con NAudio (WASAPI) y se mezcla en trozos de 20 ms.
 
 ## Convenciones
 - Código y nombres en inglés; textos de la interfaz en español.
