@@ -65,6 +65,7 @@ public partial class EditorToolbar : UserControl
     public event EventHandler? CopyRequested;
     public event EventHandler? SaveRequested;
     public event EventHandler? OcrRequested;
+    public event EventHandler? PinRequested;
     public event EventHandler? CloseRequested;
 
     // A click on the bar's background must not start a new selection in the window behind it.
@@ -169,6 +170,8 @@ public partial class EditorToolbar : UserControl
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnOcr(object sender, RoutedEventArgs e) => OcrRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

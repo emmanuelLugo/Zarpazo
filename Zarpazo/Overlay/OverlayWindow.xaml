@@ -52,6 +52,7 @@
                                   CopyRequested="OnCopy"
                                   SaveRequested="OnSave"
                                   OcrRequested="OnOcr"
+                                  PinRequested="OnPin"
                                   CloseRequested="OnCloseRequested" />
 
             <Border x:Name="SizeLabel"

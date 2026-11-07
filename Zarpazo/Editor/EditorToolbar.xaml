@@ -257,6 +257,10 @@
                 <Path Style="{StaticResource Icon}" Data="M1.5,5 V1.5 H5 M11,1.5 H14.5 V5 M14.5,11 V14.5 H11 M5,14.5 H1.5 V11 M5,5.5 H11 M8,5.5 V11" />
             </Button>
 
+            <Button Style="{StaticResource Action}" ToolTip="Fijar sobre la pantalla (Ctrl+P)" AutomationProperties.Name="Fijar" Click="OnPin">
+                <Path Style="{StaticResource Icon}" Data="M9,2.5 L13.5,7 L11.5,8 L8.5,11 L8,13 L3,8 L5,7.5 L8,4.5 Z M5.5,10.5 L2,14" />
+            </Button>
+
             <Border Style="{StaticResource Divider}" />
 
             <!-- Each outcome has its own color, so they stand apart from the drawing tools. -->

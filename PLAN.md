@@ -58,6 +58,7 @@ El MVP se limita a copiar al portapapeles y guardar como imagen; subir a la nube
 | Abrir la imagen en otro programa | Después |
 | Subir a la nube y copiar el link (servidor propio, Imgur, etc.) | Avanzado |
 | Compartir por correo o mensajería | Avanzado |
+| Fijar la captura sobre la pantalla (flotante, con opacidad) | Avanzado (hecho: botón Fijar, Ctrl+P) |
 
 ## 4. Historial y biblioteca
 

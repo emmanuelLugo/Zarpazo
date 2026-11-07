@@ -11,6 +11,7 @@ using Zarpazo.Editor;
 using Zarpazo.History;
 using Zarpazo.Ocr;
 using Zarpazo.Output;
+using Zarpazo.Pin;
 using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -115,6 +116,10 @@ public partial class OverlayWindow : Window
         {
             OnOcr(this, EventArgs.Empty);
         }
+        else if (ctrl && e.Key == Key.P)
+        {
+            OnPin(this, EventArgs.Empty);
+        }
         else if (ctrl && e.Key == Key.Z)
         {
             OnUndo(this, EventArgs.Empty);
@@ -137,6 +142,14 @@ public partial class OverlayWindow : Window
         Finish(image => ImageOutput.CopyToClipboard(image, _settings.Current.CopyAsFile));
 
     private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(image, this, _settings.Current));
+
+    /// <summary>Leaves the capture floating over the screen, exactly where the area was.</summary>
+    private void OnPin(object? sender, EventArgs e) => FinishWithCrop(crop =>
+    {
+        // No owner: a pinned capture has to outlive this window.
+        new PinnedWindow(crop.Final, _bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, _settings).Show();
+        return true;
+    });
 
     /// <summary>Reads the text in the chosen area and copies it. The overlay stays open so the area can be adjusted and tried again.</summary>
     private async void OnOcr(object? sender, EventArgs e)
@@ -235,7 +248,9 @@ public partial class OverlayWindow : Window
     private void OnRedo(object? sender, EventArgs e) => Annotations.Redo();
 
     /// <summary>Runs the output on the selected area and closes. Stays open if there is no selection, the user cancels or it fails.</summary>
-    private void Finish(Func<BitmapSource, bool> output)
+    private void Finish(Func<BitmapSource, bool> output) => FinishWithCrop(crop => output(crop.Final));
+
+    private void FinishWithCrop(Func<Crop, bool> output)
     {
         CommitText(); // text still being typed belongs in the result
         Crop? crop = CropSelection();
@@ -246,7 +261,7 @@ public partial class OverlayWindow : Window
 
         try
         {
-            if (!output(crop.Final))
+            if (!output(crop))
             {
                 return;
             }
