@@ -78,7 +78,7 @@ internal static class ImageOutput
         return true;
     }
 
-    private static void Write(string path, BitmapSource image)
+    internal static void Write(string path, BitmapSource image)
     {
         BitmapEncoder encoder = Path.GetExtension(path).ToLowerInvariant() is ".jpg" or ".jpeg"
             ? new JpegBitmapEncoder { QualityLevel = 92 }

@@ -8,6 +8,7 @@ internal sealed class AppSettings
 {
     public const string DefaultColor = "#E53935";
     public const double DefaultThickness = 4;
+    public const int DefaultHistoryLimit = 100;
 
     public uint HotKeyModifiers { get; set; } = HotKeyBinding.Default.Modifiers;
     public uint HotKeyVirtualKey { get; set; } = HotKeyBinding.Default.VirtualKey;
@@ -18,6 +19,12 @@ internal sealed class AppSettings
 
     /// <summary>"png" or "jpg".</summary>
     public string SaveFormat { get; set; } = "png";
+
+    /// <summary>Keep every copied or saved capture in the history.</summary>
+    public bool KeepHistory { get; set; } = true;
+
+    /// <summary>How many captures the history keeps; the oldest are deleted beyond that.</summary>
+    public int HistoryLimit { get; set; } = DefaultHistoryLimit;
 
     public bool RememberStyle { get; set; } = true;
     public string Color { get; set; } = DefaultColor;
@@ -43,6 +50,10 @@ internal sealed class AppSettings
         }
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";
+        if (HistoryLimit < 1)
+        {
+            HistoryLimit = DefaultHistoryLimit;
+        }
         Color ??= DefaultColor;
     }
 }

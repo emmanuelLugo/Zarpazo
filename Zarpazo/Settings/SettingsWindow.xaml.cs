@@ -35,6 +35,7 @@ public partial class SettingsWindow : Window
         FolderBox.Text = settings.SaveFolder;
         FormatBox.SelectedIndex = settings.SaveFormat == "jpg" ? 1 : 0;
         RememberStyleBox.IsChecked = settings.RememberStyle;
+        KeepHistoryBox.IsChecked = settings.KeepHistory;
 
         // The version has a "+commit" suffix when built from git; that part means nothing to the person.
         string version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
@@ -135,6 +136,7 @@ public partial class SettingsWindow : Window
         settings.SaveFolder = FolderBox.Text.Trim();
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";
         settings.RememberStyle = RememberStyleBox.IsChecked == true;
+        settings.KeepHistory = KeepHistoryBox.IsChecked == true;
 
         try
         {

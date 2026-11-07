@@ -7,6 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Zarpazo.Editor;
+using Zarpazo.History;
 using Zarpazo.Output;
 using Zarpazo.Settings;
 using Rectangle = System.Drawing.Rectangle;
@@ -31,6 +32,7 @@ public partial class OverlayWindow : Window
     private readonly Rectangle _bounds;
     private readonly IReadOnlyList<Rectangle> _windows;
     private readonly SettingsStore _settings;
+    private readonly CaptureHistory _history;
     private Rect? _hoverRect;   // the window under the cursor, while no area has been chosen yet
     private Rect? _pendingWindow; // that window as it was when the button went down
     private Point _dragStart;
@@ -49,9 +51,10 @@ public partial class OverlayWindow : Window
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
     /// <param name="windows">Window bounds in physical pixels at the moment of the capture, topmost first.</param>
-    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings)
+    internal OverlayWindow(BitmapSource screenshot, Rectangle bounds, IReadOnlyList<Rectangle> windows, SettingsStore settings, CaptureHistory history)
     {
         InitializeComponent();
+        _history = history;
         _screenshot = screenshot;
         _bounds = bounds;
         _windows = windows;
@@ -169,7 +172,26 @@ public partial class OverlayWindow : Window
             MessageBox.Show(this, ex.Message, "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+
+        AddToHistory(crop);
         Close();
+    }
+
+    // The capture is already copied or saved, so a full disk or a locked folder must not turn that into an error.
+    private void AddToHistory(BitmapSource image)
+    {
+        if (!_settings.Current.KeepHistory)
+        {
+            return;
+        }
+
+        try
+        {
+            _history.Add(image, _settings.Current.HistoryLimit);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private BitmapSource? CropSelection()

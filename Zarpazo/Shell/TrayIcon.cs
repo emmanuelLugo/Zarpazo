@@ -9,10 +9,11 @@ internal sealed class TrayIcon : IDisposable
 {
     private readonly NotifyIcon _icon;
 
-    public TrayIcon(Action onCapture, Action onSettings, Action onExit)
+    public TrayIcon(Action onCapture, Action onHistory, Action onSettings, Action onExit)
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Capturar", null, (_, _) => onCapture());
+        menu.Items.Add("Historial…", null, (_, _) => onHistory());
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => onExit());
