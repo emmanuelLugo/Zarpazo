@@ -159,6 +159,7 @@ public partial class App : Application
                 _overlay = null;
                 _historyWindow?.Reload(); // the edited capture replaced the old one
                 _historyWindow?.Show();
+                ReleaseMemoryWhenIdle();
             };
             _overlay.Show();
         }
@@ -271,7 +272,16 @@ public partial class App : Application
         _overlay.RecordRequested += BeginRecording;
         _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
         _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");
-        _overlay.Closed += (_, _) => _overlay = null;
+        _overlay.Closed += (_, _) =>
+        {
+            _overlay = null;
+            ReleaseMemoryWhenIdle();
+        };
         _overlay.Show();
     }
+
+    // The screenshot of the whole desktop and its copies are tens of megabytes; once the overlay is gone they are only garbage.
+    // Waiting for idle lets the window finish closing first, so nothing still points at them.
+    private void ReleaseMemoryWhenIdle() =>
+        Dispatcher.BeginInvoke(MemoryTrim.Release, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 }
