@@ -6,6 +6,12 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- El panel de grabación muestra el nivel del micrófono y del sonido de Windows en vivo, para comprobar que se oyen antes de empezar a grabar.
+
+### Cambiado
+- Los medidores de la barra de grabación son más grandes y cambian de verde a ámbar y rojo según el volumen.
+
 ## [0.1.0] - 2026-11-07
 
 Primera versión.

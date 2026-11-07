@@ -325,7 +325,9 @@
                    PlacementTarget="{Binding ElementName=RecordButton}"
                    Placement="Top"
                    StaysOpen="False"
-                   AllowsTransparency="True">
+                   AllowsTransparency="True"
+                   Opened="OnRecordPopupOpened"
+                   Closed="OnRecordPopupClosed">
                 <Border Background="#F2202124" CornerRadius="8" Padding="10" Margin="0,0,0,6">
                     <StackPanel Width="250" RadioButton.Checked="OnRecordChoice">
                         <TextBlock Text="Formato" Style="{StaticResource PanelLabel}" Margin="2,0,0,3" />
@@ -346,11 +348,21 @@
                         <ComboBox x:Name="RecordMicrophoneList" Margin="20,4,0,2" FontFamily="Segoe UI" FontSize="12"
                                   DisplayMemberPath="Name" SelectionChanged="OnRecordMicrophoneChosen"
                                   ToolTip="El micrófono que se graba. 'Predeterminado de Windows' usa el que Windows tenga elegido." />
+                        <Border x:Name="MicrophoneLevelTrack" Height="8" Margin="20,4,0,0" CornerRadius="4" Background="#33FFFFFF"
+                                ToolTip="Nivel del micrófono: si habla alguien y la barra se mueve, se está grabando">
+                            <Border x:Name="MicrophoneLevelFill" Width="0" CornerRadius="4" HorizontalAlignment="Left" />
+                        </Border>
+                        <TextBlock x:Name="MicrophoneLevelHint" Margin="20,2,0,0" Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="11"
+                                   TextWrapping="Wrap" />
                         <CheckBox x:Name="RecordSystemSoundBox" Content="Sonido de Windows" ToolTip="Lo que suena por tus altavoces o auriculares: música, videollamadas, el propio video que veas" Foreground="White" FontFamily="Segoe UI" FontSize="13"
                                   Margin="0,6,0,0" Focusable="False" Click="OnRecordSystemSound" />
                         <ComboBox x:Name="RecordSpeakersList" Margin="20,4,0,2" FontFamily="Segoe UI" FontSize="12"
                                   DisplayMemberPath="Name" SelectionChanged="OnRecordSpeakersChosen"
                                   ToolTip="De qué altavoces o auriculares se toma el sonido. 'Predeterminado de Windows' usa los que Windows tenga elegidos." />
+                        <Border x:Name="SpeakersLevelTrack" Height="8" Margin="20,4,0,0" CornerRadius="4" Background="#33FFFFFF"
+                                ToolTip="Nivel del sonido de Windows: se mueve cuando suena algo por tus altavoces o auriculares">
+                            <Border x:Name="SpeakersLevelFill" Width="0" CornerRadius="4" HorizontalAlignment="Left" />
+                        </Border>
 
                         <TextBlock Text="Efectos (GIF y video)" Style="{StaticResource PanelLabel}" />
                         <CheckBox x:Name="RecordHighlightBox" Content="Resaltar el cursor y los clics" Foreground="White" FontFamily="Segoe UI" FontSize="13"

@@ -346,6 +346,7 @@ public partial class EditorToolbar : UserControl
         {
             _recording = _recording with { SystemSoundId = device.Id, SystemSound = true };
             RecordSystemSoundBox.IsChecked = true; // choosing a device means wanting its sound
+            RefreshLevelProbes();
         }
     }
 
@@ -355,7 +356,67 @@ public partial class EditorToolbar : UserControl
         {
             _recording = _recording with { MicrophoneId = device.Id, Microphone = true };
             RecordMicrophoneBox.IsChecked = true; // choosing a microphone means wanting it
+            RefreshLevelProbes();
         }
+    }
+
+    // While the panel is open, the sources that would be recorded are listened to and shown as level bars, so a microphone
+    // that picks up nothing is noticed before recording and not after.
+    private AudioLevelProbe? _microphoneProbe;
+    private AudioLevelProbe? _speakersProbe;
+    private System.Windows.Threading.DispatcherTimer? _probeTimer;
+
+    private void OnRecordPopupOpened(object sender, EventArgs e) => RefreshLevelProbes();
+
+    private void OnRecordPopupClosed(object sender, EventArgs e) => StopLevelProbes();
+
+    private void RefreshLevelProbes()
+    {
+        StopLevelProbes();
+        if (!RecordPopup.IsOpen)
+        {
+            return;
+        }
+
+        bool video = _recording.Format == RecordingFormat.Video;
+        _microphoneProbe = video && _recording.Microphone ? AudioLevelProbe.TryOpen(microphone: true, _recording.MicrophoneId) : null;
+        _speakersProbe = video && _recording.SystemSound ? AudioLevelProbe.TryOpen(microphone: false, _recording.SystemSoundId) : null;
+
+        MicrophoneLevelTrack.Opacity = _microphoneProbe is null ? 0.35 : 1;
+        SpeakersLevelTrack.Opacity = _speakersProbe is null ? 0.35 : 1;
+        MicrophoneLevelHint.Text = !video || !_recording.Microphone ? ""
+            : _microphoneProbe is null ? "No se pudo abrir este micrófono. Prueba con otro."
+            : "Di algo: la barra debe moverse. Si no se mueve, no se está grabando.";
+
+        if (_microphoneProbe is not null || _speakersProbe is not null)
+        {
+            _probeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+            _probeTimer.Tick += (_, _) =>
+            {
+                ShowLevel(MicrophoneLevelTrack, MicrophoneLevelFill, _microphoneProbe);
+                ShowLevel(SpeakersLevelTrack, SpeakersLevelFill, _speakersProbe);
+            };
+            _probeTimer.Start();
+        }
+    }
+
+    private void StopLevelProbes()
+    {
+        _probeTimer?.Stop();
+        _probeTimer = null;
+        _microphoneProbe?.Dispose();
+        _microphoneProbe = null;
+        _speakersProbe?.Dispose();
+        _speakersProbe = null;
+        MicrophoneLevelFill.Width = 0;
+        SpeakersLevelFill.Width = 0;
+    }
+
+    private static void ShowLevel(Border track, Border fill, AudioLevelProbe? probe)
+    {
+        double fraction = probe is null ? 0 : AudioLevelDisplay.Fraction(probe.Poll());
+        fill.Width = track.ActualWidth * fraction;
+        fill.Background = AudioLevelDisplay.Color(fraction);
     }
 
     private void OnRecordChoice(object sender, RoutedEventArgs e)
@@ -367,10 +428,14 @@ public partial class EditorToolbar : UserControl
 
         _recording = _recording with { Format = tag == "video" ? RecordingFormat.Video : RecordingFormat.Gif };
         ShowRecordingChoices();
+        RefreshLevelProbes();
     }
 
-    private void OnRecordMicrophone(object sender, RoutedEventArgs e) =>
+    private void OnRecordMicrophone(object sender, RoutedEventArgs e)
+    {
         _recording = _recording with { Microphone = RecordMicrophoneBox.IsChecked == true };
+        RefreshLevelProbes();
+    }
 
     private void OnRecordHighlight(object sender, RoutedEventArgs e) =>
         _recording = _recording with { HighlightCursor = RecordHighlightBox.IsChecked == true };
@@ -378,8 +443,11 @@ public partial class EditorToolbar : UserControl
     private void OnRecordKeys(object sender, RoutedEventArgs e) =>
         _recording = _recording with { ShowKeys = RecordKeysBox.IsChecked == true };
 
-    private void OnRecordSystemSound(object sender, RoutedEventArgs e) =>
+    private void OnRecordSystemSound(object sender, RoutedEventArgs e)
+    {
         _recording = _recording with { SystemSound = RecordSystemSoundBox.IsChecked == true };
+        RefreshLevelProbes();
+    }
 
     private void OnRecordStart(object sender, RoutedEventArgs e)
     {

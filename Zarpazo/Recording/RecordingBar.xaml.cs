@@ -20,7 +20,7 @@ public partial class RecordingBar : Window
     private const int WmDpiChanged = 0x02E0;
     private const int GapPixels = 10; // between the recorded area's frame and the bar
 
-    private const double MeterWidth = 44;
+    private const double MeterWidth = 64;
 
     private const float GainStep = 0.1f;
 
@@ -78,8 +78,9 @@ public partial class RecordingBar : Window
 
         for (int i = 0; i < meters.Count; i++)
         {
-            // Square root: quiet speech is far below full scale and would barely show on a straight scale.
-            _meterFills[i].Width = MeterWidth * Math.Clamp(Math.Sqrt(meters[i].Level), 0, 1);
+            double fraction = AudioLevelDisplay.Fraction(meters[i].Level);
+            _meterFills[i].Width = MeterWidth * fraction;
+            _meterFills[i].Background = AudioLevelDisplay.Color(fraction);
         }
     }
 
@@ -96,8 +97,8 @@ public partial class RecordingBar : Window
         {
             int source = i;
             AudioMeter meter = meters[i];
-            var fill = new Border { Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Background = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A)) };
-            var track = new Border { Width = MeterWidth, Height = 6, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Child = fill, VerticalAlignment = VerticalAlignment.Center };
+            var fill = new Border { Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Background = AudioLevelDisplay.Color(0) };
+            var track = new Border { Width = MeterWidth, Height = 8, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Child = fill, VerticalAlignment = VerticalAlignment.Center };
             var icon = new TextBlock { FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 12, Foreground = Brushes.White, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand };
             var group = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 10, 0), Background = Brushes.Transparent, Children = { icon, track } };
             icon.MouseLeftButtonDown += (_, e) =>
