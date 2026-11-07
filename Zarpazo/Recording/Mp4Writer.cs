@@ -21,6 +21,7 @@ internal sealed class Mp4Writer
     private const uint MinBitrate = 1_500_000;
     private const uint MaxBitrate = 16_000_000;
     private const uint AudioBitrate = 128_000;
+    private static readonly Guid MfDefaultStride = new("644b4e48-1e02-4516-b0eb-c01ca9d49ac6");
 
     private readonly string _path;
     private readonly int _fps;
@@ -52,7 +53,10 @@ internal sealed class Mp4Writer
         VideoEncodingProperties videoProperties = VideoEncodingProperties.CreateUncompressed(MediaEncodingSubtypes.Bgra8, (uint)width, (uint)height);
         videoProperties.FrameRate.Numerator = (uint)fps;
         videoProperties.FrameRate.Denominator = 1;
-        _source = new MediaStreamSource(new VideoStreamDescriptor(videoProperties)) { BufferTime = TimeSpan.Zero };
+        // Media Foundation reads uncompressed RGB as bottom-up unless the stride says otherwise, which turned the video upside
+        // down. A positive stride (MF_MT_DEFAULT_STRIDE) declares the rows as they are: top row first.
+        videoProperties.Properties[MfDefaultStride] = (uint)(width * 4);
+        _source =new MediaStreamSource(new VideoStreamDescriptor(videoProperties)) { BufferTime = TimeSpan.Zero };
 
         if (withAudio)
         {

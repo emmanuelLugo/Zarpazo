@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Media.Editing;
 using Windows.Storage;
 using Zarpazo.Recording;
@@ -133,5 +134,64 @@ public sealed class Mp4WriterTests : IDisposable
 
         Assert.Equal(30, accepted);
         await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task The_picture_is_the_right_way_up_and_not_mirrored()
+    {
+        // A solid red block in the top-left corner of a gray picture. If the video came out upside down or mirrored,
+        // the block would be at the bottom or on the right.
+        const int width = 320;
+        const int height = 180;
+        byte[] Marked()
+        {
+            var pixels = new byte[width * height * 4];
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                pixels[i] = pixels[i + 1] = pixels[i + 2] = 128;
+                pixels[i + 3] = 255;
+            }
+            for (int y = 0; y < 50; y++)
+            {
+                for (int x = 0; x < 80; x++)
+                {
+                    int i = (y * width + x) * 4;
+                    pixels[i] = 0;
+                    pixels[i + 1] = 0;
+                    pixels[i + 2] = 255; // red
+                }
+            }
+            return pixels;
+        }
+
+        string path = Path.Combine(_folder, "orientation.mp4");
+        var writer = new Mp4Writer(path, width, height, fps: 30, withAudio: false);
+        writer.Start();
+        for (int frame = 0; frame < 30; frame++)
+        {
+            writer.AddVideo(Marked(), TimeSpan.FromSeconds(frame / 30.0));
+            await Task.Delay(33);
+        }
+        await writer.FinishAsync();
+
+        var composition = new MediaComposition();
+        composition.Clips.Add(await MediaClip.CreateFromFileAsync(await StorageFile.GetFileFromPathAsync(path)));
+        using var thumbnail = (await composition.GetThumbnailAsync(TimeSpan.FromMilliseconds(400), width, height, VideoFramePrecision.NearestFrame)).AsStreamForRead();
+        var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(thumbnail, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        var bitmap = new System.Windows.Media.Imaging.FormatConvertedBitmap(decoder.Frames[0], System.Windows.Media.PixelFormats.Bgra32, null, 0);
+        var all = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+        bitmap.CopyPixels(all, bitmap.PixelWidth * 4, 0);
+
+        bool IsRed(int x, int y)
+        {
+            int i = (y * bitmap.PixelWidth + x) * 4;
+            return all[i + 2] > 180 && all[i + 1] < 90 && all[i] < 90;
+        }
+
+        int w = bitmap.PixelWidth;
+        int h = bitmap.PixelHeight;
+        Assert.True(IsRed(w * 80 / 320 / 2, h * 25 / 180), "the red block should be at the top left");
+        Assert.False(IsRed(w * 40 / 320, h - h * 25 / 180), "it must not be at the bottom left (upside down)");
+        Assert.False(IsRed(w - w * 40 / 320, h * 25 / 180), "it must not be at the top right (mirrored)");
     }
 }
