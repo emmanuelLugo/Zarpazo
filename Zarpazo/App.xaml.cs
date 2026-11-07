@@ -1,6 +1,5 @@
 ﻿using System.Drawing;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Zarpazo.Capture;
 using Zarpazo.History;
@@ -34,10 +33,6 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-
-        // Hardware rendering makes the graphics driver reserve some 60 MB the first time a full-screen overlay opens, and
-        // never gives it back. This app draws one picture and a few shapes, which the CPU handles without trouble.
-        RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
         _instanceMutex = new Mutex(true, InstanceMutexName, out bool isFirstInstance);
         if (!isFirstInstance)
