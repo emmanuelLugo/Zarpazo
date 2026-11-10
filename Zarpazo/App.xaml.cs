@@ -51,6 +51,14 @@ public partial class App : Application
         }
 
         _settings = new SettingsStore(SettingsStore.DefaultPath);
+        try
+        {
+            _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The folder is not reachable right now; the history is cleaned the next time.
+        }
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
             ShowHistory, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
         ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);

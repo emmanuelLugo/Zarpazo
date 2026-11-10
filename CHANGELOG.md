@@ -8,6 +8,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ### Añadido
 - Atajos de letra para cada herramienta (R rectángulo, E elipse, L línea, A flecha, P lápiz, H resaltador, T texto, N pasos, B pixelar, M regla, I cuentagotas, V mover, S ajustar zona), que también salen en el tooltip de cada botón y en los menús de grupo.
+- Historial: «Borrar lo que tenga más de» (Nunca, 7, 30 o 90 días) en Configuración > General. Se aplica al abrir Zarpazo y al guardar una captura o grabación nueva; por defecto no borra nada.
 - Reeditar un texto: doble clic sobre él con la herramienta Mover, o un clic con la herramienta Texto. Se abre el cuadro con lo escrito (con su color y tamaño), Enter confirma y Esc deja el texto como estaba. Vaciarlo lo borra. Deshacer y rehacer también cubren el cambio.
 - Estirar anotaciones: con la herramienta Mover, la anotación elegida muestra 8 asas para cambiar su tamaño (rectángulo, elipse, línea, flecha, lápiz, resaltador y pixelado). Deshacer y rehacer también lo cubren. El texto y los números siguen el tamaño del grosor.
 - Lupa al elegir el área: junto al cursor se ve el zoom de los píxeles con su posición en pantalla (X, Y) y el color debajo. Con las flechas del teclado el cursor se mueve de a 1 píxel para colocar el borde con precisión.

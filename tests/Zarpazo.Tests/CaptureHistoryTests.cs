@@ -257,4 +257,68 @@ public sealed class CaptureHistoryTests : IDisposable
     {
         Assert.Equal(expected, CaptureHistory.Matches(text, query));
     }
+
+    private string Aged(string stamp)
+    {
+        Directory.CreateDirectory(_folder);
+        string path = Path.Combine(_folder, $"Zarpazo_{stamp}.png");
+        File.WriteAllText(path, "x");
+        File.WriteAllText(Path.ChangeExtension(path, ".json"), "{}");
+        File.WriteAllText(Path.ChangeExtension(path, ".txt"), "texto");
+        return path;
+    }
+
+    [Fact]
+    public void Deletes_what_is_older_than_the_days_given_with_everything_that_belongs_to_it()
+    {
+        var history = new CaptureHistory(_folder);
+        string old = Aged("2026-09-01_10-00-00-000");
+        string recent = Aged("2026-11-08_10-00-00-000");
+
+        history.DeleteOlderThan(30, new DateTime(2026, 11, 10, 12, 0, 0));
+
+        Assert.False(File.Exists(old));
+        Assert.False(File.Exists(Path.ChangeExtension(old, ".json")));
+        Assert.False(File.Exists(Path.ChangeExtension(old, ".txt")));
+        Assert.True(File.Exists(recent));
+        Assert.True(File.Exists(Path.ChangeExtension(recent, ".txt")));
+    }
+
+    [Fact]
+    public void A_capture_taken_exactly_on_the_limit_day_is_kept_and_a_copy_suffix_does_not_hide_its_age()
+    {
+        var history = new CaptureHistory(_folder);
+        string onLimit = Aged("2026-10-11_12-00-00-000");   // 30 days before the check, to the millisecond
+        string suffixed = Aged("2026-08-01_09-00-00-000_1"); // taken in the same millisecond as another one
+
+        history.DeleteOlderThan(30, new DateTime(2026, 11, 10, 12, 0, 0));
+
+        Assert.True(File.Exists(onLimit));
+        Assert.False(File.Exists(suffixed));
+    }
+
+    [Fact]
+    public void Zero_days_deletes_nothing_and_a_name_without_a_time_is_left_alone()
+    {
+        var history = new CaptureHistory(_folder);
+        string old = Aged("2020-01-01_10-00-00-000");
+        string odd = Aged("copia-a-mano");
+        File.Move(odd, Path.Combine(_folder, "Zarpazo_copia-a-mano-que-no-es-una-fecha.png"));
+
+        history.DeleteOlderThan(0, DateTime.Now);
+        history.DeleteOlderThan(30, DateTime.Now);
+
+        Assert.False(File.Exists(old)); // 30 days does reach it
+        Assert.True(File.Exists(Path.Combine(_folder, "Zarpazo_copia-a-mano-que-no-es-una-fecha.png")));
+    }
+
+    [Fact]
+    public void An_age_the_window_cannot_show_becomes_never()
+    {
+        var settings = new AppSettings { HistoryMaxAgeDays = 45 };
+
+        settings.Normalize();
+
+        Assert.Equal(0, settings.HistoryMaxAgeDays);
+    }
 }

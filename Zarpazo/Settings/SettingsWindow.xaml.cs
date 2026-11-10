@@ -58,6 +58,7 @@ public partial class SettingsWindow : Window
         FormatBox.SelectedIndex = settings.SaveFormat == "jpg" ? 1 : 0;
         RememberStyleBox.IsChecked = settings.RememberStyle;
         KeepHistoryBox.IsChecked = settings.KeepHistory;
+        HistoryAgeBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.HistoryMaxAgeChoices, settings.HistoryMaxAgeDays));
         AutoSaveBox.IsChecked = settings.AutoSave;
         AutoFolderBox.Text = settings.AutoSaveFolder;
         TemplateBox.Text = settings.FileNameTemplate;
@@ -279,6 +280,7 @@ public partial class SettingsWindow : Window
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";
         settings.RememberStyle = RememberStyleBox.IsChecked == true;
         settings.KeepHistory = KeepHistoryBox.IsChecked == true;
+        settings.HistoryMaxAgeDays = AppSettings.HistoryMaxAgeChoices[Math.Max(0, HistoryAgeBox.SelectedIndex)];
         settings.AutoSave = AutoSaveBox.IsChecked == true;
         settings.AutoSaveFolder = AutoFolderBox.Text.Trim();
         settings.FileNameTemplate = string.IsNullOrWhiteSpace(TemplateBox.Text) ? Output.FileNameTemplate.Default : TemplateBox.Text.Trim();

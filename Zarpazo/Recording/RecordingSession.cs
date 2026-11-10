@@ -229,7 +229,9 @@ internal sealed class RecordingSession
 
         try
         {
-            return _history.AddRecording(path, _job.Thumbnail);
+            string added = _history.AddRecording(path, _job.Thumbnail);
+            _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
+            return added;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

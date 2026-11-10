@@ -73,6 +73,11 @@ internal sealed class AppSettings
     /// <summary>How many captures the history keeps; the oldest are deleted beyond that.</summary>
     public int HistoryLimit { get; set; } = DefaultHistoryLimit;
 
+    /// <summary>The history deletes what is older than this many days; 0 never does. One of <see cref="HistoryMaxAgeChoices"/>.</summary>
+    public int HistoryMaxAgeDays { get; set; }
+
+    public static readonly int[] HistoryMaxAgeChoices = [0, 7, 30, 90];
+
     public bool RememberStyle { get; set; } = true;
     public string Color { get; set; } = DefaultColor;
     public double Thickness { get; set; } = DefaultThickness;
@@ -207,6 +212,10 @@ internal sealed class AppSettings
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";
         UpdateNotifiedVersion ??= "";
+        if (!HistoryMaxAgeChoices.Contains(HistoryMaxAgeDays))
+        {
+            HistoryMaxAgeDays = 0; // edited by hand to something the window can not show: keep everything
+        }
         if (HistoryLimit < 1)
         {
             HistoryLimit = DefaultHistoryLimit;

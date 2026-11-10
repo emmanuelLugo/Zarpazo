@@ -16,6 +16,9 @@ internal sealed class CaptureHistory
     private const string StateExtension = ".json";
     private const string CleanExtension = ".clean";
     private const string TextExtension = ".txt";
+    private const string NamePrefix = "Zarpazo_";
+    private const string StampFormat = "yyyy-MM-dd_HH-mm-ss-fff";
+    private const int StampLength = 8 + 23; // "Zarpazo_" and the time that follows it
     private static readonly string[] RecordingExtensions = [".gif", ".mp4"];
 
     /// <summary>A video can be hundreds of megabytes, so recordings are kept in far smaller numbers than captures.</summary>
@@ -111,6 +114,37 @@ internal sealed class CaptureHistory
                 File.Exists(Path.ChangeExtension(path, StateExtension)),
                 RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)).FirstOrDefault(File.Exists)))
             .ToList();
+    }
+
+    /// <summary>
+    /// Deletes the captures and recordings taken more than <paramref name="days"/> days before <paramref name="now"/>. The age is the
+    /// time in the file name; a name that does not have one is left alone. A file open elsewhere is kept for the next time.
+    /// </summary>
+    public void DeleteOlderThan(int days, DateTime now)
+    {
+        if (days < 1)
+        {
+            return;
+        }
+
+        DateTime cutoff = now.AddDays(-days);
+        foreach (HistoryEntry entry in List())
+        {
+            string name = Path.GetFileNameWithoutExtension(entry.Path);
+            if (name.StartsWith(NamePrefix, StringComparison.Ordinal) && name.Length >= StampLength
+                && DateTime.TryParseExact(name.AsSpan(NamePrefix.Length, StampLength - NamePrefix.Length), StampFormat, null, System.Globalization.DateTimeStyles.None, out DateTime taken)
+                && taken < cutoff)
+            {
+                try
+                {
+                    Delete(entry.Path);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Still open somewhere; it goes next time.
+                }
+            }
+        }
     }
 
     /// <summary>Removes the capture and the files that belong to it.</summary>
