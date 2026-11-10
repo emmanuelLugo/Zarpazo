@@ -53,6 +53,11 @@
 
                     <TextBlock Style="{StaticResource Section}" Text="Atajo de captura" />
                     <local:HotKeyPicker x:Name="CaptureHotKey" />
+                    <StackPanel x:Name="PrintScreenNotice" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Windows tiene Impr Pant asignada al Recortes y puede abrirlo en vez de Zarpazo. Desactiva &quot;Usar el botón Impr Pant para abrir la captura de pantalla&quot; en Windows o elige otro atajo." />
+                        <Button Content="Abrir ajustes de teclado de Windows" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnOpenWindowsKeyboardSettings" />
+                    </StackPanel>
 
                     <TextBlock Style="{StaticResource Section}" Text="Copiar" />
                     <CheckBox x:Name="CopyAsFileBox" Content="Copiar también como archivo PNG" />

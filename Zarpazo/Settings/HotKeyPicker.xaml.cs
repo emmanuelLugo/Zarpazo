@@ -18,6 +18,8 @@ public partial class HotKeyPicker : UserControl
         Hint.Text = DefaultHint;
     }
 
+    internal event Action? ValueChanged;
+
     /// <summary>What "Restablecer" goes back to.</summary>
     internal HotKeyBinding DefaultValue { get; set; }
 
@@ -28,6 +30,7 @@ public partial class HotKeyPicker : UserControl
         {
             _value = value;
             Box.Text = value.Describe();
+            ValueChanged?.Invoke();
         }
     }
 

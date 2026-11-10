@@ -10,7 +10,7 @@ internal readonly record struct HotKeyBinding(uint Modifiers, uint VirtualKey)
     public const uint Shift = 4;
     public const uint Windows = 8;
 
-    private const uint VkSnapshot = 0x2C;
+    public const uint VkSnapshot = 0x2C;
     private const uint VkF1 = 0x70;
     private const uint VkF24 = 0x87;
 

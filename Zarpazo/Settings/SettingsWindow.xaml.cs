@@ -38,6 +38,8 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedIndex = (int)settings.AppearanceMode;
         CaptureHotKey.DefaultValue = HotKeyBinding.Default;
         CaptureHotKey.Value = settings.HotKey;
+        CaptureHotKey.ValueChanged += ShowPrintScreenNoticeIfNeeded;
+        ShowPrintScreenNoticeIfNeeded();
         RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
         RecordHotKey.Value = settings.RecordHotKey;
         CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
@@ -213,6 +215,11 @@ public partial class SettingsWindow : Window
         Directory.CreateDirectory(folder);
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
     }
+
+    private void ShowPrintScreenNoticeIfNeeded() =>
+        PrintScreenNotice.Visibility = PrintScreenConflict.Applies(CaptureHotKey.Value) ? Visibility.Visible : Visibility.Collapsed;
+
+    private void OnOpenWindowsKeyboardSettings(object sender, RoutedEventArgs e) => PrintScreenConflict.OpenWindowsSettings();
 
     // IsCancel only closes windows shown with ShowDialog; this one is modeless, so it has to close itself (Esc too).
     private void OnCancel(object sender, RoutedEventArgs e) => Close();

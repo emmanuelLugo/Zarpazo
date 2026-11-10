@@ -67,6 +67,10 @@ public partial class App : Application
         {
             _tray.ShowWarning($"Otra aplicación ya usa {_settings.Current.HotKey.Describe()}. Puedes cambiar el atajo en Configuración o capturar desde este icono.");
         }
+        else if (PrintScreenConflict.Applies(_settings.Current.HotKey))
+        {
+            _tray.ShowWarning("Windows tiene Impr Pant asignada al Recortes y puede abrirlo en vez de Zarpazo. Desactiva \"Usar el botón Impr Pant para abrir la captura de pantalla\" en Configuración de Windows, o cambia el atajo en Zarpazo.");
+        }
         _recordHotKey = new GlobalHotKey(RecordFromHotKey);
         if (!_recordHotKey.TryRegister(_settings.Current.RecordHotKey))
         {
