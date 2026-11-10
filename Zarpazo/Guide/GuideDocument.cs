@@ -27,7 +27,20 @@ internal sealed class GuideDocument(string folder)
         Directory.CreateDirectory(folder);
         string path = Path.Combine(folder, $"{Guid.NewGuid():N}.png");
         ImageOutput.Write(path, image);
+        return Append(path);
+    }
 
+    /// <summary>Adds a picture that already is a PNG (from a saved project) as the last step.</summary>
+    internal GuideStep AddPng(byte[] png)
+    {
+        Directory.CreateDirectory(folder);
+        string path = Path.Combine(folder, $"{Guid.NewGuid():N}.png");
+        File.WriteAllBytes(path, png);
+        return Append(path);
+    }
+
+    private GuideStep Append(string path)
+    {
         var step = new GuideStep(path);
         _steps.Add(step);
         Renumber();

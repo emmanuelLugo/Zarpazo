@@ -26,6 +26,9 @@
                     <Setter Property="Margin" Value="0,0,8,0" />
                 </Style>
             </StackPanel.Resources>
+            <Button Content="Abrir…" Click="OnOpenProject" ToolTip="Abre una guía guardada antes (.zarpazo)" />
+            <Button x:Name="SaveButton" Content="Guardar…" Click="OnSaveProject"
+                    ToolTip="Guarda la guía en un archivo .zarpazo para seguir editándola otro día" />
             <Button x:Name="PdfButton" Content="Exportar PDF…" Click="OnExportPdf" />
             <Button x:Name="HtmlButton" Content="Exportar HTML…" Click="OnExportHtml"
                     ToolTip="Un solo archivo que se abre en cualquier navegador, con las imágenes dentro" />

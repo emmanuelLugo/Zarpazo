@@ -62,6 +62,44 @@ public partial class GuideWindow : Window
         Reload();
     }
 
+    private void OnSaveProject(object sender, RoutedEventArgs e) =>
+        Export($"Guía de Zarpazo (*{GuideProject.Extension})|*{GuideProject.Extension}", GuideProject.Extension,
+            path => GuideProject.Save(_guide, path), "Guardar guía", reveal: false);
+
+    private void OnOpenProject(object sender, RoutedEventArgs e)
+    {
+        if (_guide.Steps.Count > 0 && MessageBox.Show(this, "La guía actual se reemplazará por la que abras. ¿Continuar?", "Zarpazo",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Abrir guía",
+            Filter = $"Guía de Zarpazo (*{GuideProject.Extension})|*{GuideProject.Extension}",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            GuideProject.Load(_guide, dialog.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) // InvalidDataException is an IOException
+        {
+            MessageBox.Show(this, $"No se pudo abrir la guía: {ex.Message}", "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        TitleBox.Text = _guide.Title;
+        Reload();
+        StatusText.Text = $"Abierta: {Path.GetFileName(dialog.FileName)}";
+    }
+
     private void OnExportPdf(object sender, RoutedEventArgs e) =>
         Export("Guía en PDF (*.pdf)|*.pdf", ".pdf", path =>
         {
@@ -72,12 +110,12 @@ public partial class GuideWindow : Window
     private void OnExportHtml(object sender, RoutedEventArgs e) =>
         Export("Página web (*.html)|*.html", ".html", path => File.WriteAllText(path, GuideHtml.Build(_guide.Title, _guide.Steps)));
 
-    private void Export(string filter, string extension, Action<string> write)
+    private void Export(string filter, string extension, Action<string> write, string title = "Exportar guía", bool reveal = true)
     {
         string name = string.Concat((_guide.Title.Length > 0 ? _guide.Title : "Guía").Split(Path.GetInvalidFileNameChars()));
         var dialog = new SaveFileDialog
         {
-            Title = "Exportar guía",
+            Title = title,
             FileName = name,
             Filter = filter,
             AddExtension = true,
@@ -105,6 +143,9 @@ public partial class GuideWindow : Window
         }
 
         StatusText.Text = $"Guardada: {dialog.FileName}";
-        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{dialog.FileName}\"") { UseShellExecute = true });
+        if (reveal)
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{dialog.FileName}\"") { UseShellExecute = true });
+        }
     }
 }
