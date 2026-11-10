@@ -217,4 +217,44 @@ public sealed class CaptureHistoryTests : IDisposable
         // The two that remain are the last two made.
         Assert.Equal(["recording 3", "recording 2"], entries.Where(entry => entry.IsRecording).Select(entry => File.ReadAllText(entry.MediaPath!)));
     }
+
+    [Fact]
+    public void Text_is_unread_until_written_and_an_empty_text_counts_as_read()
+    {
+        var history = new CaptureHistory(_folder);
+        string path = history.Add(Image(8, 6), limit: 100);
+        Assert.Null(history.ReadText(path));
+
+        history.WriteText(path, "");
+        Assert.Equal("", history.ReadText(path));
+
+        history.WriteText(path, "Factura 123");
+        Assert.Equal("Factura 123", history.ReadText(path));
+    }
+
+    [Fact]
+    public void Deleting_a_capture_removes_its_text_and_a_deleted_one_gets_none()
+    {
+        var history = new CaptureHistory(_folder);
+        string path = history.Add(Image(8, 6), limit: 100);
+        history.WriteText(path, "hola");
+
+        history.Delete(path);
+        history.WriteText(path, "late result"); // the reading finished after the delete
+
+        Assert.False(File.Exists(Path.ChangeExtension(path, ".txt")));
+    }
+
+    [Theory]
+    [InlineData("Factura número 123", "FACTURA", true)]
+    [InlineData("Factura número 123", "numero", true)]
+    [InlineData("Factura número 123", "  123 ", true)]
+    [InlineData("Factura número 123", "recibo", false)]
+    [InlineData("", "recibo", false)]
+    [InlineData(null, "recibo", false)]
+    [InlineData(null, "", true)]
+    public void Search_ignores_case_and_accents(string? text, string query, bool expected)
+    {
+        Assert.Equal(expected, CaptureHistory.Matches(text, query));
+    }
 }

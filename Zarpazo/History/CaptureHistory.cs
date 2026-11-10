@@ -8,12 +8,14 @@ namespace Zarpazo.History;
 /// <summary>
 /// The finished captures, kept as PNG files in one folder. File names sort by time, so the name is the order.
 /// A capture that can be opened again has two more files with the same name: <c>.json</c> (<see cref="EditState"/>) and,
-/// when annotations were drawn, <c>.clean</c> (the same area without them).
+/// when annotations were drawn, <c>.clean</c> (the same area without them). Once its text has been read for the search,
+/// <c>.txt</c> holds it (empty when the picture has none, so it is not read again).
 /// </summary>
 internal sealed class CaptureHistory
 {
     private const string StateExtension = ".json";
     private const string CleanExtension = ".clean";
+    private const string TextExtension = ".txt";
     private static readonly string[] RecordingExtensions = [".gif", ".mp4"];
 
     /// <summary>A video can be hundreds of megabytes, so recordings are kept in far smaller numbers than captures.</summary>
@@ -114,7 +116,13 @@ internal sealed class CaptureHistory
     /// <summary>Removes the capture and the files that belong to it.</summary>
     public void Delete(string path)
     {
-        var files = new List<string> { path, Path.ChangeExtension(path, StateExtension), Path.ChangeExtension(path, CleanExtension) };
+        var files = new List<string>
+        {
+            path,
+            Path.ChangeExtension(path, StateExtension),
+            Path.ChangeExtension(path, CleanExtension),
+            Path.ChangeExtension(path, TextExtension),
+        };
         files.AddRange(RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)));
         foreach (string file in files)
         {
@@ -123,6 +131,39 @@ internal sealed class CaptureHistory
                 File.Delete(file);
             }
         }
+    }
+
+    /// <summary>The text read from the picture. Null when it has not been read yet; empty when it has none.</summary>
+    public string? ReadText(string path)
+    {
+        try
+        {
+            string textPath = Path.ChangeExtension(path, TextExtension);
+            return File.Exists(textPath) ? File.ReadAllText(textPath) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Keeps the text read from a picture. Does nothing if the capture was deleted in the meantime.</summary>
+    /// <exception cref="IOException">The file could not be written.</exception>
+    public void WriteText(string path, string text)
+    {
+        if (File.Exists(path))
+        {
+            File.WriteAllText(Path.ChangeExtension(path, TextExtension), text);
+        }
+    }
+
+    /// <summary>Whether <paramref name="text"/> has <paramref name="query"/>, ignoring case and accents. An empty query matches everything.</summary>
+    public static bool Matches(string? text, string query)
+    {
+        query = query.Trim();
+        return query.Length == 0
+            || (text != null && System.Globalization.CultureInfo.CurrentCulture.CompareInfo.IndexOf(
+                text, query, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0);
     }
 
     /// <summary>The saved state and the image to edit on top of. Null if the capture can't be opened again.</summary>

@@ -66,10 +66,10 @@ Nada del historial entra en el MVP; la búsqueda por texto depende de tener ante
 
 | Función | Prioridad |
 | --- | --- |
-| Historial de capturas con miniaturas | Después |
-| Reabrir una captura anterior para seguir editándola | Después |
-| Borrado automático de capturas antiguas | Después |
-| Buscar dentro de las capturas por texto (usando OCR) | Avanzado |
+| Historial de capturas con miniaturas | Después (hecho: Historial en el menú de la bandeja) |
+| Reabrir una captura anterior para seguir editándola | Después (hecho: botón Editar) |
+| Borrado automático de capturas antiguas | Después (hecho por cantidad: Configuración > Guardado; por antigüedad, pendiente) |
+| Buscar dentro de las capturas por texto (usando OCR) | Avanzado (hecho: cuadro «Buscar texto» en el Historial) |
 
 ## 5. Integración con Windows
 

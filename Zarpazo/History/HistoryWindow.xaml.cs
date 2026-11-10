@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using Zarpazo.Ocr;
 using Zarpazo.Output;
 using Zarpazo.Settings;
 
@@ -16,6 +17,8 @@ public partial class HistoryWindow : Window
     private readonly CaptureHistory _history;
     private readonly SettingsStore _settings;
     private readonly Action<string> _onEdit;
+    private List<Item> _all = [];
+    private int _generation; // a reload starts a new reading round; the old one stops
 
     /// <param name="onEdit">Opens a capture in the editor. The window is hidden by the caller while that lasts.</param>
     internal HistoryWindow(CaptureHistory history, SettingsStore settings, Action<string> onEdit)
@@ -26,6 +29,7 @@ public partial class HistoryWindow : Window
         _settings = settings;
         _onEdit = onEdit;
         Reload();
+        Closed += (_, _) => _generation++;
     }
 
     internal void Reload()
@@ -35,7 +39,10 @@ public partial class HistoryWindow : Window
         {
             try
             {
-                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind));
+                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind)
+                {
+                    Text = entry.MediaPath == null ? _history.ReadText(entry.Path) : null,
+                });
             }
             catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException)
             {
@@ -43,9 +50,63 @@ public partial class HistoryWindow : Window
             }
         }
 
-        Items.ItemsSource = items;
-        EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _all = items;
+        ApplyFilter();
+        _ = ReadTextsAsync();
+    }
+
+    private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        List<Item> shown = _all.Where(item => CaptureHistory.Matches(item.Text, SearchBox.Text)).ToList();
+        Items.ItemsSource = shown;
+        EmptyText.Text = _all.Count == 0
+            ? "Todavía no hay nada. Aquí aparecen las capturas que copias o guardas, y tus grabaciones."
+            : "No hay capturas con ese texto.";
+        EmptyText.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         OnSelectionChanged(this, null!);
+    }
+
+    /// <summary>Reads the text of the captures that have not been read yet, one at a time, so the search can find them.</summary>
+    private async Task ReadTextsAsync()
+    {
+        int generation = ++_generation;
+        if (!TextRecognizer.IsAvailable)
+        {
+            return;
+        }
+
+        List<Item> pending = _all.Where(item => item.MediaPath == null && item.Text == null).ToList();
+        for (int i = 0; i < pending.Count && generation == _generation; i++)
+        {
+            StatusText.Text = $"Leyendo el texto de las capturas… ({i + 1}/{pending.Count})";
+            try
+            {
+                string text = await TextRecognizer.RecognizeAsync(CaptureHistory.Load(pending[i].Path));
+                if (generation != _generation)
+                {
+                    return;
+                }
+
+                _history.WriteText(pending[i].Path, text);
+                pending[i].Text = text;
+                if (SearchBox.Text.Trim().Length > 0)
+                {
+                    ApplyFilter();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or FileFormatException
+                                           or System.Runtime.InteropServices.COMException)
+            {
+                // This one can't be read (deleted, damaged); the others still can.
+            }
+        }
+
+        if (generation == _generation)
+        {
+            StatusText.Text = "";
+        }
     }
 
     private Item? Selected => Items.SelectedItem as Item;
@@ -176,5 +237,8 @@ public partial class HistoryWindow : Window
     private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit, string? MediaPath, string Kind)
     {
         public bool IsRecording => MediaPath != null;
+
+        /// <summary>The text read from the picture; null until it has been read.</summary>
+        public string? Text { get; set; }
     }
 }

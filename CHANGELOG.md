@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Historial: cuadro «Buscar texto» para encontrar una captura por lo que dice. Al abrir el Historial se lee con el OCR de Windows el texto de las capturas que aún no lo tenían (una a una, en segundo plano) y se guarda junto a cada captura; la búsqueda ignora mayúsculas y acentos. Las grabaciones no entran en la búsqueda.
+
 ## [0.3.0] - 2026-11-10
 
 ### Añadido

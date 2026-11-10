@@ -37,6 +37,11 @@
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
         </StackPanel>
 
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock DockPanel.Dock="Left" Text="Buscar texto:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}" />
+            <TextBox x:Name="SearchBox" TextChanged="OnSearchChanged" />
+        </DockPanel>
+
         <Grid>
             <ListBox x:Name="Items"
                      SelectionMode="Single"
