@@ -17,6 +17,7 @@ public partial class SettingsWindow : Window
     private readonly StartupRegistration _startup;
     private readonly Func<HotKeyBinding, bool> _tryRegisterHotKey;
     private readonly Func<HotKeyBinding, bool> _tryRegisterRecordHotKey;
+    private readonly Func<HotKeyBinding, bool>? _tryRegisterGroupHotKey;
     private readonly UpdateService? _updates;
     private CancellationTokenSource? _download;
 
@@ -25,7 +26,8 @@ public partial class SettingsWindow : Window
     /// <param name="updates">Looks for and installs new versions; without it the update section is hidden.</param>
     /// <param name="showAbout">Opens on the About tab, where the update is.</param>
     internal SettingsWindow(SettingsStore store, StartupRegistration startup, Func<HotKeyBinding, bool> tryRegisterHotKey,
-        Func<HotKeyBinding, bool> tryRegisterRecordHotKey, UpdateService? updates = null, bool showAbout = false)
+        Func<HotKeyBinding, bool> tryRegisterRecordHotKey, UpdateService? updates = null, bool showAbout = false,
+        Func<HotKeyBinding, bool>? tryRegisterGroupHotKey = null)
     {
         InitializeComponent();
         TitleBarTheme.Follow(this);
@@ -33,6 +35,7 @@ public partial class SettingsWindow : Window
         _startup = startup;
         _tryRegisterHotKey = tryRegisterHotKey;
         _tryRegisterRecordHotKey = tryRegisterRecordHotKey;
+        _tryRegisterGroupHotKey = tryRegisterGroupHotKey;
 
         AppSettings settings = store.Current;
         ThemeBox.SelectedIndex = (int)settings.AppearanceMode;
@@ -40,6 +43,10 @@ public partial class SettingsWindow : Window
         CaptureHotKey.Value = settings.HotKey;
         CaptureHotKey.ValueChanged += ShowPrintScreenNoticeIfNeeded;
         ShowPrintScreenNoticeIfNeeded();
+        GroupHotKey.DefaultValue = HotKeyBinding.DefaultGroup;
+        GroupHotKey.Value = settings.GroupHotKey;
+        GroupOneImageBox.IsChecked = settings.GroupCopyAsOneImage;
+        GroupNumberingBox.IsChecked = settings.GroupNumbering;
         RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
         RecordHotKey.Value = settings.RecordHotKey;
         CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
@@ -234,6 +241,11 @@ public partial class SettingsWindow : Window
             MessageBox.Show(this, "El atajo de captura y el de grabación no pueden ser el mismo.", "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        if (GroupHotKey.Value == CaptureHotKey.Value || GroupHotKey.Value == RecordHotKey.Value)
+        {
+            MessageBox.Show(this, "El atajo de las capturas agrupadas no puede ser el mismo que el de captura o el de grabación.", "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         if (CaptureHotKey.Value != settings.HotKey && !_tryRegisterHotKey(CaptureHotKey.Value))
         {
             MessageBox.Show(this, $"{CaptureHotKey.Value.Describe()} ya la usa otra aplicación o Windows. Elige otra combinación.",
@@ -243,6 +255,13 @@ public partial class SettingsWindow : Window
         if (RecordHotKey.Value != settings.RecordHotKey && !_tryRegisterRecordHotKey(RecordHotKey.Value))
         {
             MessageBox.Show(this, $"{RecordHotKey.Value.Describe()} ya la usa otra aplicación o Windows. Elige otra combinación.",
+                "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (_tryRegisterGroupHotKey != null && GroupHotKey.Value != settings.GroupHotKey && !_tryRegisterGroupHotKey(GroupHotKey.Value))
+        {
+            MessageBox.Show(this, $"{GroupHotKey.Value.Describe()} ya la usa otra aplicación o Windows. Elige otra combinación.",
                 "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -265,6 +284,9 @@ public partial class SettingsWindow : Window
         settings.CheckForUpdates = AutoUpdateBox.IsChecked == true;
         settings.HotKey = CaptureHotKey.Value;
         settings.RecordHotKey = RecordHotKey.Value;
+        settings.GroupHotKey = GroupHotKey.Value;
+        settings.GroupCopyAsOneImage = GroupOneImageBox.IsChecked == true;
+        settings.GroupNumbering = GroupNumberingBox.IsChecked == true;
         settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];
         settings.RecordAudioOffsetMs = AppSettings.AudioOffsetChoices[Math.Max(0, AudioOffsetBox.SelectedIndex)];
         settings.JpegQuality = AppSettings.JpegQualityChoices[Math.Max(0, JpegQualityBox.SelectedIndex)];

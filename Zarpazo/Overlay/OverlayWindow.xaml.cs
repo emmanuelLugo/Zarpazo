@@ -123,6 +123,10 @@ public partial class OverlayWindow : Window
         {
             CancelStep();
         }
+        else if (e.Key == Key.Enter && GroupMode)
+        {
+            OnGuide(this, EventArgs.Empty); // group mode: Enter adds to the group; Ctrl+C still copies
+        }
         else if (e.Key == Key.Enter || (ctrl && e.Key == Key.C))
         {
             OnCopy(this, EventArgs.Empty);
@@ -272,6 +276,19 @@ public partial class OverlayWindow : Window
         new PinnedWindow(crop.Final, _bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, _settings).Show();
         return true;
     });
+
+    /// <summary>Group mode is on: Enter adds the capture to the group instead of copying it.</summary>
+    internal bool GroupMode
+    {
+        get => _groupMode;
+        set
+        {
+            _groupMode = value;
+            Toolbar.SetGroupMode(value);
+        }
+    }
+
+    private bool _groupMode;
 
     /// <summary>The capture, dressed like a copy would be, is to be added to the group of captures.</summary>
     internal event Action<BitmapSource>? GuideStepRequested;

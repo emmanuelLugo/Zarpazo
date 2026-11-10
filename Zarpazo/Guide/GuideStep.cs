@@ -17,14 +17,20 @@ internal sealed class GuideStep(string imagePath)
 
     public string Heading => $"Captura {Number}";
 
-    public BitmapImage Thumbnail => _thumbnail ??= LoadThumbnail();
+    public BitmapImage Thumbnail => _thumbnail ??= Load(ThumbnailWidth);
 
-    private BitmapImage LoadThumbnail()
+    /// <summary>The full picture, read into memory so the file is not left locked.</summary>
+    public BitmapImage LoadImage() => Load(0);
+
+    private BitmapImage Load(int decodeWidth)
     {
         var image = new BitmapImage();
         image.BeginInit();
-        image.CacheOption = BitmapCacheOption.OnLoad; // read now, so the file is not left locked
-        image.DecodePixelWidth = ThumbnailWidth;
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        if (decodeWidth > 0)
+        {
+            image.DecodePixelWidth = decodeWidth;
+        }
         image.UriSource = new Uri(imagePath);
         image.EndInit();
         image.Freeze();

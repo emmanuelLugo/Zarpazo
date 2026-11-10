@@ -28,6 +28,7 @@ public partial class App : Application
     private TrayIcon? _tray;
     private GlobalHotKey? _hotKey;
     private GlobalHotKey? _recordHotKey;
+    private GlobalHotKey? _groupHotKey;
     private Rectangle? _lastRecordingRegion; // what the recording shortcut repeats
     private Rectangle? _lastArea; // the last area copied, saved, pinned or recorded, for "Repetir la última zona"
     private bool _delayPending; // a delayed capture is counting down
@@ -56,7 +57,6 @@ public partial class App : Application
         _settings = new SettingsStore(SettingsStore.DefaultPath);
         try
         {
-            _guide.Clear(); // a guide is not kept between runs: only pictures left by the last one are here
             _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -64,7 +64,7 @@ public partial class App : Application
             // The folder is not reachable right now; the history is cleaned the next time.
         }
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
-            ShowHistory, ShowGuide, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
+            ShowHistory, ShowGuide, () => _guide.AddsOnCapture = !_guide.AddsOnCapture, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
         ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);
         ThemeManager.Apply(_settings.Current.AppearanceMode);
 
@@ -83,6 +83,13 @@ public partial class App : Application
         {
             _tray.ShowWarning("Windows tiene Impr Pant asignada al Recortes y puede abrirlo en vez de Zarpazo. Desactiva \"Usar el botón Impr Pant para abrir la captura de pantalla\" en Configuración de Windows, o cambia el atajo en Zarpazo.");
         }
+        _guide.Changed += () => _tray!.SetGroupMode(_guide.AddsOnCapture, _guide.Steps.Count);
+        _tray.SetGroupMode(false, _guide.Steps.Count);
+        _groupHotKey = new GlobalHotKey(CopyGroupFromHotKey);
+        if (!_groupHotKey.TryRegister(_settings.Current.GroupHotKey))
+        {
+            _tray.ShowWarning($"Otra aplicación ya usa {_settings.Current.GroupHotKey.Describe()}, el atajo de las capturas agrupadas. Puedes cambiarlo en Configuración.");
+        }
         _recordHotKey = new GlobalHotKey(RecordFromHotKey);
         if (!_recordHotKey.TryRegister(_settings.Current.RecordHotKey))
         {
@@ -95,6 +102,7 @@ public partial class App : Application
         _updateTimer?.Stop();
         _hotKey?.Dispose();
         _recordHotKey?.Dispose();
+        _groupHotKey?.Dispose();
         _tray?.Dispose();
         _instanceMutex?.Dispose();
         base.OnExit(e);
@@ -159,7 +167,7 @@ public partial class App : Application
             return;
         }
 
-        _guideWindow = new GuideWindow(_guide);
+        _guideWindow = new GuideWindow(_guide, _settings);
         _guideWindow.Closed += (_, _) => _guideWindow = null;
         _guideWindow.Show();
     }
@@ -167,8 +175,28 @@ public partial class App : Application
     private void AddGuideStep(BitmapSource image)
     {
         GuideStep step = _guide.Add(image); // a failure here is shown by the overlay, which then stays open
-        _guideWindow?.Reload();
         _tray!.ShowInfo($"Añadida al grupo (captura {step.Number})");
+    }
+
+    // The group shortcut: everything in the group goes to the clipboard, ready to paste, and the group starts again empty.
+    private void CopyGroupFromHotKey()
+    {
+        if (_guide.Steps.Count == 0)
+        {
+            _tray!.ShowInfo("No hay capturas en el grupo");
+            return;
+        }
+
+        try
+        {
+            int count = GuideShare.Copy(_guide.Steps, _settings.Current);
+            _guide.Clear();
+            _tray!.ShowInfo($"{count} {(count == 1 ? "captura copiada" : "capturas copiadas")}: pega donde quieras");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        {
+            _tray!.ShowWarning($"No se pudo copiar el grupo: {ex.Message}");
+        }
     }
 
     private void ShowHistory()
@@ -240,7 +268,9 @@ public partial class App : Application
         // While the shortcut is registered Windows keeps the key from the window, so it couldn't be recorded.
         _hotKey!.Unregister();
         _recordHotKey!.Unregister();
-        _settingsWindow = new SettingsWindow(_settings, new StartupRegistration(), _hotKey.TryRegister, _recordHotKey.TryRegister, _updates, showAbout);
+        _groupHotKey!.Unregister();
+        _settingsWindow = new SettingsWindow(_settings, new StartupRegistration(), _hotKey.TryRegister, _recordHotKey.TryRegister, _updates, showAbout,
+            _groupHotKey.TryRegister);
         _settingsWindow.Closed += (_, _) =>
         {
             _settingsWindow = null;
@@ -252,6 +282,10 @@ public partial class App : Application
             if (!_recordHotKey.TryRegister(_settings.Current.RecordHotKey))
             {
                 _tray!.ShowWarning($"No se pudo activar {_settings.Current.RecordHotKey.Describe()}: otra aplicación lo usa.");
+            }
+            if (!_groupHotKey.TryRegister(_settings.Current.GroupHotKey))
+            {
+                _tray!.ShowWarning($"No se pudo activar {_settings.Current.GroupHotKey.Describe()}: otra aplicación lo usa.");
             }
         };
         _settingsWindow.Show();
@@ -392,6 +426,7 @@ public partial class App : Application
         _overlay = new OverlayWindow(image, bounds, windows, _settings, _history, initialArea: area);
         _overlay.AreaUsed += used => _lastArea = used;
         _overlay.RecordRequested += BeginRecording;
+        _overlay.GroupMode = _guide.AddsOnCapture;
         _overlay.GuideStepRequested += AddGuideStep;
         _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
         _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");

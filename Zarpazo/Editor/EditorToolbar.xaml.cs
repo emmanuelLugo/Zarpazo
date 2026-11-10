@@ -764,6 +764,10 @@ public partial class EditorToolbar : UserControl
 
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>In group mode Enter adds to the group, so the copy button says its other shortcut.</summary>
+    internal void SetGroupMode(bool on) =>
+        CopyActionButton.ToolTip = on ? "Copiar al portapapeles (Ctrl+C). Enter añade al grupo (modo grupo)" : "Copiar al portapapeles (Enter)";
+
     /// <summary>Picks a tool, as its button would.</summary>
     internal void Choose(AnnotationTool tool) => ApplyTool(tool);
 

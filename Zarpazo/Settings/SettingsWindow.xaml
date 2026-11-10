@@ -59,6 +59,13 @@
                         <Button Content="Abrir ajustes de teclado de Windows" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnOpenWindowsKeyboardSettings" />
                     </StackPanel>
 
+                    <TextBlock Style="{StaticResource Section}" Text="Capturas agrupadas" />
+                    <local:HotKeyPicker x:Name="GroupHotKey" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Atajo que copia el grupo de capturas, listo para pegar, y lo vacía." />
+                    <CheckBox x:Name="GroupOneImageBox" Content="El atajo copia el grupo como una sola imagen" Margin="0,8,0,0" />
+                    <CheckBox x:Name="GroupNumberingBox" Content="Poner el número en la esquina de cada captura" Margin="0,6,0,0" />
+
                     <TextBlock Style="{StaticResource Section}" Text="Copiar" />
                     <CheckBox x:Name="CopyAsFileBox" Content="Copiar también como archivo PNG" />
                     <TextBlock Style="{StaticResource Hint}"

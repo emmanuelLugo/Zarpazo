@@ -21,12 +21,15 @@ internal sealed class TrayIcon : IDisposable
     private readonly ContextMenuStrip _menu;
     private readonly ToolStripMenuItem _delayedMenu;
     private readonly ToolStripItem _updateItem;
+    private readonly ToolStripMenuItem _groupMode;
+    private string _idleText = "Zarpazo";
+    private bool _recordingShown;
     private Action? _balloonClick;
     private Icon? _recordingIcon;
     private Icon? _pausedIcon;
 
     public TrayIcon(Action onCapture, Action onFullScreen, Action onRepeatLast, Func<bool> canRepeatLast, Action<int> onDelayed,
-        Action onHistory, Action onGuide, Action onSettings, Action onStopRecording, Action onExit)
+        Action onHistory, Action onGuide, Action onGroupMode, Action onSettings, Action onStopRecording, Action onExit)
     {
         var menu = new ContextMenuStrip();
         _menu = menu;
@@ -44,6 +47,8 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Historial…", null, (_, _) => onHistory());
         menu.Items.Add("Capturas agrupadas…", null, (_, _) => onGuide());
+        _groupMode = new ToolStripMenuItem("Modo grupo", null, (_, _) => onGroupMode());
+        menu.Items.Add(_groupMode);
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
         _stopRecording = menu.Items.Add("Detener grabación", null, (_, _) => onStopRecording());
         _stopRecording.Visible = false; // only while recording
@@ -67,6 +72,17 @@ internal sealed class TrayIcon : IDisposable
             click?.Invoke();
         };
         _icon.BalloonTipClosed += (_, _) => _balloonClick = null;
+    }
+
+    /// <summary>Shows whether the group mode is on, in the menu and in the icon's tooltip, with how many captures are waiting.</summary>
+    public void SetGroupMode(bool on, int count)
+    {
+        _groupMode.Checked = on;
+        _idleText = on ? $"Zarpazo · modo grupo ({count})" : "Zarpazo";
+        if (!_recordingShown)
+        {
+            _icon.Text = _idleText;
+        }
     }
 
     /// <summary>The person asked to see the waiting update: from its menu entry or by clicking its notice.</summary>
@@ -125,10 +141,11 @@ internal sealed class TrayIcon : IDisposable
     public void SetRecording(bool active, bool paused)
     {
         _stopRecording.Visible = active;
+        _recordingShown = active;
         if (!active)
         {
             _icon.Icon = _normalIcon;
-            _icon.Text = "Zarpazo";
+            _icon.Text = _idleText;
             return;
         }
 

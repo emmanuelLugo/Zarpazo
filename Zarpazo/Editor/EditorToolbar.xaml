@@ -528,7 +528,7 @@
                 <Path Style="{StaticResource Icon}" Stroke="#42A5F5"
                       Data="M2.5,2.5 H11 L13.5,5 V13.5 H2.5 Z M5,2.5 V6 H10.5 V2.5 M5,13.5 V9.5 H11 V13.5" />
             </Button>
-            <Button Style="{StaticResource Action}" ToolTip="Copiar al portapapeles (Enter)" AutomationProperties.Name="Copiar" Click="OnCopy">
+            <Button x:Name="CopyActionButton" Style="{StaticResource Action}" ToolTip="Copiar al portapapeles (Enter)" AutomationProperties.Name="Copiar" Click="OnCopy">
                 <Path Style="{StaticResource Icon}" Stroke="#66BB6A" Data="M5.5,5.5 H13.5 V13.5 H5.5 Z M3.5,10.5 H2.5 V2.5 H10.5 V3.5" />
             </Button>
         </StackPanel>

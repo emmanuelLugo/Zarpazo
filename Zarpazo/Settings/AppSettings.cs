@@ -25,6 +25,15 @@ internal sealed class AppSettings
     public uint HotKeyVirtualKey { get; set; } = HotKeyBinding.Default.VirtualKey;
     public uint RecordHotKeyModifiers { get; set; } = HotKeyBinding.DefaultRecord.Modifiers;
     public uint RecordHotKeyVirtualKey { get; set; } = HotKeyBinding.DefaultRecord.VirtualKey;
+    public uint GroupHotKeyModifiers { get; set; } = HotKeyBinding.DefaultGroup.Modifiers;
+    public uint GroupHotKeyVirtualKey { get; set; } = HotKeyBinding.DefaultGroup.VirtualKey;
+
+    /// <summary>The group shortcut copies the captures joined into one image, not as separate files.</summary>
+    public bool GroupCopyAsOneImage { get; set; }
+
+    /// <summary>Each capture of a group of two or more gets its number in the corner when copied.</summary>
+    public bool GroupNumbering { get; set; } = true;
+
     public bool CopyAsFile { get; set; } = true;
 
     /// <summary>"system", "light" or "dark": the colours of the windows. "system" follows Windows.</summary>
@@ -172,6 +181,17 @@ internal sealed class AppSettings
     }
 
     [JsonIgnore]
+    public HotKeyBinding GroupHotKey
+    {
+        get => new(GroupHotKeyModifiers, GroupHotKeyVirtualKey);
+        set
+        {
+            GroupHotKeyModifiers = value.Modifiers;
+            GroupHotKeyVirtualKey = value.VirtualKey;
+        }
+    }
+
+    [JsonIgnore]
     public HotKeyBinding RecordHotKey
     {
         get => new(RecordHotKeyModifiers, RecordHotKeyVirtualKey);
@@ -207,6 +227,10 @@ internal sealed class AppSettings
             {
                 HotKey = HotKeyBinding.Default; // the capture shortcut was set to the default recording one: it gives way
             }
+        }
+        if (!GroupHotKey.IsAcceptable || GroupHotKey == HotKey || GroupHotKey == RecordHotKey)
+        {
+            GroupHotKey = HotKeyBinding.DefaultGroup; // unusable, or the same key as another shortcut
         }
         AppearanceMode = AppearanceMode; // anything that isn't light or dark becomes "system"
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
