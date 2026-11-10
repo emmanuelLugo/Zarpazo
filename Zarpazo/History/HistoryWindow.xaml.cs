@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Zarpazo.Ocr;
@@ -33,7 +34,38 @@ public partial class HistoryWindow : Window
     }
 
     /// <param name="select">The path to leave selected, when the list is rebuilt for a change of that very capture.</param>
-    internal void Reload(string? select = null)
+    internal void Reload(string? select = null) => _ = ReloadAsync(select);
+
+    // The pictures are read off the interface thread, so the window opens at once and stays responsive with a full history.
+    private async Task ReloadAsync(string? select)
+    {
+        int generation = ++_generation;
+        const string Loading = "Cargando…";
+        if (_all.Count == 0)
+        {
+            StatusText.Text = Loading;
+        }
+
+        List<Item> items = await Task.Run(ReadItems);
+        if (generation != _generation)
+        {
+            return; // a newer reload, or the window was closed
+        }
+
+        _all = items;
+        if (StatusText.Text == Loading)
+        {
+            StatusText.Text = "";
+        }
+        ApplyFilter();
+        if (select != null)
+        {
+            Items.SelectedItem = (Items.ItemsSource as IEnumerable<Item>)?.FirstOrDefault(item => item.Path == select);
+        }
+        _ = ReadTextsAsync();
+    }
+
+    private List<Item> ReadItems()
     {
         var items = new List<Item>();
         foreach (HistoryEntry entry in _history.List())
@@ -45,30 +77,39 @@ public partial class HistoryWindow : Window
                     Text = entry.MediaPath == null ? _history.ReadText(entry.Path) : null,
                 });
             }
-            catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException)
+            catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException or UnauthorizedAccessException)
             {
                 // A damaged or half-written file is skipped instead of breaking the whole list.
             }
         }
-
-        _all = items;
-        ApplyFilter();
-        if (select != null)
-        {
-            Items.SelectedItem = (Items.ItemsSource as IEnumerable<Item>)?.FirstOrDefault(item => item.Path == select);
-        }
-        _ = ReadTextsAsync();
+        return items;
     }
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
+    private void OnFilterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (IsInitialized)
+        {
+            ApplyFilter();
+        }
+    }
+
+    private bool MatchesKind(Item item) => KindFilter.SelectedIndex switch
+    {
+        1 => !item.IsRecording,
+        2 => item.IsRecording,
+        3 => item.Kept,
+        _ => true,
+    };
+
     private void ApplyFilter()
     {
-        List<Item> shown = _all.Where(item => CaptureHistory.Matches(item.Text, SearchBox.Text)).ToList();
+        List<Item> shown = _all.Where(item => MatchesKind(item) && CaptureHistory.Matches(item.Text, SearchBox.Text)).ToList();
         Items.ItemsSource = shown;
         EmptyText.Text = _all.Count == 0
             ? "Todavía no hay nada. Aquí aparecen las capturas que copias o guardas, y tus grabaciones."
-            : "No hay capturas con ese texto.";
+            : "No hay nada que coincida con el filtro o el texto buscado.";
         EmptyText.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         OnSelectionChanged(this, null!);
     }
@@ -121,7 +162,85 @@ public partial class HistoryWindow : Window
         bool any = Selected != null;
         CopyButton.IsEnabled = SaveButton.IsEnabled = OpenButton.IsEnabled = DeleteButton.IsEnabled = KeepButton.IsEnabled = any;
         KeepButton.Content = Selected?.Kept == true ? "No conservar" : "Conservar";
-        EditButton.IsEnabled = Selected?.CanEdit == true; // captures from before the history could reopen them have no saved state
+        EditButton.IsEnabled = EditMenuItem.IsEnabled = Selected?.CanEdit == true; // captures from before the history could reopen them have no saved state
+        KeepMenuItem.Header = KeepButton.Content;
+    }
+
+    private void OnWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+        }
+    }
+
+    // On the list only, so Supr and Ctrl+C in the search box keep editing its text.
+    private void OnItemsKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Selected == null)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Delete)
+        {
+            OnDelete(sender, e);
+        }
+        else if (e.Key == Key.Enter)
+        {
+            OnActivate();
+        }
+        else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            OnCopy(sender, e);
+        }
+        else
+        {
+            return;
+        }
+        e.Handled = true;
+    }
+
+    // A double click on a card, not on the empty space or the scroll bar.
+    private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(Items, source) is ListBoxItem)
+        {
+            OnActivate();
+        }
+    }
+
+    /// <summary>Opens the capture in the editor, or a recording in its player.</summary>
+    private void OnActivate()
+    {
+        if (Selected is { CanEdit: true })
+        {
+            OnEdit(this, null!);
+        }
+        else
+        {
+            OnOpen(this, null!);
+        }
+    }
+
+    private void OnItemsRightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(Items, source) is ListBoxItem card)
+        {
+            card.IsSelected = true;
+            card.Focus();
+        }
+        else
+        {
+            Items.SelectedItem = null;
+        }
+    }
+
+    private void OnContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        e.Handled = Selected == null; // nothing under the cursor: no menu
     }
 
     private void OnEdit(object sender, RoutedEventArgs e)

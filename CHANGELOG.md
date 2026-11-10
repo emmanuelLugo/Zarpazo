@@ -6,6 +6,12 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Historial: filtro por tipo (Todo, Capturas, Grabaciones, Conservadas), menú con clic derecho y atajos: Supr elimina, Intro edita (o abre la grabación), Ctrl+C copia y Ctrl+F lleva a la búsqueda. El doble clic en una tarjeta ahora edita o abre, en vez de copiar.
+
+### Cambiado
+- Historial: las miniaturas se cargan en segundo plano, así que la ventana abre al instante aunque haya muchas capturas.
+
 ## [0.4.0] - 2026-11-10
 
 ### Añadido

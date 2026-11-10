@@ -10,7 +10,8 @@
         Background="{DynamicResource WindowBackground}"
         Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI"
-        FontSize="13">
+        FontSize="13"
+        PreviewKeyDown="OnWindowKeyDown">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -40,8 +41,15 @@
         </StackPanel>
 
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <ComboBox x:Name="KindFilter" DockPanel.Dock="Right" Width="150" Margin="8,0,0,0" SelectedIndex="0"
+                      SelectionChanged="OnFilterChanged" ToolTip="Qué mostrar">
+                <ComboBoxItem Content="Todo" />
+                <ComboBoxItem Content="Capturas" />
+                <ComboBoxItem Content="Grabaciones" />
+                <ComboBoxItem Content="Conservadas" />
+            </ComboBox>
             <TextBlock DockPanel.Dock="Left" Text="Buscar texto:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}" />
-            <TextBox x:Name="SearchBox" TextChanged="OnSearchChanged" />
+            <TextBox x:Name="SearchBox" TextChanged="OnSearchChanged" ToolTip="Ctrl+F" />
         </DockPanel>
 
         <Grid>
@@ -49,7 +57,21 @@
                      SelectionMode="Single"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      SelectionChanged="OnSelectionChanged"
-                     MouseDoubleClick="OnCopy">
+                     MouseDoubleClick="OnItemDoubleClick"
+                     KeyDown="OnItemsKeyDown"
+                     PreviewMouseRightButtonDown="OnItemsRightClick"
+                     ContextMenuOpening="OnContextMenuOpening">
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem x:Name="EditMenuItem" Header="Editar" InputGestureText="Intro" Click="OnEdit" />
+                        <MenuItem Header="Copiar" InputGestureText="Ctrl+C" Click="OnCopy" />
+                        <MenuItem Header="Guardar como…" Click="OnSave" />
+                        <MenuItem Header="Abrir" Click="OnOpen" />
+                        <Separator />
+                        <MenuItem x:Name="KeepMenuItem" Header="Conservar" Click="OnKeep" />
+                        <MenuItem Header="Eliminar" InputGestureText="Supr" Click="OnDelete" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel />
