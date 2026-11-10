@@ -98,7 +98,7 @@
                         </ComboBox>
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Se borra al abrir Zarpazo y al guardar una captura nueva, sin pasar por la papelera. Los archivos que guardaste tú en otra carpeta no se tocan." />
+                               Text="Se borra al abrir Zarpazo y al guardar una captura nueva, sin pasar por la papelera. Las capturas marcadas como conservadas en el Historial no se borran, y los archivos que guardaste tú en otra carpeta tampoco." />
                 </StackPanel>
             </TabItem>
 

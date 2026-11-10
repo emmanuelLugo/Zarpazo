@@ -3,7 +3,8 @@ namespace Zarpazo.History;
 /// <param name="Path">The picture: the capture itself, or the first frame of a recording.</param>
 /// <param name="CanEdit">Whether the capture was saved with what it takes to open it again.</param>
 /// <param name="MediaPath">For a recording, the GIF or video file that goes with the picture; null for a capture.</param>
-internal sealed record HistoryEntry(string Path, DateTime Taken, bool CanEdit, string? MediaPath = null)
+/// <param name="Kept">Whether the person marked it to keep: the limits and the age do not delete it.</param>
+internal sealed record HistoryEntry(string Path, DateTime Taken, bool CanEdit, string? MediaPath = null, bool Kept = false)
 {
     public bool IsRecording => MediaPath != null;
 

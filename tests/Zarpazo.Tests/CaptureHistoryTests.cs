@@ -321,4 +321,66 @@ public sealed class CaptureHistoryTests : IDisposable
 
         Assert.Equal(0, settings.HistoryMaxAgeDays);
     }
+
+    [Fact]
+    public void A_kept_capture_survives_the_count_limit_and_does_not_use_up_a_place()
+    {
+        var history = new CaptureHistory(_folder);
+        string first = history.Add(Image(1, 1), limit: 2);
+        history.SetKept(first, true);
+        string[] later = Enumerable.Range(2, 4).Select(i => history.Add(Image(i, 1), limit: 2)).ToArray();
+
+        string[] listed = history.List().Select(entry => entry.Path).ToArray();
+
+        Assert.Contains(first, listed);
+        Assert.Equal(later.TakeLast(2).Reverse().Append(first).Count(), listed.Length); // the kept one plus the two newest
+        Assert.True(history.List().Single(entry => entry.Path == first).Kept);
+    }
+
+    [Fact]
+    public void A_kept_capture_survives_the_age_limit_until_it_is_released()
+    {
+        var history = new CaptureHistory(_folder);
+        string old = Aged("2026-01-01_10-00-00-000");
+        history.SetKept(old, true);
+        var now = new DateTime(2026, 11, 10, 12, 0, 0);
+
+        history.DeleteOlderThan(30, now);
+        Assert.True(File.Exists(old));
+
+        history.SetKept(old, false);
+        Assert.False(history.IsKept(old));
+        history.DeleteOlderThan(30, now);
+        Assert.False(File.Exists(old));
+    }
+
+    [Fact]
+    public void A_kept_recording_is_not_counted_against_the_recording_limit()
+    {
+        var history = new CaptureHistory(_folder);
+        string first = history.AddRecording(MediaFile(".gif", "first"), Image(8, 6), recordingLimit: 1);
+        history.SetKept(first, true);
+        Thread.Sleep(5);
+        history.AddRecording(MediaFile(".gif", "second"), Image(8, 6), recordingLimit: 1);
+        Thread.Sleep(5);
+        history.AddRecording(MediaFile(".gif", "third"), Image(8, 6), recordingLimit: 1);
+
+        IReadOnlyList<HistoryEntry> recordings = history.List().Where(entry => entry.IsRecording).ToList();
+
+        Assert.Equal(2, recordings.Count); // the kept one and the newest
+        Assert.Contains(recordings, entry => entry.Path == first);
+    }
+
+    [Fact]
+    public void Deleting_a_kept_capture_removes_its_mark_too_and_a_missing_one_cannot_be_kept()
+    {
+        var history = new CaptureHistory(_folder);
+        string path = history.Add(Image(8, 6), limit: 100);
+        history.SetKept(path, true);
+        history.Delete(path);
+        Assert.False(File.Exists(Path.ChangeExtension(path, ".keep")));
+
+        history.SetKept(path, true); // the capture is gone: no stray mark is left behind
+        Assert.False(File.Exists(Path.ChangeExtension(path, ".keep")));
+    }
 }

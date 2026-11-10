@@ -16,6 +16,7 @@ internal sealed class CaptureHistory
     private const string StateExtension = ".json";
     private const string CleanExtension = ".clean";
     private const string TextExtension = ".txt";
+    private const string KeepExtension = ".keep";
     private const string NamePrefix = "Zarpazo_";
     private const string StampFormat = "yyyy-MM-dd_HH-mm-ss-fff";
     private const int StampLength = 8 + 23; // "Zarpazo_" and the time that follows it
@@ -84,7 +85,7 @@ internal sealed class CaptureHistory
         File.Copy(mediaFile, Path.ChangeExtension(path, extension));
         ImageOutput.Write(path, firstFrame);
 
-        foreach (HistoryEntry old in List().Where(entry => entry.IsRecording).Skip(Math.Max(recordingLimit, 0)))
+        foreach (HistoryEntry old in List().Where(entry => entry.IsRecording && !entry.Kept).Skip(Math.Max(recordingLimit, 0)))
         {
             try
             {
@@ -112,7 +113,8 @@ internal sealed class CaptureHistory
                 path,
                 File.GetLastWriteTime(path),
                 File.Exists(Path.ChangeExtension(path, StateExtension)),
-                RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)).FirstOrDefault(File.Exists)))
+                RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)).FirstOrDefault(File.Exists),
+                File.Exists(Path.ChangeExtension(path, KeepExtension))))
             .ToList();
     }
 
@@ -133,7 +135,7 @@ internal sealed class CaptureHistory
             string name = Path.GetFileNameWithoutExtension(entry.Path);
             if (name.StartsWith(NamePrefix, StringComparison.Ordinal) && name.Length >= StampLength
                 && DateTime.TryParseExact(name.AsSpan(NamePrefix.Length, StampLength - NamePrefix.Length), StampFormat, null, System.Globalization.DateTimeStyles.None, out DateTime taken)
-                && taken < cutoff)
+                && taken < cutoff && !entry.Kept)
             {
                 try
                 {
@@ -156,6 +158,7 @@ internal sealed class CaptureHistory
             Path.ChangeExtension(path, StateExtension),
             Path.ChangeExtension(path, CleanExtension),
             Path.ChangeExtension(path, TextExtension),
+            Path.ChangeExtension(path, KeepExtension),
         };
         files.AddRange(RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)));
         foreach (string file in files)
@@ -164,6 +167,23 @@ internal sealed class CaptureHistory
             {
                 File.Delete(file);
             }
+        }
+    }
+
+    /// <summary>Whether the capture is kept: the limits and the age never delete it, only the person does.</summary>
+    public bool IsKept(string path) => File.Exists(Path.ChangeExtension(path, KeepExtension));
+
+    /// <exception cref="IOException">The mark could not be written or removed.</exception>
+    public void SetKept(string path, bool kept)
+    {
+        string mark = Path.ChangeExtension(path, KeepExtension);
+        if (kept && File.Exists(path))
+        {
+            File.WriteAllText(mark, "");
+        }
+        else if (!kept && File.Exists(mark))
+        {
+            File.Delete(mark);
         }
     }
 
@@ -243,7 +263,7 @@ internal sealed class CaptureHistory
 
     private void Prune(int limit)
     {
-        foreach (HistoryEntry old in List().Skip(Math.Max(limit, 0)))
+        foreach (HistoryEntry old in List().Where(entry => !entry.Kept).Skip(Math.Max(limit, 0)))
         {
             try
             {

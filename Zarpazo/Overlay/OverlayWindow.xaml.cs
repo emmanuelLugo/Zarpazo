@@ -463,12 +463,14 @@ public partial class OverlayWindow : Window
             };
             BitmapSource? clean = restorable && state.Annotations.Count > 0 ? crop.Clean : null;
 
-            _history.Add(crop.Final, _settings.Current.HistoryLimit, state, clean);
-            _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
+            string added = _history.Add(crop.Final, _settings.Current.HistoryLimit, state, clean);
             if (_restore != null)
             {
-                _history.Delete(_restore.ReplacesPath); // the edited capture takes the place of the one it came from
+                // The edited capture takes the place of the one it came from, and stays kept if that one was.
+                _history.SetKept(added, _history.IsKept(_restore.ReplacesPath));
+                _history.Delete(_restore.ReplacesPath);
             }
+            _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

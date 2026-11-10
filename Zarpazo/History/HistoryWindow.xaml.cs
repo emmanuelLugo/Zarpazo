@@ -32,14 +32,15 @@ public partial class HistoryWindow : Window
         Closed += (_, _) => _generation++;
     }
 
-    internal void Reload()
+    /// <param name="select">The path to leave selected, when the list is rebuilt for a change of that very capture.</param>
+    internal void Reload(string? select = null)
     {
         var items = new List<Item>();
         foreach (HistoryEntry entry in _history.List())
         {
             try
             {
-                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind)
+                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind, entry.Kept)
                 {
                     Text = entry.MediaPath == null ? _history.ReadText(entry.Path) : null,
                 });
@@ -52,6 +53,10 @@ public partial class HistoryWindow : Window
 
         _all = items;
         ApplyFilter();
+        if (select != null)
+        {
+            Items.SelectedItem = (Items.ItemsSource as IEnumerable<Item>)?.FirstOrDefault(item => item.Path == select);
+        }
         _ = ReadTextsAsync();
     }
 
@@ -114,7 +119,8 @@ public partial class HistoryWindow : Window
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         bool any = Selected != null;
-        CopyButton.IsEnabled = SaveButton.IsEnabled = OpenButton.IsEnabled = DeleteButton.IsEnabled = any;
+        CopyButton.IsEnabled = SaveButton.IsEnabled = OpenButton.IsEnabled = DeleteButton.IsEnabled = KeepButton.IsEnabled = any;
+        KeepButton.Content = Selected?.Kept == true ? "No conservar" : "Conservar";
         EditButton.IsEnabled = Selected?.CanEdit == true; // captures from before the history could reopen them have no saved state
     }
 
@@ -198,9 +204,30 @@ public partial class HistoryWindow : Window
         }
     }
 
+    private void OnKeep(object sender, RoutedEventArgs e)
+    {
+        if (Selected is not { } item)
+        {
+            return;
+        }
+
+        Run(() =>
+        {
+            _history.SetKept(item.Path, !item.Kept);
+            Reload(select: item.Path);
+            StatusText.Text = item.Kept ? "Ya no se conserva" : "Se conservará hasta que la elimines tú";
+        });
+    }
+
     private void OnDelete(object sender, RoutedEventArgs e)
     {
         if (Selected is not { } item)
+        {
+            return;
+        }
+
+        if (item.Kept && MessageBox.Show(this, "Esta captura está marcada para conservarla. ¿Eliminarla de todos modos?", "Zarpazo",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
         {
             return;
         }
@@ -234,7 +261,7 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit, string? MediaPath, string Kind)
+    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit, string? MediaPath, string Kind, bool Kept)
     {
         public bool IsRecording => MediaPath != null;
 
