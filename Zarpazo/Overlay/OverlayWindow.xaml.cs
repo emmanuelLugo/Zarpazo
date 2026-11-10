@@ -139,6 +139,10 @@ public partial class OverlayWindow : Window
         {
             OnPin(this, EventArgs.Empty);
         }
+        else if (ctrl && e.Key == Key.D)
+        {
+            OnGuide(this, EventArgs.Empty);
+        }
         else if (ctrl && e.Key == Key.G)
         {
             OnRecord(this, EventArgs.Empty);
@@ -266,6 +270,15 @@ public partial class OverlayWindow : Window
     {
         // No owner: a pinned capture has to outlive this window.
         new PinnedWindow(crop.Final, _bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, _settings).Show();
+        return true;
+    });
+
+    /// <summary>The capture, dressed like a copy would be, is to become the next step of the guide.</summary>
+    internal event Action<BitmapSource>? GuideStepRequested;
+
+    private void OnGuide(object? sender, EventArgs e) => Finish(image =>
+    {
+        GuideStepRequested?.Invoke(Embellished(image));
         return true;
     });
 

@@ -7,6 +7,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 ## [Sin publicar]
 
 ### Añadido
+- Guía paso a paso: en el menú ··· del editor, «Añadir a la guía» (Ctrl+D) guarda la captura como el siguiente paso. «Guía paso a paso…» en el icono de la bandeja abre la lista para escribir el texto de cada paso, reordenarlos, quitarlos y exportar la guía a PDF (A4, listo para enviar al cliente) o a un HTML de un solo archivo con las imágenes dentro. La guía se pierde al cerrar Zarpazo.
 - Atajos de letra para cada herramienta (R rectángulo, E elipse, L línea, A flecha, P lápiz, H resaltador, T texto, N pasos, B pixelar, M regla, I cuentagotas, V mover, S ajustar zona), que también salen en el tooltip de cada botón y en los menús de grupo.
 - Historial: botón «Conservar» para que una captura o grabación no se borre sola, ni por el límite de cantidad ni por antigüedad (queda con una marca ★). Eliminarla a mano pide confirmación. Si editas de nuevo una captura conservada, la nueva también lo queda.
 - Historial: «Borrar lo que tenga más de» (Nunca, 7, 30 o 90 días) en Configuración > General. Se aplica al abrir Zarpazo y al guardar una captura o grabación nueva; por defecto no borra nada.

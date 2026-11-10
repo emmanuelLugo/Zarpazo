@@ -1,0 +1,80 @@
+<Window x:Class="Zarpazo.Guide.GuideWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Guía paso a paso"
+        Width="820"
+        Height="620"
+        MinWidth="600"
+        MinHeight="360"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}"
+        FontFamily="Segoe UI"
+        FontSize="13">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <DockPanel Margin="16,14,16,16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,14,0,0">
+            <StackPanel.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                    <Setter Property="Margin" Value="0,0,8,0" />
+                </Style>
+            </StackPanel.Resources>
+            <Button x:Name="PdfButton" Content="Exportar PDF…" Click="OnExportPdf" />
+            <Button x:Name="HtmlButton" Content="Exportar HTML…" Click="OnExportHtml"
+                    ToolTip="Un solo archivo que se abre en cualquier navegador, con las imágenes dentro" />
+            <Button x:Name="ClearButton" Content="Nueva guía" Click="OnClear" ToolTip="Borra todos los pasos para empezar otra guía" />
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
+        </StackPanel>
+
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock DockPanel.Dock="Left" Text="Título:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}" />
+            <TextBox x:Name="TitleBox" TextChanged="OnTitleChanged" />
+        </DockPanel>
+
+        <Grid>
+            <ListBox x:Name="Items"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Image Source="{Binding Thumbnail}" Width="220" Stretch="Uniform" VerticalAlignment="Top" />
+                            <DockPanel Grid.Column="1" Margin="12,0">
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding Heading}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64"
+                                         VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" />
+                            </DockPanel>
+                            <StackPanel Grid.Column="2">
+                                <Button Content="↑" Width="30" Margin="0,0,0,4" ToolTip="Subir" Click="OnMoveUp" />
+                                <Button Content="↓" Width="30" Margin="0,0,0,4" ToolTip="Bajar" Click="OnMoveDown" />
+                                <Button Content="✕" Width="30" ToolTip="Quitar este paso" Click="OnRemove" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock x:Name="EmptyText"
+                       Visibility="Collapsed"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       MaxWidth="400"
+                       Foreground="{DynamicResource TextSecondary}"
+                       Text="La guía está vacía. Captura una zona y, en el menú ··· del editor, elige &quot;Añadir a la guía&quot; (Ctrl+D). Cada captura será un paso." />
+        </Grid>
+    </DockPanel>
+</Window>

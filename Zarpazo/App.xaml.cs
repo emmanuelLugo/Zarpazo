@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Zarpazo.Capture;
+using Zarpazo.Guide;
 using Zarpazo.History;
 using Zarpazo.Overlay;
 using Zarpazo.Recording;
@@ -33,6 +34,8 @@ public partial class App : Application
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
+    private GuideWindow? _guideWindow;
+    private readonly GuideDocument _guide = new(GuideDocument.DefaultFolder);
     private RecordingSession? _recording;
     private readonly CaptureHistory _history = new(CaptureHistory.DefaultFolder);
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
@@ -53,6 +56,7 @@ public partial class App : Application
         _settings = new SettingsStore(SettingsStore.DefaultPath);
         try
         {
+            _guide.Clear(); // a guide is not kept between runs: only pictures left by the last one are here
             _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -60,7 +64,7 @@ public partial class App : Application
             // The folder is not reachable right now; the history is cleaned the next time.
         }
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
-            ShowHistory, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
+            ShowHistory, ShowGuide, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
         ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);
         ThemeManager.Apply(_settings.Current.AppearanceMode);
 
@@ -145,6 +149,26 @@ public partial class App : Application
 
         await Task.Delay(MenuCloseDelayMs / 2); // the number is excluded from the picture, but older Windows versions ignore that
         ShowOverlay();
+    }
+
+    private void ShowGuide()
+    {
+        if (_guideWindow != null)
+        {
+            _guideWindow.Activate();
+            return;
+        }
+
+        _guideWindow = new GuideWindow(_guide);
+        _guideWindow.Closed += (_, _) => _guideWindow = null;
+        _guideWindow.Show();
+    }
+
+    private void AddGuideStep(BitmapSource image)
+    {
+        GuideStep step = _guide.Add(image); // a failure here is shown by the overlay, which then stays open
+        _guideWindow?.Reload();
+        _tray!.ShowInfo($"Añadido como paso {step.Number} de la guía");
     }
 
     private void ShowHistory()
@@ -368,6 +392,7 @@ public partial class App : Application
         _overlay = new OverlayWindow(image, bounds, windows, _settings, _history, initialArea: area);
         _overlay.AreaUsed += used => _lastArea = used;
         _overlay.RecordRequested += BeginRecording;
+        _overlay.GuideStepRequested += AddGuideStep;
         _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
         _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");
         _overlay.Closed += (_, _) =>
