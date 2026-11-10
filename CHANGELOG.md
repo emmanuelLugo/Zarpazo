@@ -6,7 +6,10 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.4.0] - 2026-11-10
+
 ### Añadido
+- Menú de la bandeja: «Buscar actualizaciones» busca en el momento y siempre avisa del resultado (al día, hay una versión nueva o no se pudo buscar).
 - Capturas agrupadas, para mandar varias pantallas de una vez (por ejemplo, un paso a paso al cliente): con el **modo grupo** terminar una captura con Enter la suma al grupo en vez de copiarla; Ctrl+C sigue copiando. El modo se enciende solo al añadir la primera captura (menú ··· del editor o Ctrl+D), se puede encender a mano en la bandeja o en la ventana «Capturas agrupadas…», y se apaga solo al vaciar el grupo. Mientras está encendido, la captura muestra arriba «Modo grupo · N en el grupo · Enter añade · Ctrl+C copia». El atajo **Ctrl+Alt+C** (se cambia en Configuración) copia todo el grupo y lo vacía. Se copia como archivos (Captura 1.png, Captura 2.png…), que al pegar se adjuntan todos de una vez en WhatsApp, Teams, Outlook o Gmail, o como una sola imagen con las capturas una debajo de otra, para programas que solo aceptan una. Cada captura lleva su número en la esquina (se puede desactivar). La ventana del grupo deja reordenar, quitar y arrastrar las capturas, una a una o todas, a un chat o un correo. El grupo se guarda en disco y sigue ahí al reabrir Zarpazo; el modo grupo, en cambio, empieza apagado cada vez.
 - Atajos de letra para cada herramienta (R rectángulo, E elipse, L línea, A flecha, P lápiz, H resaltador, T texto, N pasos, B pixelar, M regla, I cuentagotas, V mover, S ajustar zona), que también salen en el tooltip de cada botón y en los menús de grupo.
 - Historial: botón «Conservar» para que una captura o grabación no se borre sola, ni por el límite de cantidad ni por antigüedad (queda con una marca ★). Eliminarla a mano pide confirmación. Si editas de nuevo una captura conservada, la nueva también lo queda.
@@ -63,7 +66,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.3.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.1.0...v0.2.0
