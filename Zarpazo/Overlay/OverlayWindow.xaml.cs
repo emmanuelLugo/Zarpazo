@@ -95,6 +95,7 @@ public partial class OverlayWindow : Window
             return CropSelection()?.Final;
         };
         Closed += (_, _) => RememberStyle();
+        Loaded += (_, _) => PlaceGroupBadge(); // the size is known by now
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
         Selection.Changed += (_, _) => UpdateSizeLabel(); // every way the area changes goes through the rectangle
@@ -278,17 +279,37 @@ public partial class OverlayWindow : Window
     });
 
     /// <summary>Group mode is on: Enter adds the capture to the group instead of copying it.</summary>
-    internal bool GroupMode
-    {
-        get => _groupMode;
-        set
-        {
-            _groupMode = value;
-            Toolbar.SetGroupMode(value);
-        }
-    }
+    internal bool GroupMode => _groupMode;
 
     private bool _groupMode;
+
+    /// <summary>Turns group mode on or off here and shows it on the screen, with how many captures are in the group already.</summary>
+    internal void SetGroup(bool on, int count)
+    {
+        _groupMode = on;
+        Toolbar.SetGroupMode(on);
+        GroupBadgeText.Text = count == 0
+            ? "Modo grupo · Enter añade al grupo · Ctrl+C copia"
+            : $"Modo grupo · {count} en el grupo · Enter añade · Ctrl+C copia";
+        GroupBadge.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        PlaceGroupBadge();
+    }
+
+    // Top centre of the main monitor, where it is seen before choosing the area and out of the way of what is captured.
+    private void PlaceGroupBadge()
+    {
+        if (!_groupMode || ActualWidth == 0 || ActualHeight == 0)
+        {
+            return;
+        }
+
+        double scaleX = _screenshot.PixelWidth / ActualWidth;
+        double scaleY = _screenshot.PixelHeight / ActualHeight;
+        Rectangle monitor = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+        GroupBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(GroupBadge, (monitor.X + monitor.Width / 2.0 - _bounds.X) / scaleX - GroupBadge.DesiredSize.Width / 2);
+        Canvas.SetTop(GroupBadge, (monitor.Y - _bounds.Y) / scaleY + 24);
+    }
 
     /// <summary>The capture, dressed like a copy would be, is to be added to the group of captures.</summary>
     internal event Action<BitmapSource>? GuideStepRequested;

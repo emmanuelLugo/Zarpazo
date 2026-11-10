@@ -26,6 +26,10 @@ public sealed class ThemeTests
     {
         Sta.Run(() =>
         {
+            // Loading by pack address only works once WPF has registered that scheme, which otherwise depends on whether another
+            // test created a window first. Touching this registers it, whatever the order the tests run in.
+            _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
+
             ResourceDictionary Load(string name) => new() { Source = new Uri($"/Zarpazo;component/Theme/{name}.xaml", UriKind.Relative) };
 
             var light = Load("Light").Keys.Cast<object>().Select(key => key.ToString()!).Order().ToArray();

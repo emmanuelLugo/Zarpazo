@@ -66,6 +66,15 @@
                 <TextBlock x:Name="SizeText" Foreground="White" FontFamily="Consolas" FontSize="12" />
             </Border>
 
+            <Border x:Name="GroupBadge"
+                    Background="#E6202124"
+                    CornerRadius="6"
+                    Padding="12,6"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="GroupBadgeText" Foreground="#FDD835" FontFamily="Segoe UI" FontSize="14" />
+            </Border>
+
             <Border x:Name="Notice"
                     Background="#E6202124"
                     CornerRadius="6"

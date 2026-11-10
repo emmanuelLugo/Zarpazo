@@ -70,6 +70,7 @@ internal sealed class GuideDocument
         {
             Delete(step.ImagePath);
             Renumber();
+            EndModeWhenEmpty();
             Saved();
         }
     }
@@ -93,7 +94,12 @@ internal sealed class GuideDocument
     /// <summary>Starts over: nothing in the group, and the pictures deleted.</summary>
     public void Clear()
     {
+        bool hadCaptures = _steps.Count > 0;
         _steps.Clear();
+        if (hadCaptures)
+        {
+            EndModeWhenEmpty();
+        }
         if (Directory.Exists(_folder))
         {
             foreach (string file in Directory.EnumerateFiles(_folder, "*.png"))
@@ -102,6 +108,16 @@ internal sealed class GuideDocument
             }
         }
         Saved();
+    }
+
+    // The mode belongs to a group in progress: once the last capture is gone (copied, emptied or removed) there is nothing to
+    // add to, and Enter goes back to copying. Turned on by hand with nothing in the group, it stays on until used.
+    private void EndModeWhenEmpty()
+    {
+        if (_steps.Count == 0)
+        {
+            _addsOnCapture = false; // no notice of its own: the caller's change notice covers it
+        }
     }
 
     // What the last run left: the captures listed in the order file, if they are still there. A damaged file means an empty

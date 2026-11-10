@@ -193,6 +193,43 @@ public sealed class GuideTests : IDisposable
     }
 
     [Fact]
+    public void The_mode_ends_when_the_group_is_emptied_by_clearing_or_by_removing_the_last_capture()
+    {
+        Sta.Run(() =>
+        {
+            var group = new GuideDocument(_folder);
+            GuideStep first = group.Add(Image(10, 10));
+            GuideStep second = group.Add(Image(10, 10));
+            group.AddsOnCapture = true;
+
+            group.Remove(first);
+            Assert.True(group.AddsOnCapture); // one capture is still waiting
+
+            group.Remove(second);
+            Assert.False(group.AddsOnCapture);
+
+            group.Add(Image(10, 10));
+            group.AddsOnCapture = true;
+            group.Clear();
+            Assert.False(group.AddsOnCapture);
+        });
+    }
+
+    [Fact]
+    public void The_mode_turned_on_by_hand_with_an_empty_group_stays_on_until_used()
+    {
+        Sta.Run(() =>
+        {
+            var group = new GuideDocument(_folder);
+
+            group.AddsOnCapture = true;
+            group.Clear(); // nothing to empty: still on
+
+            Assert.True(group.AddsOnCapture);
+        });
+    }
+
+    [Fact]
     public void Copying_writes_one_file_per_capture_named_after_it_and_drops_the_old_ones()
     {
         Sta.Run(() =>

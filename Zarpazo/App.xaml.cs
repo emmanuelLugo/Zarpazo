@@ -175,6 +175,7 @@ public partial class App : Application
     private void AddGuideStep(BitmapSource image)
     {
         GuideStep step = _guide.Add(image); // a failure here is shown by the overlay, which then stays open
+        _guide.AddsOnCapture = true; // the first capture added starts the group mode: the next ones only need Enter
         _tray!.ShowInfo($"Añadida al grupo (captura {step.Number})");
     }
 
@@ -426,7 +427,7 @@ public partial class App : Application
         _overlay = new OverlayWindow(image, bounds, windows, _settings, _history, initialArea: area);
         _overlay.AreaUsed += used => _lastArea = used;
         _overlay.RecordRequested += BeginRecording;
-        _overlay.GroupMode = _guide.AddsOnCapture;
+        _overlay.SetGroup(_guide.AddsOnCapture, _guide.Steps.Count);
         _overlay.GuideStepRequested += AddGuideStep;
         _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
         _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");
