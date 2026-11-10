@@ -73,6 +73,7 @@ public partial class App : Application
             new UpdateDownloader(http, UpdateDownloader.DefaultFolder), LaunchInstaller);
         _updates.Changed += () => _tray.SetUpdateAvailable(_updates.Available?.Version.ToString());
         _tray.UpdateRequested += () => ShowSettings(showAbout: true);
+        _tray.CheckUpdatesRequested += async () => await CheckForUpdatesNowAsync();
         StartUpdateChecks();
         _hotKey = new GlobalHotKey(() => ShowOverlay());
         if (!_hotKey.TryRegister(_settings.Current.HotKey))
@@ -324,6 +325,33 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             // a failed look or a settings file that can't be written is no reason to bother anyone
+        }
+    }
+
+    // From the tray menu: looks now, whatever the last check was, and always says what it found.
+    private async Task CheckForUpdatesNowAsync()
+    {
+        try
+        {
+            UpdateCheck result = await _updates.CheckAsync();
+            if (result.IsFailure)
+            {
+                _tray!.ShowWarning("No se pudo buscar actualizaciones. Revisa tu conexión e inténtalo de nuevo.");
+            }
+            else if (result.Newer is { } release)
+            {
+                _settings.Current.UpdateNotifiedVersion = release.Tag;
+                _settings.Save();
+                _tray!.ShowUpdateNotice($"Zarpazo {release.Version} está disponible. Haz clic aquí para verla.");
+            }
+            else
+            {
+                _tray!.ShowInfo($"Zarpazo está al día (versión {AppVersion.Current}).");
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _tray!.ShowWarning("No se pudo buscar actualizaciones.");
         }
     }
 

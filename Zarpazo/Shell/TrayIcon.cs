@@ -54,6 +54,7 @@ internal sealed class TrayIcon : IDisposable
         _stopRecording.Visible = false; // only while recording
         _updateItem = menu.Items.Add("", null, (_, _) => UpdateRequested?.Invoke());
         _updateItem.Visible = false; // only while a newer version is waiting
+        menu.Items.Add("Buscar actualizaciones", null, (_, _) => CheckUpdatesRequested?.Invoke());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => onExit());
 
@@ -87,6 +88,9 @@ internal sealed class TrayIcon : IDisposable
 
     /// <summary>The person asked to see the waiting update: from its menu entry or by clicking its notice.</summary>
     public event Action? UpdateRequested;
+
+    /// <summary>The person asked to look for a new version right now.</summary>
+    public event Action? CheckUpdatesRequested;
 
     /// <summary>Shows a menu entry for the new version, or hides it when <paramref name="version"/> is null.</summary>
     public void SetUpdateAvailable(string? version)
