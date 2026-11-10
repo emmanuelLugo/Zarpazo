@@ -157,4 +157,40 @@ public class AnnotationResizeTests
         Assert.Null(ToolShortcuts.ForKey(Key.X));  // X switches the color format of the picker
         Assert.Equal("Flecha (A)", ToolShortcuts.WithKey("Flecha", AnnotationTool.Arrow));
     }
+
+    [Fact]
+    public void Retyping_a_text_changes_its_words_and_undo_brings_the_old_ones_back()
+    {
+        Sta.Run(() =>
+        {
+            var canvas = new AnnotationCanvas();
+            var text = new TextAnnotation(Colors.Red, 4, new Point(10, 10), "hola");
+            canvas.Commit(text);
+
+            canvas.EditText(text, "adiós");
+            Assert.Equal("adiós", text.Text);
+
+            canvas.Undo();
+            Assert.Equal("hola", text.Text);
+
+            canvas.Redo();
+            Assert.Equal("adiós", text.Text);
+        });
+    }
+
+    [Fact]
+    public void Retyping_the_same_words_adds_nothing_to_the_history()
+    {
+        Sta.Run(() =>
+        {
+            var canvas = new AnnotationCanvas();
+            var text = new TextAnnotation(Colors.Red, 4, new Point(10, 10), "hola");
+            canvas.Commit(text);
+
+            canvas.EditText(text, "hola");
+            canvas.Undo(); // undoes the commit, not an edit that never happened
+
+            Assert.Empty(canvas.Items);
+        });
+    }
 }

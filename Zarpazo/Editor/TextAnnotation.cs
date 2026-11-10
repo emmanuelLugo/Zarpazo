@@ -18,6 +18,9 @@ internal sealed class TextAnnotation(Color color, double thickness, Point origin
 
     public string Text => text;
 
+    /// <summary>Changes what it says. Use <see cref="AnnotationCanvas.EditText"/> to also make it undoable.</summary>
+    public void SetText(string value) => text = value;
+
     public override bool IsEmpty => string.IsNullOrWhiteSpace(text);
 
     public override Rect Bounds

@@ -56,6 +56,7 @@ public partial class OverlayWindow : Window
     private bool _recognizing;           // a text reading is in progress
     private DispatcherTimer? _noticeTimer;
     private TextBox? _textBox;
+    private TextAnnotation? _editingText;  // the text on the canvas that the box is retyping, if any
     private Point _textOrigin;
     private Color _textColor;
     private double _textThickness;
@@ -594,12 +595,26 @@ public partial class OverlayWindow : Window
                 {
                     return;
                 }
+                if (_moving is TextAnnotation words && e.ClickCount == 2)
+                {
+                    _moving = null; // a double click retypes the text instead of dragging it
+                    BeginText(words.Origin, words);
+                    return;
+                }
                 _moveLast = point;
                 _moveTotal = default;
             }
             else if (Toolbar.Tool == AnnotationTool.Text)
             {
-                BeginText(point);
+                // A click on a text that is already there retypes it instead of starting another one on top.
+                if (Annotations.HitTest(point, HitTolerance) is TextAnnotation existing)
+                {
+                    BeginText(existing.Origin, existing);
+                }
+                else
+                {
+                    BeginText(point);
+                }
                 return;
             }
             else if (Toolbar.Tool == AnnotationTool.Step)
@@ -883,14 +898,18 @@ public partial class OverlayWindow : Window
         }
     }
 
-    private void BeginText(Point point)
+    /// <param name="editing">A text already on the canvas to type over; it keeps its color and size and stays out of sight meanwhile.</param>
+    private void BeginText(Point point, TextAnnotation? editing = null)
     {
-        var brush = new SolidColorBrush(Toolbar.Color);
-        _textColor = Toolbar.Color;
-        _textThickness = Toolbar.Thickness;
+        _textColor = editing?.Color ?? Toolbar.Color;
+        _textThickness = editing?.Thickness ?? Toolbar.Thickness;
+        var brush = new SolidColorBrush(_textColor);
         _textOrigin = point;
+        _editingText = editing;
+        Annotations.Hidden = editing;
         _textBox = new TextBox
         {
+            Text = editing?.Text ?? "",
             Foreground = brush,
             CaretBrush = brush,
             FontFamily = TextAnnotation.Font,
@@ -905,7 +924,11 @@ public partial class OverlayWindow : Window
             Cursor = Cursors.IBeam,
         };
         _textBox.PreviewKeyDown += OnTextKeyDown;
-        _textBox.Loaded += (_, _) => _textBox?.Focus(); // can't take focus before it has been laid out
+        _textBox.Loaded += (_, _) => // can't take focus before it has been laid out
+        {
+            _textBox?.Focus();
+            _textBox?.Select(_textBox.Text.Length, 0); // typing continues at the end of what was written
+        };
         // The 1px border sits outside the text, so shift the box to keep the text exactly where it will be drawn.
         Canvas.SetLeft(_textBox, point.X - 1);
         Canvas.SetTop(_textBox, point.Y - 1);
@@ -934,14 +957,30 @@ public partial class OverlayWindow : Window
         }
 
         string text = _textBox.Text.TrimEnd();
+        TextAnnotation? editing = _editingText;
         RemoveTextBox();
-        Annotations.Commit(new TextAnnotation(_textColor, _textThickness, _textOrigin, text));
+
+        if (editing == null)
+        {
+            Annotations.Commit(new TextAnnotation(_textColor, _textThickness, _textOrigin, text));
+        }
+        else if (string.IsNullOrWhiteSpace(text))
+        {
+            Annotations.Selected = editing; // emptied: the same as deleting it, and undo brings it back
+            Annotations.DeleteSelected();
+        }
+        else
+        {
+            Annotations.EditText(editing, text);
+        }
     }
 
     private void RemoveTextBox()
     {
         UiLayer.Children.Remove(_textBox);
         _textBox = null;
+        _editingText = null;
+        Annotations.Hidden = null;
         Focus(); // otherwise Esc and the shortcuts stop reaching the window
     }
 

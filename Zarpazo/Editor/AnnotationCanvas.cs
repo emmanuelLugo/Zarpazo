@@ -19,6 +19,7 @@ internal sealed class AnnotationCanvas : FrameworkElement
     private readonly Stack<Edit> _future = new();
     private Annotation? _preview;
     private Annotation? _selected;
+    private Annotation? _hidden;
     private Rect _clipArea = Rect.Empty;
 
     /// <summary>Strokes are cut off at the capture area, like they will be in the saved image.</summary>
@@ -66,6 +67,31 @@ internal sealed class AnnotationCanvas : FrameworkElement
             _done.Add(annotation);
             Record(new Edit(() => _done.Remove(annotation), () => _done.Insert(index, annotation)));
         }
+        InvalidateVisual();
+    }
+
+    /// <summary>An annotation that is not painted for now, because it is being retyped in a text box over its place.</summary>
+    public Annotation? Hidden
+    {
+        get => _hidden;
+        set
+        {
+            _hidden = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Changes the words of a text that is already on the canvas; undo and redo bring the old and the new back.</summary>
+    public void EditText(TextAnnotation annotation, string text)
+    {
+        string before = annotation.Text;
+        if (before == text)
+        {
+            return;
+        }
+
+        annotation.SetText(text);
+        Record(new Edit(() => annotation.SetText(before), () => annotation.SetText(text)));
         InvalidateVisual();
     }
 
@@ -224,6 +250,11 @@ internal sealed class AnnotationCanvas : FrameworkElement
         context.PushClip(new RectangleGeometry(_clipArea));
         foreach (Annotation annotation in _done)
         {
+            if (annotation == _hidden)
+            {
+                continue;
+            }
+
             annotation.Draw(context);
         }
         _preview?.Draw(context);
