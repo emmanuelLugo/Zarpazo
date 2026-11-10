@@ -154,6 +154,15 @@ public partial class OverlayWindow : Window
         {
             Probe.ToggleFormat();
         }
+        else if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down && !IsSelectionFinal)
+        {
+            // Fine adjustment while choosing the area: the cursor moves one screen pixel, which also moves the magnifier.
+            System.Drawing.Point cursor = System.Windows.Forms.Cursor.Position;
+            System.Windows.Forms.Cursor.Position = new System.Drawing.Point(
+                cursor.X + (e.Key == Key.Right ? 1 : e.Key == Key.Left ? -1 : 0),
+                cursor.Y + (e.Key == Key.Down ? 1 : e.Key == Key.Up ? -1 : 0));
+            e.Handled = true;
+        }
         else if (e.Key == Key.F && !ctrl && _textBox == null)
         {
             SelectArea(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds); // F: the whole monitor
@@ -616,6 +625,7 @@ public partial class OverlayWindow : Window
             {
                 Selection.Rect = new Rect(_dragStart, point);
             }
+            UpdateProbe(point);
         }
     }
 
@@ -779,16 +789,22 @@ public partial class OverlayWindow : Window
         Canvas.SetLeft(SizeLabel, Math.Clamp(area.Left, 0, Math.Max(0, ActualWidth - size.Width)));
     }
 
-    /// <summary>Shows the magnifier next to the cursor while the color picker is the active tool.</summary>
+    /// <summary>
+    /// Shows the magnifier next to the cursor: with the screen position while an area is being chosen, so its edges can be
+    /// placed pixel by pixel, and with the color while the color picker is the active tool.
+    /// </summary>
     private void UpdateProbe(Point point)
     {
-        if (Toolbar.Tool != AnnotationTool.Picker || !IsSelectionFinal)
+        bool choosing = !IsSelectionFinal;
+        if (!choosing && Toolbar.Tool != AnnotationTool.Picker)
         {
             Probe.Visibility = Visibility.Collapsed;
             return;
         }
 
-        Probe.Show(_screenshot, (int)Math.Floor(point.X * _screenshot.PixelWidth / ActualWidth), (int)Math.Floor(point.Y * _screenshot.PixelHeight / ActualHeight));
+        int pixelX = (int)Math.Floor(point.X * _screenshot.PixelWidth / ActualWidth);
+        int pixelY = (int)Math.Floor(point.Y * _screenshot.PixelHeight / ActualHeight);
+        Probe.Show(_screenshot, pixelX, pixelY, choosing ? $"X {_bounds.X + pixelX}  Y {_bounds.Y + pixelY}" : null);
         Probe.Visibility = Visibility.Visible;
         Probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         Size size = Probe.DesiredSize;

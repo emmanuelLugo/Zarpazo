@@ -14,6 +14,7 @@ public sealed partial class Magnifier : UserControl
     private const string DefaultHint = "X: HEX/RGB · clic: copiar";
 
     private bool _asRgb;
+    private string? _caption;
 
     public Magnifier()
     {
@@ -27,7 +28,8 @@ public sealed partial class Magnifier : UserControl
     public string Text => _asRgb ? $"rgb({Current.R}, {Current.G}, {Current.B})" : $"#{Current.R:X2}{Current.G:X2}{Current.B:X2}";
 
     /// <summary>Centers the view on an image pixel. Pixels past the screen edge show as dark gray.</summary>
-    public void Show(BitmapSource image, int x, int y)
+    /// <param name="caption">Shown instead of the color value (the position, while choosing an area); the color then goes in the hint line.</param>
+    public void Show(BitmapSource image, int x, int y, string? caption = null)
     {
         x = Math.Clamp(x, 0, image.PixelWidth - 1);
         y = Math.Clamp(y, 0, image.PixelHeight - 1);
@@ -54,7 +56,8 @@ public sealed partial class Magnifier : UserControl
 
         int center = ((y - top) * width + (x - left)) * BytesPerPixel;
         Current = Color.FromRgb(region[center + 2], region[center + 1], region[center]);
-        Hint.Text = DefaultHint;
+        _caption = caption;
+        Hint.Text = caption == null ? DefaultHint : Text;
         Refresh();
     }
 
@@ -70,6 +73,6 @@ public sealed partial class Magnifier : UserControl
     private void Refresh()
     {
         Swatch.Fill = new SolidColorBrush(Current);
-        Value.Text = Text;
+        Value.Text = _caption ?? Text;
     }
 }

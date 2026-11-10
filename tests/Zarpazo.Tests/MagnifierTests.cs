@@ -84,4 +84,19 @@ public class MagnifierTests
             Assert.Equal(Color.FromRgb(100, (byte)(10 * (Size - 1)), 0), magnifier.Current);
         });
     }
+
+    [Fact]
+    public void A_caption_replaces_the_color_value_and_moves_the_color_to_the_hint()
+    {
+        Sta.Run(() =>
+        {
+            var magnifier = new Magnifier();
+
+            magnifier.Show(Gradient(), 3, 4, "X 1203  Y -40");
+
+            Assert.Equal("#64281E", magnifier.Text); // still readable for the picker
+            Assert.Equal("X 1203  Y -40", ((System.Windows.Controls.TextBlock)magnifier.FindName("Value")).Text);
+            Assert.Equal("#64281E", ((System.Windows.Controls.TextBlock)magnifier.FindName("Hint")).Text);
+        });
+    }
 }

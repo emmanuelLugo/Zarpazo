@@ -7,6 +7,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 ## [Sin publicar]
 
 ### Añadido
+- Lupa al elegir el área: junto al cursor se ve el zoom de los píxeles con su posición en pantalla (X, Y) y el color debajo. Con las flechas del teclado el cursor se mueve de a 1 píxel para colocar el borde con precisión.
 - Historial: cuadro «Buscar texto» para encontrar una captura por lo que dice. Al abrir el Historial se lee con el OCR de Windows el texto de las capturas que aún no lo tenían (una a una, en segundo plano) y se guarda junto a cada captura; la búsqueda ignora mayúsculas y acentos. Las grabaciones no entran en la búsqueda.
 
 ## [0.3.0] - 2026-11-10
