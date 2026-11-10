@@ -5,8 +5,8 @@ using Zarpazo.Output;
 namespace Zarpazo.Guide;
 
 /// <summary>
-/// The guide being put together: a title and the steps in order. The pictures live in a folder, one PNG each, so a long guide
-/// does not sit in memory. It is kept until the person starts a new one or quits.
+/// The group of captures being put together, in order. The pictures live in a folder, one PNG each, so a long group does not
+/// sit in memory. It is kept until the person empties it or quits.
 /// </summary>
 internal sealed class GuideDocument(string folder)
 {
@@ -15,11 +15,9 @@ internal sealed class GuideDocument(string folder)
     public static string DefaultFolder { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "Guide");
 
-    public string Title { get; set; } = "";
-
     public IReadOnlyList<GuideStep> Steps => _steps;
 
-    /// <summary>Adds the picture as the last step.</summary>
+    /// <summary>Adds the picture as the last one.</summary>
     /// <exception cref="IOException">The file could not be written.</exception>
     /// <exception cref="UnauthorizedAccessException">The folder is not writable.</exception>
     public GuideStep Add(BitmapSource image)
@@ -27,20 +25,7 @@ internal sealed class GuideDocument(string folder)
         Directory.CreateDirectory(folder);
         string path = Path.Combine(folder, $"{Guid.NewGuid():N}.png");
         ImageOutput.Write(path, image);
-        return Append(path);
-    }
 
-    /// <summary>Adds a picture that already is a PNG (from a saved project) as the last step.</summary>
-    internal GuideStep AddPng(byte[] png)
-    {
-        Directory.CreateDirectory(folder);
-        string path = Path.Combine(folder, $"{Guid.NewGuid():N}.png");
-        File.WriteAllBytes(path, png);
-        return Append(path);
-    }
-
-    private GuideStep Append(string path)
-    {
         var step = new GuideStep(path);
         _steps.Add(step);
         Renumber();
@@ -56,7 +41,7 @@ internal sealed class GuideDocument(string folder)
         }
     }
 
-    /// <summary>Moves a step up (negative) or down (positive) by that many places, stopping at the ends.</summary>
+    /// <summary>Moves a capture up (negative) or down (positive) by that many places, stopping at the ends.</summary>
     public void Move(GuideStep step, int offset)
     {
         int from = _steps.IndexOf(step);
@@ -71,11 +56,10 @@ internal sealed class GuideDocument(string folder)
         Renumber();
     }
 
-    /// <summary>Starts over: no steps, no title, and the pictures of the old ones deleted (also leftovers from an earlier run).</summary>
+    /// <summary>Starts over: nothing in the group, and the pictures deleted (also leftovers from an earlier run).</summary>
     public void Clear()
     {
         _steps.Clear();
-        Title = "";
         if (!Directory.Exists(folder))
         {
             return;
@@ -103,7 +87,7 @@ internal sealed class GuideDocument(string folder)
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Still open somewhere; the next "start over" removes it.
+            // Still open somewhere; the next "empty" removes it.
         }
     }
 }

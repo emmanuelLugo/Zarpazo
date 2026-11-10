@@ -35,7 +35,6 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
     private GuideWindow? _guideWindow;
-    private ClickRecorder? _clickRecorder;
     private readonly GuideDocument _guide = new(GuideDocument.DefaultFolder);
     private RecordingSession? _recording;
     private readonly CaptureHistory _history = new(CaptureHistory.DefaultFolder);
@@ -65,7 +64,7 @@ public partial class App : Application
             // The folder is not reachable right now; the history is cleaned the next time.
         }
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
-            ShowHistory, ShowGuide, StartGuideByClicks, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
+            ShowHistory, ShowGuide, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
         ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);
         ThemeManager.Apply(_settings.Current.AppearanceMode);
 
@@ -94,7 +93,6 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _updateTimer?.Stop();
-        _clickRecorder?.Dispose();
         _hotKey?.Dispose();
         _recordHotKey?.Dispose();
         _tray?.Dispose();
@@ -161,52 +159,16 @@ public partial class App : Application
             return;
         }
 
-        _guideWindow = new GuideWindow(_guide, StartGuideByClicks);
+        _guideWindow = new GuideWindow(_guide);
         _guideWindow.Closed += (_, _) => _guideWindow = null;
         _guideWindow.Show();
-    }
-
-    // Every click adds a step until "Terminar". The guide window steps aside so it is not in the first pictures.
-    private void StartGuideByClicks()
-    {
-        if (_clickRecorder != null || _overlay != null || _recording is { IsRecording: true } or { IsCountingDown: true })
-        {
-            return;
-        }
-
-        _guideWindow?.Hide();
-        var bar = new ClickBar(_guide.Steps.Count);
-        try
-        {
-            _clickRecorder = new ClickRecorder(_guide, () => bar.Bounds);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _guideWindow?.Show();
-            _tray!.ShowWarning(ex.Message);
-            return;
-        }
-
-        _clickRecorder.StepAdded += _ => bar.ShowSteps(_guide.Steps.Count);
-        _clickRecorder.Failed += message => _tray!.ShowWarning(message);
-        bar.FinishRequested += (_, _) =>
-        {
-            _clickRecorder?.Dispose();
-            _clickRecorder = null;
-            bar.Close();
-            ShowGuide();
-            _guideWindow?.Show();
-            _guideWindow?.Reload();
-            _guideWindow?.Activate();
-        };
-        bar.Show();
     }
 
     private void AddGuideStep(BitmapSource image)
     {
         GuideStep step = _guide.Add(image); // a failure here is shown by the overlay, which then stays open
         _guideWindow?.Reload();
-        _tray!.ShowInfo($"Añadido como paso {step.Number} de la guía");
+        _tray!.ShowInfo($"Añadida al grupo (captura {step.Number})");
     }
 
     private void ShowHistory()

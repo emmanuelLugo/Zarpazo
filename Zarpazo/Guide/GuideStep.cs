@@ -3,7 +3,7 @@ using System.Windows.Media.Imaging;
 
 namespace Zarpazo.Guide;
 
-/// <summary>One screen of a guide: the picture (a PNG file kept on disk, not in memory) and what the person says about it.</summary>
+/// <summary>One capture of the group: a PNG file kept on disk (not in memory) and its place in the order.</summary>
 internal sealed class GuideStep(string imagePath)
 {
     private const int ThumbnailWidth = 220;
@@ -12,27 +12,19 @@ internal sealed class GuideStep(string imagePath)
 
     public string ImagePath => imagePath;
 
-    public string Text { get; set; } = "";
-
     /// <summary>Set by <see cref="GuideDocument"/> every time the order changes; starts at 1.</summary>
     public int Number { get; internal set; }
 
-    public string Heading => $"Paso {Number}";
+    public string Heading => $"Captura {Number}";
 
-    public BitmapImage Thumbnail => _thumbnail ??= Load(ThumbnailWidth);
+    public BitmapImage Thumbnail => _thumbnail ??= LoadThumbnail();
 
-    /// <summary>The full picture. Read into memory so the file is not left locked.</summary>
-    public BitmapImage LoadImage() => Load(0);
-
-    private BitmapImage Load(int decodeWidth)
+    private BitmapImage LoadThumbnail()
     {
         var image = new BitmapImage();
         image.BeginInit();
-        image.CacheOption = BitmapCacheOption.OnLoad;
-        if (decodeWidth > 0)
-        {
-            image.DecodePixelWidth = decodeWidth;
-        }
+        image.CacheOption = BitmapCacheOption.OnLoad; // read now, so the file is not left locked
+        image.DecodePixelWidth = ThumbnailWidth;
         image.UriSource = new Uri(imagePath);
         image.EndInit();
         image.Freeze();

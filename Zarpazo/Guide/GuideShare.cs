@@ -5,7 +5,7 @@ using System.Windows;
 namespace Zarpazo.Guide;
 
 /// <summary>
-/// Puts every picture of the guide on the clipboard as files ("Paso 1.png", "Paso 2.png"...), the way Explorer's "copy" does.
+/// Puts every picture of the guide on the clipboard as files ("Captura 1.png", "Captura 2.png"...), the way Explorer's "copy" does.
 /// One paste then attaches all of them in WhatsApp, Teams, Outlook, Gmail and the like.
 /// </summary>
 internal static class GuideShare
@@ -26,7 +26,7 @@ internal static class GuideShare
         return paths;
     }
 
-    /// <summary>The pictures as files in an empty folder, named after their step. Files from an earlier copy are removed first.</summary>
+    /// <summary>The pictures as files in an empty folder, named after their number. Files from an earlier copy are removed first.</summary>
     internal static List<string> WriteFiles(IReadOnlyList<GuideStep> steps, string folder)
     {
         Directory.CreateDirectory(folder);
@@ -45,7 +45,7 @@ internal static class GuideShare
         var paths = new List<string>();
         foreach (GuideStep step in steps)
         {
-            string path = Path.Combine(folder, $"Paso {step.Number}.png");
+            string path = Path.Combine(folder, $"Captura {step.Number}.png");
             File.Copy(step.ImagePath, path, overwrite: true);
             paths.Add(path);
         }

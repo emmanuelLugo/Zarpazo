@@ -435,8 +435,8 @@
                                 <TextBlock Grid.Column="2" Text="Ctrl+P" Foreground="#80FFFFFF" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </Grid>
                         </Button>
-                        <Button Style="{StaticResource MenuAction}" Click="OnMoreGuide" AutomationProperties.Name="Añadir a la guía"
-                                ToolTip="Guarda la captura como un paso de la guía paso a paso (se exporta a PDF o HTML)">
+                        <Button Style="{StaticResource MenuAction}" Click="OnMoreGuide" AutomationProperties.Name="Añadir al grupo"
+                                ToolTip="Suma la captura a un grupo para copiar varias de una vez (abre el grupo desde el icono de la bandeja)">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -444,7 +444,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Path Style="{StaticResource Icon}" Data="M3,2.5 H13 V13.5 H3 Z M5.5,6 H10.5 M5.5,8.5 H10.5 M5.5,11 H8.5" />
-                                <TextBlock Grid.Column="1" Text="Añadir a la guía" Margin="10,0,0,0" />
+                                <TextBlock Grid.Column="1" Text="Añadir al grupo" Margin="10,0,0,0" />
                                 <TextBlock Grid.Column="2" Text="Ctrl+D" Foreground="#80FFFFFF" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </Grid>
                         </Button>

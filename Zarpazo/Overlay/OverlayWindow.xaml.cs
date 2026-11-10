@@ -273,7 +273,7 @@ public partial class OverlayWindow : Window
         return true;
     });
 
-    /// <summary>The capture, dressed like a copy would be, is to become the next step of the guide.</summary>
+    /// <summary>The capture, dressed like a copy would be, is to be added to the group of captures.</summary>
     internal event Action<BitmapSource>? GuideStepRequested;
 
     private void OnGuide(object? sender, EventArgs e) => Finish(image =>

@@ -26,7 +26,7 @@ internal sealed class TrayIcon : IDisposable
     private Icon? _pausedIcon;
 
     public TrayIcon(Action onCapture, Action onFullScreen, Action onRepeatLast, Func<bool> canRepeatLast, Action<int> onDelayed,
-        Action onHistory, Action onGuide, Action onGuideByClicks, Action onSettings, Action onStopRecording, Action onExit)
+        Action onHistory, Action onGuide, Action onSettings, Action onStopRecording, Action onExit)
     {
         var menu = new ContextMenuStrip();
         _menu = menu;
@@ -43,8 +43,7 @@ internal sealed class TrayIcon : IDisposable
         _delayedMenu = delayed;
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Historial…", null, (_, _) => onHistory());
-        menu.Items.Add("Guía paso a paso…", null, (_, _) => onGuide());
-        menu.Items.Add("Grabar guía con clics", null, (_, _) => onGuideByClicks());
+        menu.Items.Add("Capturas agrupadas…", null, (_, _) => onGuide());
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
         _stopRecording = menu.Items.Add("Detener grabación", null, (_, _) => onStopRecording());
         _stopRecording.Visible = false; // only while recording

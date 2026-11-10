@@ -25,19 +25,6 @@ internal static class WindowNative
     public static void Place(IntPtr hwnd, Rectangle bounds) =>
         SetWindowPos(hwnd, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, SwpNoZOrder | SwpNoActivate);
 
-    /// <summary>Where the window is, in physical pixels.</summary>
-    public static Rectangle Bounds(IntPtr hwnd) =>
-        GetWindowRect(hwnd, out NativeRect rect) ? Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom) : Rectangle.Empty;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRect
-    {
-        public int Left, Top, Right, Bottom;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
-
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);
 
