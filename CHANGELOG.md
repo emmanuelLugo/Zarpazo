@@ -6,6 +6,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.5.0] - 2026-11-10
+
 ### Añadido
 - Historial: filtro por tipo (Todo, Capturas, Grabaciones, Conservadas), menú con clic derecho y atajos: Supr elimina, Intro edita (o abre la grabación), Ctrl+C copia y Ctrl+F lleva a la búsqueda. El doble clic en una tarjeta ahora edita o abre, en vez de copiar.
 
@@ -72,7 +74,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.4.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.0...v0.2.1
