@@ -11,6 +11,12 @@ internal static class ScreenCapture
     public static (BitmapSource Image, Rectangle Bounds) CaptureVirtualScreen()
     {
         Rectangle bounds = SystemInformation.VirtualScreen;
+        return (CaptureRegion(bounds), bounds);
+    }
+
+    /// <summary>Captures one rectangle of the screen, given in physical pixels.</summary>
+    public static BitmapSource CaptureRegion(Rectangle bounds)
+    {
 
         using var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppRgb);
         using (Graphics graphics = Graphics.FromImage(bitmap))
@@ -37,7 +43,7 @@ internal static class ScreenCapture
                 pixels.Stride * bounds.Height,
                 pixels.Stride);
             image.Freeze();
-            return (image, bounds);
+            return image;
         }
         finally
         {

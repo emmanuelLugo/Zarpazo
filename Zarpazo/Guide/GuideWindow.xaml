@@ -26,6 +26,10 @@
                     <Setter Property="Margin" Value="0,0,8,0" />
                 </Style>
             </StackPanel.Resources>
+            <Button Content="Grabar con clics" Click="OnRecordClicks"
+                    ToolTip="Cada clic que hagas en pantalla se añade como un paso, con un círculo numerado donde hiciste clic" />
+            <Button x:Name="CopyButton" Content="Copiar imágenes" Click="OnCopyImages"
+                    ToolTip="Copia todas las imágenes como archivos: al pegar en WhatsApp, Teams o un correo se adjuntan todas de una vez" />
             <Button Content="Abrir…" Click="OnOpenProject" ToolTip="Abre una guía guardada antes (.zarpazo)" />
             <Button x:Name="SaveButton" Content="Guardar…" Click="OnSaveProject"
                     ToolTip="Guarda la guía en un archivo .zarpazo para seguir editándola otro día" />

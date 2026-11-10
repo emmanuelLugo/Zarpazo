@@ -10,9 +10,11 @@ namespace Zarpazo.Guide;
 public partial class GuideWindow : Window
 {
     private readonly GuideDocument _guide;
+    private readonly Action _recordClicks;
 
-    internal GuideWindow(GuideDocument guide)
+    internal GuideWindow(GuideDocument guide, Action recordClicks)
     {
+        _recordClicks = recordClicks;
         InitializeComponent();
         _guide = guide;
         TitleBox.Text = guide.Title;
@@ -28,6 +30,7 @@ public partial class GuideWindow : Window
         bool any = _guide.Steps.Count > 0;
         EmptyText.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
         PdfButton.IsEnabled = any;
+        CopyButton.IsEnabled = any;
         HtmlButton.IsEnabled = any;
         ClearButton.IsEnabled = any || _guide.Title.Length > 0;
         StatusText.Text = any ? $"{_guide.Steps.Count} {(_guide.Steps.Count == 1 ? "paso" : "pasos")}" : "";
@@ -60,6 +63,21 @@ public partial class GuideWindow : Window
         _guide.Clear();
         TitleBox.Text = "";
         Reload();
+    }
+
+    private void OnRecordClicks(object sender, RoutedEventArgs e) => _recordClicks();
+
+    private void OnCopyImages(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            IReadOnlyList<string> files = GuideShare.CopyFiles(_guide.Steps, GuideShare.DefaultFolder);
+            StatusText.Text = $"{files.Count} {(files.Count == 1 ? "imagen copiada" : "imágenes copiadas")}: pégalas donde quieras";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        {
+            MessageBox.Show(this, $"No se pudieron copiar: {ex.Message}", "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void OnSaveProject(object sender, RoutedEventArgs e) =>
