@@ -173,7 +173,7 @@
                          Visibility="Collapsed" AutomationProperties.Name="Ajustar zona" />
             <RadioButton GroupName="tool" Tag="Move" Style="{StaticResource Choice}"
                          AutomationProperties.Name="Mover anotaciones"
-                         ToolTip="Mover anotaciones (Supr borra la seleccionada)">
+                         ToolTip="Mover y estirar anotaciones (V). Supr borra la seleccionada">
                 <Path Style="{StaticResource Icon}"
                       Data="M8,1.5 V14.5 M1.5,8 H14.5 M6,3.5 L8,1.5 L10,3.5 M6,12.5 L8,14.5 L10,12.5 M3.5,6 L1.5,8 L3.5,10 M12.5,6 L14.5,8 L12.5,10" />
             </RadioButton>
@@ -184,11 +184,11 @@
             <ContentControl x:Name="ShapesSlot" Focusable="False" IsTabStop="False" />
             <ContentControl x:Name="DrawSlot" Focusable="False" IsTabStop="False" />
             <RadioButton GroupName="tool" Tag="Text" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Texto" ToolTip="Texto (Enter confirma, Mayús+Enter salto de línea)">
+                         AutomationProperties.Name="Texto" ToolTip="Texto (T). Enter confirma, Mayús+Enter salto de línea">
                 <Path Style="{StaticResource Icon}" Data="M3,4 V3 H13 V4 M8,3 V13 M6,13 H10" />
             </RadioButton>
             <RadioButton GroupName="tool" Tag="Step" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Numeración de pasos" ToolTip="Numeración de pasos (un clic por número)">
+                         AutomationProperties.Name="Numeración de pasos" ToolTip="Numeración de pasos (N): un clic por número">
                 <Grid Width="16" Height="16">
                     <Ellipse Margin="0.75" Stroke="White" StrokeThickness="1.5" />
                     <TextBlock Text="1" Foreground="White" FontFamily="Segoe UI" FontWeight="SemiBold" FontSize="10"
@@ -196,7 +196,7 @@
                 </Grid>
             </RadioButton>
             <RadioButton GroupName="tool" Tag="Pixelate" Style="{StaticResource Choice}"
-                         AutomationProperties.Name="Pixelar" ToolTip="Pixelar para ocultar datos">
+                         AutomationProperties.Name="Pixelar" ToolTip="Pixelar para ocultar datos (B)">
                 <Grid Width="16" Height="16">
                     <Path Style="{StaticResource Icon}" StrokeThickness="0" Fill="#99FFFFFF"
                           Data="M2,2 H8 V8 H2 Z M8,8 H14 V14 H8 Z" />
@@ -508,7 +508,7 @@
             <Border Style="{StaticResource Divider}" />
 
             <!-- Each outcome has its own color, so they stand apart from the drawing tools. -->
-            <Button Style="{StaticResource Action}" ToolTip="Cerrar sin guardar (Esc)" AutomationProperties.Name="Cerrar" Click="OnClose">
+            <Button Style="{StaticResource Action}" ToolTip="Cancelar y cerrar sin guardar (Esc)" AutomationProperties.Name="Cerrar" Click="OnClose">
                 <Path Style="{StaticResource Icon}" Stroke="#EF5350" Data="M3.5,3.5 L12.5,12.5 M12.5,3.5 L3.5,12.5" />
             </Button>
             <Button Style="{StaticResource Action}" ToolTip="Guardar como imagen (Ctrl+S)" AutomationProperties.Name="Guardar" Click="OnSave">

@@ -66,6 +66,33 @@ internal static class SelectionGeometry
         return area.Contains(point) ? SelectionHandle.Inside : SelectionHandle.None;
     }
 
+    /// <summary>
+    /// The box of an annotation after dragging a grip by <paramref name="delta"/>. Unlike the capture area it may get flat (a line is),
+    /// but never turns inside out, and it stays inside <paramref name="bounds"/> unless it started outside.
+    /// </summary>
+    public static Rect Stretch(Rect original, SelectionHandle handle, Vector delta, Rect bounds)
+    {
+        bounds = Rect.Union(bounds, original);
+        double left = original.Left, top = original.Top, right = original.Right, bottom = original.Bottom;
+        if (handle is SelectionHandle.West or SelectionHandle.NorthWest or SelectionHandle.SouthWest)
+        {
+            left = Math.Clamp(original.Left + delta.X, bounds.Left, original.Right);
+        }
+        if (handle is SelectionHandle.East or SelectionHandle.NorthEast or SelectionHandle.SouthEast)
+        {
+            right = Math.Clamp(original.Right + delta.X, original.Left, bounds.Right);
+        }
+        if (handle is SelectionHandle.North or SelectionHandle.NorthWest or SelectionHandle.NorthEast)
+        {
+            top = Math.Clamp(original.Top + delta.Y, bounds.Top, original.Bottom);
+        }
+        if (handle is SelectionHandle.South or SelectionHandle.SouthWest or SelectionHandle.SouthEast)
+        {
+            bottom = Math.Clamp(original.Bottom + delta.Y, original.Top, bounds.Bottom);
+        }
+        return new Rect(new Point(left, top), new Point(right, bottom));
+    }
+
     /// <summary>The area after dragging a handle by <paramref name="delta"/>, kept inside <paramref name="bounds"/>.</summary>
     public static Rect Apply(Rect original, SelectionHandle handle, Vector delta, Rect bounds)
     {

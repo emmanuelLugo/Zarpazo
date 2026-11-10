@@ -149,12 +149,19 @@ public partial class EditorToolbar : UserControl
             var label = new StackPanel { Orientation = Orientation.Horizontal };
             label.Children.Add((UIElement)FindResource(entry.IconKey));
             label.Children.Add(new TextBlock { Text = entry.Label, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            label.Children.Add(new TextBlock
+            {
+                Text = ToolShortcuts.KeyFor(entry.Tool),
+                Margin = new Thickness(18, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0.55,
+            });
             var item = new RadioButton
             {
                 GroupName = "tool",
                 Tag = entry.Tool.ToString(),
                 Style = (Style)FindResource("MenuChoice"),
-                ToolTip = entry.Hint,
+                ToolTip = ToolShortcuts.WithKey(entry.Hint, entry.Tool),
                 Content = label,
             };
             AutomationProperties.SetName(item, entry.Label);
@@ -273,7 +280,7 @@ public partial class EditorToolbar : UserControl
                 ToolEntry shown = group.Entries.First(entry => entry.Tool == group.Remembered);
                 group.Icon.Content = FindResource(shown.IconKey);
                 group.Box.Background = used ? new SolidColorBrush(Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF)) : Brushes.Transparent;
-                group.Face.ToolTip = $"{group.Title}: {shown.Label}. Pulsa otra vez para soltarla; el triángulo o el clic derecho muestran las demás";
+                group.Face.ToolTip = $"{group.Title}: {ToolShortcuts.WithKey(shown.Label, shown.Tool)}. Pulsa otra vez para soltarla; el triángulo o el clic derecho muestran las demás";
                 group.Menu.IsOpen = false;
             }
 
@@ -749,6 +756,9 @@ public partial class EditorToolbar : UserControl
     private void OnOcr(object sender, RoutedEventArgs e) => OcrRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Picks a tool, as its button would.</summary>
+    internal void Choose(AnnotationTool tool) => ApplyTool(tool);
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

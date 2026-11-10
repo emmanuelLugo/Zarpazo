@@ -33,6 +33,16 @@ internal abstract class DragAnnotation : Annotation
 
     public override void Extend(Point point) => End = point;
 
+    public override bool CanResize => true;
+
+    public override Rect Frame => new(Start, End);
+
+    public override void Resize(Rect from, Rect to)
+    {
+        Start = Map(Start, from, to);
+        End = Map(End, from, to);
+    }
+
     public override void Offset(Vector delta)
     {
         Start += delta;

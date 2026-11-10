@@ -34,6 +34,9 @@ internal sealed class RulerAnnotation(Color color, double thickness, Point start
 
     public override Rect Bounds => Rect.Union(base.Bounds, Label().Box);
 
+    // Its length is the measurement, so it is moved but not stretched.
+    public override bool CanResize => false;
+
     public override bool HitTest(Point point, double tolerance) =>
         base.HitTest(point, tolerance) || Label().Box.Contains(point);
 

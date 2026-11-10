@@ -1,12 +1,15 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Zarpazo.Overlay;
 
 namespace Zarpazo.Editor;
 
 /// <summary>Holds the drawn annotations with their undo/redo history and paints them over the screenshot.</summary>
 internal sealed class AnnotationCanvas : FrameworkElement
 {
+    private const double GripSize = 7;
+
     private static readonly Pen SelectionOutline = CreateSelectionOutline();
 
     private readonly record struct Edit(Action Undo, Action Redo);
@@ -76,6 +79,58 @@ internal sealed class AnnotationCanvas : FrameworkElement
         {
             Record(new Edit(() => annotation.Offset(-total), () => annotation.Offset(total)));
         }
+    }
+
+    /// <summary>Notes that an annotation was already stretched, so that undo and redo can stretch it back and forth.</summary>
+    public void RecordResize(Annotation annotation, Rect before, Rect after)
+    {
+        if (before != after)
+        {
+            Record(new Edit(() => annotation.Resize(after, before), () => annotation.Resize(before, after)));
+        }
+    }
+
+    /// <summary>The grip of the selected annotation under the point, if it can be stretched.</summary>
+    public SelectionHandle HandleAt(Point point, double tolerance)
+    {
+        if (_selected is not { CanResize: true })
+        {
+            return SelectionHandle.None;
+        }
+
+        foreach ((SelectionHandle handle, Point at) in GripPoints(Outline(_selected)))
+        {
+            if ((point - at).Length <= tolerance)
+            {
+                return handle;
+            }
+        }
+        return SelectionHandle.None;
+    }
+
+    /// <summary>The eight grips of an outline: the corners and the middle of each side.</summary>
+    internal static IReadOnlyList<(SelectionHandle Handle, Point At)> GripPoints(Rect outline)
+    {
+        double midX = outline.Left + outline.Width / 2;
+        double midY = outline.Top + outline.Height / 2;
+        return
+        [
+            (SelectionHandle.NorthWest, outline.TopLeft),
+            (SelectionHandle.North, new Point(midX, outline.Top)),
+            (SelectionHandle.NorthEast, outline.TopRight),
+            (SelectionHandle.East, new Point(outline.Right, midY)),
+            (SelectionHandle.SouthEast, outline.BottomRight),
+            (SelectionHandle.South, new Point(midX, outline.Bottom)),
+            (SelectionHandle.SouthWest, outline.BottomLeft),
+            (SelectionHandle.West, new Point(outline.Left, midY)),
+        ];
+    }
+
+    private static Rect Outline(Annotation annotation)
+    {
+        Rect outline = annotation.Bounds;
+        outline.Inflate(3, 3);
+        return outline;
     }
 
     public void DeleteSelected()
@@ -174,11 +229,18 @@ internal sealed class AnnotationCanvas : FrameworkElement
         _preview?.Draw(context);
         if (_selected != null)
         {
-            Rect outline = _selected.Bounds;
-            outline.Inflate(3, 3);
-            context.DrawRectangle(null, SelectionOutline, outline);
+            context.DrawRectangle(null, SelectionOutline, Outline(_selected));
         }
         context.Pop();
+
+        // Outside the clip, so the grips of an annotation at the edge of the area are whole.
+        if (_selected is { CanResize: true })
+        {
+            foreach ((_, Point at) in GripPoints(Outline(_selected)))
+            {
+                context.DrawRectangle(Brushes.White, SelectionOutline, new Rect(at.X - GripSize / 2, at.Y - GripSize / 2, GripSize, GripSize));
+            }
+        }
     }
 
     private void Record(Edit edit)

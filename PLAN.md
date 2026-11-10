@@ -38,7 +38,7 @@ El MVP incluye las formas básicas, el texto y deshacer; el desenfoque, la numer
 | Elipse y círculo | Después |
 | Numeración de pasos (1, 2, 3...) | Después |
 | Desenfoque y pixelado para ocultar datos sensibles | Después |
-| Mover, redimensionar y borrar objetos ya dibujados | Después |
+| Mover, redimensionar y borrar objetos ya dibujados | Después (hecho: herramienta Mover, con asas para estirar) |
 | Cuentagotas de color | Después |
 | Globos de texto (callouts), sellos y emojis | Avanzado |
 | Sombras, bordes y efectos de imagen | Avanzado (hecho: botón Embellecer: fondo, margen, esquinas y sombra al copiar y guardar) |

@@ -38,6 +38,22 @@ internal abstract class Annotation
     /// <summary>The box around the drawn annotation, used for the selection outline.</summary>
     public abstract Rect Bounds { get; }
 
+    /// <summary>Whether the handles of the outline can stretch it. Text and step badges take their size from the thickness instead.</summary>
+    public virtual bool CanResize => false;
+
+    /// <summary>The box the handles stretch: the shape itself, without the width of the stroke.</summary>
+    public virtual Rect Frame => Bounds;
+
+    /// <summary>Stretches the annotation so what filled <paramref name="from"/> fills <paramref name="to"/>.</summary>
+    public virtual void Resize(Rect from, Rect to)
+    {
+    }
+
+    /// <summary>Where a point of <paramref name="from"/> lands once that box becomes <paramref name="to"/>. A flat box only moves.</summary>
+    protected static Point Map(Point point, Rect from, Rect to) => new(
+        to.X + (from.Width > 0 ? (point.X - from.X) / from.Width * to.Width : point.X - from.X),
+        to.Y + (from.Height > 0 ? (point.Y - from.Y) / from.Height * to.Height : point.Y - from.Y));
+
     /// <summary>Moves the whole annotation.</summary>
     public abstract void Offset(Vector delta);
 

@@ -49,6 +49,10 @@ public partial class OverlayWindow : Window
     private Annotation? _moving;          // the annotation being dragged with the move tool
     private Point _moveLast;
     private Vector _moveTotal;
+    private Annotation? _resizing;        // the annotation being stretched by one of its grips
+    private SelectionHandle _resizeGrip;
+    private Rect _resizeFrom;             // its box when the drag began
+    private Point _resizeStart;
     private bool _recognizing;           // a text reading is in progress
     private DispatcherTimer? _noticeTimer;
     private TextBox? _textBox;
@@ -116,7 +120,7 @@ public partial class OverlayWindow : Window
         bool ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         if (e.Key == Key.Escape)
         {
-            Close();
+            CancelStep();
         }
         else if (e.Key == Key.Enter || (ctrl && e.Key == Key.C))
         {
@@ -163,9 +167,34 @@ public partial class OverlayWindow : Window
                 cursor.Y + (e.Key == Key.Down ? 1 : e.Key == Key.Up ? -1 : 0));
             e.Handled = true;
         }
+        else if (!ctrl && Keyboard.Modifiers == ModifierKeys.None && IsSelectionFinal && _textBox == null && !IsMouseCaptured
+                 && ToolShortcuts.ForKey(e.Key) is { } shortcut)
+        {
+            Toolbar.Choose(shortcut); // the letters only pick a tool once the area is chosen; before that F and the arrows have their uses
+        }
         else if (e.Key == Key.F && !ctrl && _textBox == null)
         {
             SelectArea(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds); // F: the whole monitor
+        }
+    }
+
+    /// <summary>
+    /// Esc undoes one step at a time: first the annotation picked with the move tool, then the tool in use (back to adjusting the
+    /// area), and only then it closes without saving. Work drawn is not lost to a single stray press.
+    /// </summary>
+    private void CancelStep()
+    {
+        if (Annotations.Selected != null)
+        {
+            Annotations.Selected = null;
+        }
+        else if (IsSelectionFinal && Toolbar.Tool != AnnotationTool.Select)
+        {
+            Toolbar.Choose(AnnotationTool.Select);
+        }
+        else
+        {
+            Close();
         }
     }
 
@@ -546,6 +575,15 @@ public partial class OverlayWindow : Window
                 StartNewSelection(point);
             }
         }
+        else if (Toolbar.Tool == AnnotationTool.Move && Annotations.Selected is { } picked
+                 && Annotations.HandleAt(point, HandleTolerance) is var grip && grip != SelectionHandle.None)
+        {
+            // A grip of the picked annotation: stretch it instead of moving it.
+            _resizing = picked;
+            _resizeGrip = grip;
+            _resizeFrom = picked.Frame;
+            _resizeStart = point;
+        }
         else if (HasSelection && Selection.Rect.Contains(point))
         {
             if (Toolbar.Tool == AnnotationTool.Move)
@@ -598,6 +636,12 @@ public partial class OverlayWindow : Window
         {
             Rect area = Selection.Rect;
             _drawing.Extend(new Point(Math.Clamp(point.X, area.Left, area.Right), Math.Clamp(point.Y, area.Top, area.Bottom)));
+            Annotations.InvalidateVisual();
+        }
+        else if (_resizing != null)
+        {
+            Rect frame = SelectionGeometry.Stretch(_resizeFrom, _resizeGrip, point - _resizeStart, Selection.Rect);
+            _resizing.Resize(_resizing.Frame, frame);
             Annotations.InvalidateVisual();
         }
         else if (_moving != null)
@@ -663,6 +707,11 @@ public partial class OverlayWindow : Window
             Annotations.Commit(_drawing);
             _drawing = null;
         }
+        else if (_resizing != null)
+        {
+            Annotations.RecordResize(_resizing, _resizeFrom, _resizing.Frame);
+            _resizing = null;
+        }
         else if (_moving != null)
         {
             Annotations.RecordMove(_moving, _moveTotal);
@@ -715,9 +764,14 @@ public partial class OverlayWindow : Window
                 SelectionHandle.NorthEast or SelectionHandle.SouthWest => Cursors.SizeNESW,
                 _ => Cursors.Cross,
             },
-            AnnotationTool.Move => Selection.Rect.Contains(point) && Annotations.HitTest(point, HitTolerance) != null
-                ? Cursors.SizeAll
-                : Cursors.Arrow,
+            AnnotationTool.Move => Annotations.HandleAt(point, HandleTolerance) switch
+            {
+                SelectionHandle.North or SelectionHandle.South => Cursors.SizeNS,
+                SelectionHandle.East or SelectionHandle.West => Cursors.SizeWE,
+                SelectionHandle.NorthWest or SelectionHandle.SouthEast => Cursors.SizeNWSE,
+                SelectionHandle.NorthEast or SelectionHandle.SouthWest => Cursors.SizeNESW,
+                _ => Selection.Rect.Contains(point) && Annotations.HitTest(point, HitTolerance) != null ? Cursors.SizeAll : Cursors.Arrow,
+            },
             _ => Cursors.Cross,
         };
     }

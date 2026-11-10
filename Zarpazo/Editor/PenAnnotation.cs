@@ -28,6 +28,20 @@ internal sealed class PenAnnotation : Annotation
 
     public override void Extend(Point point) => _points.Add(point);
 
+    public override bool CanResize => true;
+
+    public override Rect Frame => new(
+        new Point(_points.Min(p => p.X), _points.Min(p => p.Y)),
+        new Point(_points.Max(p => p.X), _points.Max(p => p.Y)));
+
+    public override void Resize(Rect from, Rect to)
+    {
+        for (int i = 0; i < _points.Count; i++)
+        {
+            _points[i] = Map(_points[i], from, to);
+        }
+    }
+
     public override void Offset(Vector delta)
     {
         for (int i = 0; i < _points.Count; i++)
