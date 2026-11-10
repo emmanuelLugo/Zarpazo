@@ -6,10 +6,14 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.3.0] - 2026-11-10
+
 ### Añadido
 - Tema claro y oscuro: en Configuración > General se elige entre «Igual que Windows» (cambia solo cuando cambias Windows), «Claro» y «Oscuro». Afecta a Configuración, Historial, Recortar video, la barra del título y el menú del icono de la bandeja.
 
 - Actualización automática: una vez al día Zarpazo pregunta a GitHub si hay una versión nueva y avisa desde el icono de la bandeja (una sola vez por versión). En Configuración > Acerca de se puede buscar ahora, ver las novedades y pulsar «Descargar e instalar»: descarga el instalador solo del repositorio oficial, comprueba su tamaño y su SHA-256 contra lo publicado, lo ejecuta en silencio y vuelve a abrir Zarpazo. Se puede apagar con «Buscar actualizaciones automáticamente». Solo se actualiza sola la copia instalada con el instalador; un .exe suelto abre la página de descarga.
+
+- Aviso cuando Windows tiene Impr Pant asignada al Recortes (opción «Usar el botón Impr Pant para abrir la captura de pantalla»): puede abrirlo en vez de Zarpazo. Sale un globo al iniciar y una nota en Configuración con un botón que abre los ajustes de teclado de Windows.
 
 ### Cambiado
 - Aspecto renovado de las ventanas de Configuración, Historial y Recortar video: botones, listas, casillas, pestañas y barras de desplazamiento planos y redondeados, con el color de la marca como acento.
@@ -48,7 +52,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.1...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/emmanuelLugo/Zarpazo/releases/tag/v0.1.0
