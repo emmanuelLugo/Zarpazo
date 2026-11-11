@@ -254,6 +254,7 @@ public partial class EditorToolbar : UserControl
             return;
         }
 
+        AnnotationTool previous = Tool;
         _applyingTool = true;
         try
         {
@@ -296,6 +297,10 @@ public partial class EditorToolbar : UserControl
         if (_screen.Width > 0)
         {
             Place(_area, _screen); // the column got taller or shorter
+        }
+        if (previous != tool)
+        {
+            ToolChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -621,6 +626,7 @@ public partial class EditorToolbar : UserControl
         return null;
     }
 
+    public event EventHandler? ToolChanged;
     public event EventHandler? UndoRequested;
     public event EventHandler? RedoRequested;
     public event EventHandler? CopyRequested;

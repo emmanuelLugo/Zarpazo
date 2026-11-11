@@ -31,6 +31,7 @@ public partial class OverlayWindow : Window
     private const double HandleTolerance = 6; // how close to an edge the mouse grabs it
     private const double HandleSize = 7;
     private const double HitTolerance = 6; // how close to an annotation a click picks it
+    private const int WheelHintLimit = 3; // times the tip about the wheel is shown
     private const int MinRecordingSide = 16; // pixels; anything smaller is not worth a GIF
 
     private readonly BitmapSource _screenshot;
@@ -61,6 +62,9 @@ public partial class OverlayWindow : Window
     private Color _textColor;
     private double _textThickness;
     private Color _bubbleColor;
+    private DispatcherTimer? _sizeValueTimer;
+    private bool _wheelHintShown;        // the tip about the wheel is shown once per capture
+    private int _wheelHintsAtStart;
 
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
@@ -96,7 +100,9 @@ public partial class OverlayWindow : Window
             return CropSelection()?.Final;
         };
         Closed += (_, _) => RememberStyle();
-        Toolbar.MouseEnter += (_, _) => SizeBubble.Visibility = Visibility.Collapsed;
+        _wheelHintsAtStart = settings.Current.WheelHintsShown;
+        Toolbar.MouseEnter += (_, _) => HideSizeBubble();
+        Toolbar.ToolChanged += OnToolChanged;
         Loaded += (_, _) => PlaceGroupBadge(); // the size is known by now
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
@@ -437,6 +443,10 @@ public partial class OverlayWindow : Window
             settings.RecordingOptions = Toolbar.RecordingOptions;
             changed = true;
         }
+        if (settings.WheelHintsShown != _wheelHintsAtStart)
+        {
+            changed = true;
+        }
         if (!changed)
         {
             return;
@@ -748,7 +758,7 @@ public partial class OverlayWindow : Window
     protected override void OnMouseLeave(MouseEventArgs e)
     {
         base.OnMouseLeave(e);
-        SizeBubble.Visibility = Visibility.Collapsed;
+        HideSizeBubble();
     }
 
     // The wheel sizes what is being drawn: the text in its box, the stroke being dragged, the picked annotation, or else the
@@ -762,6 +772,7 @@ public partial class OverlayWindow : Window
         }
 
         double change = Math.Max(1, Math.Abs(e.Delta) / 120) * Math.Sign(e.Delta) * StrokeSize.Step;
+        double shown;
         if (_textBox != null)
         {
             _textThickness = StrokeSize.Clamp(_textThickness + change);
@@ -770,19 +781,23 @@ public partial class OverlayWindow : Window
             {
                 Toolbar.SetThickness(_textThickness); // a new text: the next one starts at this size too
             }
+            shown = TextAnnotation.SizeFor(_textThickness);
         }
         else if (_drawing is { UsesThickness: true } drawing)
         {
             Toolbar.SetThickness(Toolbar.Thickness + change);
             Annotations.ChangeThickness(drawing, Toolbar.Thickness);
+            shown = StrokeSize.ShownSize(drawing);
         }
         else if (Toolbar.Tool == AnnotationTool.Move && Annotations.Selected is { UsesThickness: true } picked)
         {
             Annotations.ChangeThickness(picked, picked.Thickness + change);
+            shown = StrokeSize.ShownSize(picked);
         }
         else if (!IsMouseCaptured && StrokeSize.UsesWheel(Toolbar.Tool))
         {
             Toolbar.SetThickness(Toolbar.Thickness + change);
+            shown = StrokeSize.BubbleDiameter(Toolbar.Tool, Toolbar.Thickness);
         }
         else
         {
@@ -790,7 +805,53 @@ public partial class OverlayWindow : Window
         }
 
         e.Handled = true;
-        UpdateSizeBubble(e.GetPosition(this));
+        _settings.Current.WheelHintsShown = WheelHintLimit; // it is clearly known now; no more tips
+        Point point = e.GetPosition(this);
+        UpdateSizeBubble(point);
+        ShowSizeValue(point, shown);
+    }
+
+    // The tip appears when a drawing tool is picked, a few times only.
+    private void OnToolChanged(object? sender, EventArgs e)
+    {
+        if (_wheelHintShown || !IsSelectionFinal || !StrokeSize.UsesWheel(Toolbar.Tool) || _settings.Current.WheelHintsShown >= WheelHintLimit)
+        {
+            return;
+        }
+
+        _wheelHintShown = true;
+        _settings.Current.WheelHintsShown++;
+        ShowNotice("Rueda del mouse: cambia el tamaño", TimeSpan.FromSeconds(2.5));
+    }
+
+    /// <summary>The size in image pixels, in a small tag next to the pointer that fades out by itself.</summary>
+    private void ShowSizeValue(Point point, double size)
+    {
+        SizeValueText.Text = $"{Math.Round(size * _screenshot.PixelWidth / ActualWidth)} px";
+        SizeValue.Visibility = Visibility.Visible;
+        SizeValue.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Size tag = SizeValue.DesiredSize;
+        double reach = size / 2 + 12;
+        Canvas.SetLeft(SizeValue, Math.Clamp(point.X + reach, 0, Math.Max(0, ActualWidth - tag.Width)));
+        Canvas.SetTop(SizeValue, Math.Clamp(point.Y + reach, 0, Math.Max(0, ActualHeight - tag.Height)));
+
+        if (_sizeValueTimer == null)
+        {
+            _sizeValueTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+            _sizeValueTimer.Tick += (_, _) =>
+            {
+                _sizeValueTimer.Stop();
+                SizeValue.Visibility = Visibility.Collapsed;
+            };
+        }
+        _sizeValueTimer.Stop();
+        _sizeValueTimer.Start();
+    }
+
+    private void HideSizeBubble()
+    {
+        SizeBubble.Visibility = Visibility.Collapsed;
+        SizeBubbleRing.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>Shows the translucent circle at the pointer while a drawing tool is ready to draw inside the area.</summary>
@@ -800,7 +861,7 @@ public partial class OverlayWindow : Window
                     && HasSelection && Selection.Rect.Contains(point);
         if (!show)
         {
-            SizeBubble.Visibility = Visibility.Collapsed;
+            HideSizeBubble();
             return;
         }
 
@@ -815,6 +876,13 @@ public partial class OverlayWindow : Window
         Canvas.SetLeft(SizeBubble, point.X - diameter / 2);
         Canvas.SetTop(SizeBubble, point.Y - diameter / 2);
         SizeBubble.Visibility = Visibility.Visible;
+
+        // A dark ring just outside the white one, so the circle shows on light and dark backgrounds alike.
+        SizeBubbleRing.Width = diameter + 2;
+        SizeBubbleRing.Height = diameter + 2;
+        Canvas.SetLeft(SizeBubbleRing, point.X - diameter / 2 - 1);
+        Canvas.SetTop(SizeBubbleRing, point.Y - diameter / 2 - 1);
+        SizeBubbleRing.Visibility = Visibility.Visible;
     }
 
     private void StartNewSelection(Point origin)

@@ -39,6 +39,9 @@ internal sealed class AppSettings
     /// <summary>While choosing the area, a magnifier with the screen position and the color follows the cursor.</summary>
     public bool ShowMagnifier { get; set; } = true;
 
+    /// <summary>How many times the tip about sizing with the mouse wheel was shown. It stops after a few, or once the wheel is used.</summary>
+    public int WheelHintsShown { get; set; }
+
     /// <summary>"system", "light" or "dark": the colours of the windows. "system" follows Windows.</summary>
     public string Appearance { get; set; } = "system";
 

@@ -211,7 +211,7 @@
 
             <!-- The color is one button showing the current choice; the options live in a popup so they don't take bar
                  space. The size has no control: the mouse wheel changes it over the capture. -->
-            <Button x:Name="ColorButton" Style="{StaticResource Action}" ToolTip="Color" AutomationProperties.Name="Color" Click="OnColorButton">
+            <Button x:Name="ColorButton" Style="{StaticResource Action}" ToolTip="Color. La rueda del mouse sobre la captura cambia el tamaño" AutomationProperties.Name="Color" Click="OnColorButton">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse x:Name="ColorSwatch" Width="16" Height="16" Fill="#E53935" Stroke="#88FFFFFF" StrokeThickness="1" />
                 </StackPanel>

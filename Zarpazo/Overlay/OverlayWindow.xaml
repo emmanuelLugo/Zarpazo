@@ -46,11 +46,25 @@
 
         <Canvas x:Name="UiLayer">
             <!-- Follows the pointer with the size of the next mark; the mouse wheel changes it. -->
-            <Ellipse x:Name="SizeBubble"
-                     Stroke="#CCFFFFFF"
+            <Ellipse x:Name="SizeBubbleRing"
+                     Stroke="#99000000"
                      StrokeThickness="1"
                      IsHitTestVisible="False"
                      Visibility="Collapsed" />
+            <Ellipse x:Name="SizeBubble"
+                     Stroke="#F2FFFFFF"
+                     StrokeThickness="1"
+                     IsHitTestVisible="False"
+                     Visibility="Collapsed" />
+
+            <Border x:Name="SizeValue"
+                    Background="#CC000000"
+                    CornerRadius="3"
+                    Padding="6,2"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="SizeValueText" Foreground="White" FontFamily="Consolas" FontSize="12" />
+            </Border>
 
             <editor:EditorToolbar x:Name="Toolbar"
                                   Visibility="Collapsed"

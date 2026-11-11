@@ -16,6 +16,14 @@ internal static class StrokeSize
     public static bool UsesWheel(AnnotationTool tool) => tool is AnnotationTool.Rectangle or AnnotationTool.Ellipse or AnnotationTool.Line
         or AnnotationTool.Arrow or AnnotationTool.Pen or AnnotationTool.Text or AnnotationTool.Step;
 
+    /// <summary>The size of an annotation that is already drawn, measured the same way as <see cref="BubbleDiameter"/>.</summary>
+    public static double ShownSize(Annotation annotation) => annotation switch
+    {
+        TextAnnotation => TextAnnotation.SizeFor(annotation.Thickness),
+        NumberAnnotation => NumberAnnotation.RadiusFor(annotation.Thickness) * 2,
+        _ => annotation.Thickness,
+    };
+
     /// <summary>The width of the circle that follows the pointer: roughly how big the next mark will be.</summary>
     public static double BubbleDiameter(AnnotationTool tool, double thickness) => tool switch
     {
