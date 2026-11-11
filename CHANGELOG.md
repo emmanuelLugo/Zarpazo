@@ -6,6 +6,11 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.5.1] - 2026-11-11
+
+### Cambiado
+- Atajos globales: Mayús sola ya vale junto con RePág, AvPág, Inicio o Fin (por ejemplo, Mayús+RePág). Antes todo atajo necesitaba Ctrl, Alt o Win. Con Mayús, las flechas y las letras siguen sin aceptarse.
+
 ## [0.5.0] - 2026-11-10
 
 ### Añadido
@@ -74,7 +79,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.2.1...v0.3.0
