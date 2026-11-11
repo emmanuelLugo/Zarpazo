@@ -32,6 +32,13 @@ internal static class AppVersion
         return true;
     }
 
+    /// <summary>
+    /// True when <paramref name="lastRun"/> is a version older than <paramref name="current"/>: Zarpazo was updated since it last
+    /// ran. A first run (nothing remembered), the same version, a newer one (a downgrade) or text that isn't a version are not.
+    /// </summary>
+    public static bool IsUpdateFrom(string? lastRun, Version current) =>
+        TryParse(lastRun, out Version previous) && current > previous;
+
     private static Version Read()
     {
         Assembly assembly = Assembly.GetExecutingAssembly();

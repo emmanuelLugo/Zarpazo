@@ -65,6 +65,9 @@ internal static class ReleaseFeed
         return new ReleaseInfo(version, tag.Trim(), page, Text(root, "body") ?? "", setupUrl, setupSize, sha256);
     }
 
+    /// <summary>The page of a published version (what changed), from the tags the releases are made with: "v" and the version.</summary>
+    public static string PageFor(Version version) => $"{PagePrefix}releases/tag/v{version}";
+
     /// <summary>
     /// The release a remembered tag stands for, without asking GitHub: its installer link follows from the tag. Null when the
     /// tag is not a version or the hash is not a SHA-256.

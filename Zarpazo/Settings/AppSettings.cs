@@ -73,6 +73,9 @@ internal sealed class AppSettings
     /// <summary>The published size in bytes of that download.</summary>
     public long PendingUpdateSize { get; set; }
 
+    /// <summary>The version that ran last time, so a start on a newer one can say what happened. Empty on a first run.</summary>
+    public string LastRunVersion { get; set; } = "";
+
     /// <summary>The person chose to install the pending update when Zarpazo is closed, or else the next time it starts.</summary>
     public bool ApplyUpdateOnClose { get; set; }
 
@@ -257,6 +260,7 @@ internal sealed class AppSettings
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";
         UpdateNotifiedVersion ??= "";
+        LastRunVersion ??= "";
         PendingUpdateTag ??= "";
         PendingUpdateSha256 ??= "";
         PendingUpdateSize = Math.Max(0, PendingUpdateSize);

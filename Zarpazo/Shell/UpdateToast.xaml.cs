@@ -45,6 +45,20 @@ public partial class UpdateToast : Window
         Closed += (_, _) => _timer.Stop();
     }
 
+    /// <summary>
+    /// The card shown the first time Zarpazo runs after an update: what version it is now, with one button to read what changed.
+    /// </summary>
+    public static UpdateToast Updated(string version, Action notes)
+    {
+        var toast = new UpdateToast(version, notes, () => { }, notes);
+        toast.Heading.Text = $"Zarpazo se actualizó a la versión {version}";
+        toast.Detail.Text = "Ya estás usando la versión nueva. ¿Quieres ver qué cambió?";
+        toast.RestartButton.Content = "Ver novedades"; // the main button runs the first action, which here is the notes
+        toast.LaterButton.Visibility = Visibility.Collapsed;
+        toast.NotesButton.Visibility = Visibility.Collapsed;
+        return toast;
+    }
+
     /// <summary>Closes the card with a short fade.</summary>
     public void Dismiss()
     {

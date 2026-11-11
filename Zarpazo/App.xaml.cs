@@ -47,7 +47,9 @@ public partial class App : Application
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
     private UpdateService _updates = null!; // the same
     private DispatcherTimer? _updateTimer;
-    private UpdateToast? _updateToast;
+    private UpdateToast? _updateToast; // the card about a version that is ready
+    private UpdateToast? _updatedToast; // the card that says Zarpazo was just updated
+    private Version? _justUpdatedTo; // set on a start after an update, until the card has been shown
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -81,6 +83,7 @@ public partial class App : Application
         _tray.UpdateRequested += () => ShowSettings(showAbout: true);
         _tray.RestartForUpdateRequested += ApplyUpdateNow;
         _tray.CheckUpdatesRequested += async () => await CheckForUpdatesNowAsync();
+        AnnounceUpdateIfNew();
         StartUpdateChecks();
         _hotKey = new GlobalHotKey(() => ShowOverlay());
         if (!_hotKey.TryRegister(_settings.Current.HotKey))
@@ -420,7 +423,7 @@ public partial class App : Application
         {
             _updateToast?.Dismiss(); // it was about a version that has been replaced
         }
-        else if (_settings.Current.UpdateNotifiedVersion != ready.Tag && !IsBusy)
+        else if (_settings.Current.UpdateNotifiedVersion != ready.Tag && !IsBusy && _updatedToast == null)
         {
             ShowUpdateToast(ready); // while busy it waits: OnMaybeIdle shows it when the person is done
         }
@@ -447,23 +450,78 @@ public partial class App : Application
             _tray?.ShowWarning(ex.Message);
         }
 
-        if (_updates.Ready is { } ready && _settings.Current.UpdateNotifiedVersion != ready.Tag && !IsBusy)
+        if (_updates.Ready is { } ready && _settings.Current.UpdateNotifiedVersion != ready.Tag && !IsBusy && _updatedToast == null)
         {
             ShowUpdateToast(ready);
         }
+        ShowJustUpdatedIfIdle();
     }
 
     private void ShowUpdateToast(ReleaseInfo release)
     {
-        if (_updateToast != null)
+        if (_updateToast != null || _updatedToast != null)
         {
             return;
         }
 
         RememberNotified(release);
-        var toast = new UpdateToast(release.Version.ToString(), ApplyUpdateNow, InstallUpdateOnClose, () => OpenReleasePage(release));
-        toast.Closed += (_, _) => _updateToast = null;
+        var toast = new UpdateToast(release.Version.ToString(), ApplyUpdateNow, InstallUpdateOnClose, () => OpenPage(release.PageUrl));
+        toast.Closed += (_, _) =>
+        {
+            _updateToast = null;
+            ShowJustUpdatedIfIdle();
+        };
         _updateToast = toast;
+        toast.Show();
+    }
+
+    // The first start on a newer version than the one that ran last time: Zarpazo says so once, with a way to read what changed.
+    // Nothing is said on a first run, or when the version is the same or older.
+    private async void AnnounceUpdateIfNew()
+    {
+        Version current = AppVersion.Current;
+        string last = _settings.Current.LastRunVersion;
+        if (AppVersion.IsUpdateFrom(last, current))
+        {
+            _justUpdatedTo = current;
+        }
+
+        if (last != current.ToString())
+        {
+            _settings.Current.LastRunVersion = current.ToString();
+            try
+            {
+                _settings.Save();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // it would be announced again at the next start, which is harmless
+            }
+        }
+
+        if (_justUpdatedTo != null)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4)); // let the start-up settle first
+            ShowJustUpdatedIfIdle();
+        }
+    }
+
+    // Not while the person is capturing or recording, and not on top of the card about another version: it waits for them to end.
+    private void ShowJustUpdatedIfIdle()
+    {
+        if (_justUpdatedTo is not { } version || IsBusy || _updateToast != null || _updatedToast != null)
+        {
+            return;
+        }
+
+        _justUpdatedTo = null;
+        var toast = UpdateToast.Updated(version.ToString(), () => OpenPage(ReleaseFeed.PageFor(version)));
+        toast.Closed += (_, _) =>
+        {
+            _updatedToast = null;
+            OnMaybeIdle(); // a card about a new version may have been waiting for this one to go
+        };
+        _updatedToast = toast;
         toast.Show();
     }
 
@@ -480,11 +538,11 @@ public partial class App : Application
         }
     }
 
-    private static void OpenReleasePage(ReleaseInfo release)
+    private static void OpenPage(string url)
     {
         try
         {
-            Process.Start(new ProcessStartInfo(release.PageUrl) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {

@@ -789,6 +789,40 @@ public sealed class UpdateTests : IDisposable
         Assert.Null(ReleaseFeed.ForTag("v0.3.0", 1, null));
     }
 
+    // ---- saying what changed after an update ----
+
+    [Theory]
+    [InlineData("0.4.0", 0, 5, 1, true)]   // updated since the last run
+    [InlineData("v0.5.0", 0, 5, 1, true)]
+    [InlineData("0.5.1", 0, 5, 1, false)]  // same version
+    [InlineData("0.6.0", 0, 5, 1, false)]  // a downgrade says nothing
+    [InlineData("", 0, 5, 1, false)]       // first run
+    [InlineData(null, 0, 5, 1, false)]
+    [InlineData("garbage", 0, 5, 1, false)]
+    public void An_update_is_noticed_only_when_the_last_run_was_an_older_version(string? lastRun, int major, int minor, int build, bool expected)
+    {
+        Assert.Equal(expected, AppVersion.IsUpdateFrom(lastRun, new Version(major, minor, build)));
+    }
+
+    [Fact]
+    public void The_notes_of_a_version_are_at_its_release_page()
+    {
+        Assert.Equal("https://github.com/emmanuelLugo/Zarpazo/releases/tag/v0.5.1", ReleaseFeed.PageFor(new Version(0, 5, 1)));
+    }
+
+    [Fact]
+    public void The_version_that_ran_last_is_remembered_and_empty_by_default()
+    {
+        string path = Path.Combine(_folder, "settings.json");
+        var store = new SettingsStore(path);
+        Assert.Equal("", store.Current.LastRunVersion);
+
+        store.Current.LastRunVersion = "0.5.1";
+        store.Save();
+
+        Assert.Equal("0.5.1", new SettingsStore(path).Current.LastRunVersion);
+    }
+
     // ---- which copy updates itself ----
 
     [Theory]
