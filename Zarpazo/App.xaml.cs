@@ -261,7 +261,7 @@ public partial class App : Application
         {
             if (showAbout)
             {
-                _settingsWindow.ShowAboutTab();
+                _settingsWindow.ShowUpdates();
             }
             _settingsWindow.Activate();
             return;

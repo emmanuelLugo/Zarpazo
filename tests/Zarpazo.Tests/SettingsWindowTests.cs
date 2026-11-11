@@ -84,4 +84,46 @@ public sealed class SettingsWindowTests
             window.Close();
         });
     }
+
+    [Fact]
+    public void Resetting_a_section_restores_only_that_section_and_saves_nothing()
+    {
+        Sta.Run(() =>
+        {
+            string path = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"), "settings.json");
+            var store = new SettingsStore(path);
+            store.Current.ShowMagnifier = false;
+            store.Current.RecordCountdownSeconds = 5;
+            var window = new SettingsWindow(store, new StartupRegistration(@"Software\Zarpazo.Tests", "Zarpazo", @"C:\Zarpazo\Zarpazo.exe"), _ => true, _ => true);
+
+            window.Nav.SelectedIndex = 2; // Captura
+            window.ResetPageButton.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            Assert.True(window.MagnifierBox.IsChecked);
+            Assert.Equal(2, window.CountdownBox.SelectedIndex); // the Grabación page was not touched
+            Assert.False(store.Current.ShowMagnifier); // nothing is saved until Aceptar
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void Only_the_chosen_page_is_visible_and_the_about_page_has_no_reset_button()
+    {
+        Sta.Run(() =>
+        {
+            string path = Path.Combine(Path.GetTempPath(), "Zarpazo.Tests", Guid.NewGuid().ToString("N"), "settings.json");
+            var window = new SettingsWindow(new SettingsStore(path), new StartupRegistration(@"Software\Zarpazo.Tests", "Zarpazo", @"C:\Zarpazo\Zarpazo.exe"), _ => true, _ => true);
+
+            Assert.Equal(System.Windows.Visibility.Visible, window.PageGeneral.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, window.PageSaving.Visibility);
+
+            window.Nav.SelectedIndex = 4;
+            Assert.Equal(System.Windows.Visibility.Visible, window.PageSaving.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, window.PageGeneral.Visibility);
+
+            window.Nav.SelectedIndex = 5;
+            Assert.Equal(System.Windows.Visibility.Collapsed, window.ResetPageButton.Visibility);
+            window.Close();
+        });
+    }
 }

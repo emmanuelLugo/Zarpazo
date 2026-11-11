@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Zarpazo.Settings"
         Title="Configuración de Zarpazo"
-        Width="500"
-        SizeToContent="Height"
-        ResizeMode="NoResize"
+        Width="760"
+        Height="620"
+        MinWidth="680"
+        MinHeight="480"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackground}"
         Foreground="{DynamicResource TextPrimary}"
@@ -18,7 +19,7 @@
             </ResourceDictionary.MergedDictionaries>
             <Style x:Key="Section" TargetType="TextBlock">
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Margin" Value="0,16,0,6" />
+                <Setter Property="Margin" Value="0,18,0,6" />
             </Style>
             <Style x:Key="Hint" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
@@ -26,18 +27,78 @@
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="Margin" Value="0,5,0,0" />
             </Style>
+            <Style x:Key="PageTitle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+            <Style x:Key="PageSubtitle" TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                <Setter Property="Margin" Value="0,2,0,0" />
+            </Style>
+
+            <!-- The side menu: the open section has a bar in the accent color. -->
+            <Style x:Key="NavItem" TargetType="ListBoxItem">
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="Row" Background="Transparent" CornerRadius="6" Margin="0,1" Padding="14,8,10,8">
+                                <Grid>
+                                    <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-10,-2,0,-2"
+                                            Background="{DynamicResource Accent}" Visibility="Hidden" />
+                                    <ContentPresenter VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource Hover}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource Hover}" />
+                                    <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel Margin="18,14,18,16">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-            <Button Content="Aceptar" IsDefault="True" Click="OnAccept" MinWidth="88" Margin="0,0,8,0" />
-            <Button Content="Cancelar" IsCancel="True" Click="OnCancel" MinWidth="88" />
-        </StackPanel>
+        <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
+            <Button x:Name="ResetPageButton" Content="Restablecer esta sección" HorizontalAlignment="Left" Click="OnResetPage"
+                    ToolTip="Vuelve a los valores de fábrica solo en esta sección. No se guarda hasta pulsar Aceptar." />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Aceptar" IsDefault="True" Click="OnAccept" MinWidth="88" Margin="0,0,8,0" />
+                <Button Content="Cancelar" IsCancel="True" Click="OnCancel" MinWidth="88" />
+            </StackPanel>
+        </Grid>
 
-        <TabControl x:Name="Tabs">
-            <TabItem Header="General">
-                <StackPanel Margin="4,0,4,14">
+        <Border DockPanel.Dock="Left" Width="176" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,1,0" Padding="0,0,10,0" Margin="0,0,16,0">
+            <ListBox x:Name="Nav" ItemContainerStyle="{StaticResource NavItem}" SelectionChanged="OnPageSelected" SelectedIndex="0"
+                     KeyboardNavigation.DirectionalNavigation="Cycle">
+                <ListBoxItem Content="General" />
+                <ListBoxItem Content="Atajos" />
+                <ListBoxItem Content="Captura" />
+                <ListBoxItem Content="Grabación" />
+                <ListBoxItem Content="Guardado" />
+                <ListBoxItem Content="Acerca de" />
+            </ListBox>
+        </Border>
+
+        <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <Grid Margin="0,0,12,16">
+
+                <!-- General -->
+                <StackPanel x:Name="PageGeneral">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="General" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Text="Cómo se ve Zarpazo y cuándo se abre." />
+
                     <TextBlock Style="{StaticResource Section}" Text="Apariencia" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Tema" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -51,7 +112,27 @@
                     <TextBlock Style="{StaticResource Section}" Text="Inicio" />
                     <CheckBox x:Name="StartupBox" Content="Iniciar Zarpazo con Windows" />
 
-                    <TextBlock Style="{StaticResource Section}" Text="Atajo de captura" />
+                    <StackPanel x:Name="UpdatePanel">
+                        <TextBlock Style="{StaticResource Section}" Text="Actualizaciones" />
+                        <CheckBox x:Name="AutoUpdateBox" Content="Buscar actualizaciones automáticamente" />
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Una vez al día pregunta a GitHub cuál es la última versión publicada. No envía nada tuyo ni instala nada sin que lo pidas." />
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button x:Name="CheckUpdateButton" Content="Buscar ahora" Click="OnCheckUpdates" />
+                            <Button x:Name="InstallUpdateButton" Content="Descargar e instalar" Margin="8,0,0,0" Visibility="Collapsed" Click="OnInstallUpdate" />
+                            <Button x:Name="NotesButton" Content="Ver novedades" Margin="8,0,0,0" Visibility="Collapsed" Click="OnOpenReleasePage" />
+                        </StackPanel>
+                        <ProgressBar x:Name="UpdateProgress" Height="4" Margin="0,10,0,0" Minimum="0" Maximum="1" Visibility="Collapsed" />
+                        <TextBlock x:Name="UpdateStatus" Style="{StaticResource Hint}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Atajos -->
+                <StackPanel x:Name="PageHotKeys" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="Atajos" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Text="Funcionan en cualquier programa, aunque Zarpazo esté en segundo plano." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Captura" />
                     <local:HotKeyPicker x:Name="CaptureHotKey" />
                     <StackPanel x:Name="PrintScreenNotice" Visibility="Collapsed">
                         <TextBlock Style="{StaticResource Hint}"
@@ -59,70 +140,49 @@
                         <Button Content="Abrir ajustes de teclado de Windows" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnOpenWindowsKeyboardSettings" />
                     </StackPanel>
 
+                    <TextBlock Style="{StaticResource Section}" Text="Grabación" />
+                    <local:HotKeyPicker x:Name="RecordHotKey" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Empieza una grabación de la última zona grabada, con lo último elegido en el panel de grabación (GIF o video, sonido), y la detiene. La primera vez abre la captura para elegir la zona." />
+
                     <TextBlock Style="{StaticResource Section}" Text="Capturas agrupadas" />
                     <local:HotKeyPicker x:Name="GroupHotKey" />
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Atajo que copia el grupo de capturas, listo para pegar, y lo vacía." />
-                    <CheckBox x:Name="GroupOneImageBox" Content="El atajo copia el grupo como una sola imagen" Margin="0,8,0,0" />
-                    <CheckBox x:Name="GroupNumberingBox" Content="Poner el número en la esquina de cada captura" Margin="0,6,0,0" />
+                               Text="Copia el grupo de capturas, listo para pegar, y lo vacía." />
+                </StackPanel>
+
+                <!-- Captura -->
+                <StackPanel x:Name="PageCapture" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="Captura" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Text="Cómo se elige el área, qué recuerdan las herramientas y qué se copia." />
 
                     <TextBlock Style="{StaticResource Section}" Text="Elegir el área" />
                     <CheckBox x:Name="MagnifierBox" Content="Mostrar la lupa con la posición y el color junto al cursor" />
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Es el zoom que sale al elegir el área. Las flechas del teclado siguen moviendo el cursor de a 1 píxel." />
 
+                    <TextBlock Style="{StaticResource Section}" Text="Herramientas" />
+                    <CheckBox x:Name="RememberStyleBox" Content="Recordar el último color y grosor" />
+
                     <TextBlock Style="{StaticResource Section}" Text="Copiar" />
                     <CheckBox x:Name="CopyAsFileBox" Content="Copiar también como archivo PNG" />
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Permite pegar la ruta de la captura en una terminal como el cmd. Si alguna aplicación pega un archivo en vez de la imagen, desactívalo." />
 
-                    <TextBlock Style="{StaticResource Section}" Text="Guardar" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="FolderBox" />
-                        <Button Grid.Column="1" Content="Examinar…" Margin="8,0,0,0" Click="OnBrowseFolder" />
-                    </Grid>
-                    <TextBlock Style="{StaticResource Hint}" Text="Carpeta donde se abre el cuadro de guardar. Vacía usa Imágenes." />
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="Formato por defecto" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <ComboBox x:Name="FormatBox" Width="80">
-                            <ComboBoxItem Content="PNG" />
-                            <ComboBoxItem Content="JPG" />
-                        </ComboBox>
-                    </StackPanel>
-                    <TextBlock Style="{StaticResource Section}" Text="Herramientas" />
-                    <CheckBox x:Name="RememberStyleBox" Content="Recordar el último color y grosor" />
-
-                    <TextBlock Style="{StaticResource Section}" Text="Historial" />
-                    <CheckBox x:Name="KeepHistoryBox" Content="Guardar un historial de capturas y grabaciones" />
-                    <TextBlock Style="{StaticResource Hint}"
-                               Text="Guarda en este equipo las últimas 100 capturas que copias o guardas y las últimas 10 grabaciones, para volver a usarlas desde el icono de la bandeja. Al desactivarlo no se borra lo ya guardado." />
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="Borrar lo que tenga más de" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <ComboBox x:Name="HistoryAgeBox" Width="130">
-                            <ComboBoxItem Content="Nunca" />
-                            <ComboBoxItem Content="7 días" />
-                            <ComboBoxItem Content="30 días" />
-                            <ComboBoxItem Content="90 días" />
-                        </ComboBox>
-                    </StackPanel>
-                    <TextBlock Style="{StaticResource Hint}"
-                               Text="Se borra al abrir Zarpazo y al guardar una captura nueva, sin pasar por la papelera. Las capturas marcadas como conservadas en el Historial no se borran, y los archivos que guardaste tú en otra carpeta tampoco." />
+                    <TextBlock Style="{StaticResource Section}" Text="Capturas agrupadas" />
+                    <CheckBox x:Name="GroupOneImageBox" Content="El atajo copia el grupo como una sola imagen" />
+                    <CheckBox x:Name="GroupNumberingBox" Content="Poner el número en la esquina de cada captura" Margin="0,6,0,0" />
                 </StackPanel>
-            </TabItem>
 
-            <TabItem Header="Grabación">
-                <StackPanel Margin="4,0,4,14">
-                    <TextBlock Style="{StaticResource Section}" Text="Atajo" />
-                    <local:HotKeyPicker x:Name="RecordHotKey" Margin="0,4,0,0" />
-                    <TextBlock Style="{StaticResource Hint}"
-                               Text="Empieza una grabación de la última zona grabada, con lo último elegido en el panel de grabación (GIF o video, sonido), y la detiene. La primera vez abre la captura para elegir la zona." />
-                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                        <TextBlock Text="Cuenta atrás antes de grabar" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <ComboBox x:Name="CountdownBox" Width="150">
+                <!-- Grabación -->
+                <StackPanel x:Name="PageRecording" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="Grabación" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Text="Cuenta atrás, sonido y calidad de los GIF y los videos." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Antes de grabar" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cuenta atrás" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="CountdownBox" Width="190">
                             <ComboBoxItem Content="Sin cuenta atrás" />
                             <ComboBoxItem Content="3 segundos" />
                             <ComboBoxItem Content="5 segundos" />
@@ -131,7 +191,7 @@
 
                     <TextBlock Style="{StaticResource Section}" Text="Sonido en los videos" />
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Ajuste de sincronía" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="Ajuste de sincronía" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
                         <ComboBox x:Name="AudioOffsetBox" Width="190">
                             <ComboBoxItem Content="Adelantar el sonido 200 ms" />
                             <ComboBoxItem Content="Adelantar el sonido 100 ms" />
@@ -144,24 +204,6 @@
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Si al ver un video el sonido llega más tarde que la imagen, adelántalo; si llega antes, retrásalo. Depende del equipo (por ejemplo, los auriculares Bluetooth suelen ir con retraso)." />
-
-                </StackPanel>
-            </TabItem>
-
-            <TabItem Header="Calidad">
-                <StackPanel Margin="4,0,4,14">
-                    <TextBlock Style="{StaticResource Section}" Text="Imágenes" />
-                    <StackPanel Orientation="Horizontal" >
-                        <TextBlock Text="Calidad del JPG" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <ComboBox x:Name="JpegQualityBox" Width="170">
-                            <ComboBoxItem Content="60 (muy pequeño)" />
-                            <ComboBoxItem Content="75" />
-                            <ComboBoxItem Content="85" />
-                            <ComboBoxItem Content="92 (recomendada)" />
-                            <ComboBoxItem Content="100 (máxima)" />
-                        </ComboBox>
-                    </StackPanel>
-                    <TextBlock Style="{StaticResource Hint}" Text="Solo cuenta al guardar en JPG. Más calidad da una imagen más nítida y un archivo más grande." />
 
                     <TextBlock Style="{StaticResource Section}" Text="Calidad del GIF" />
                     <StackPanel Orientation="Horizontal">
@@ -213,19 +255,18 @@
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Más calidad y más cuadros por segundo dan un video más nítido y más pesado. El equipo también tiene que poder con ello: a pantalla completa, 30 cuadros ya es mucho para algunos." />
-
                 </StackPanel>
-            </TabItem>
 
-            <TabItem Header="Guardado">
-                <StackPanel Margin="4,0,4,14">
+                <!-- Guardado -->
+                <StackPanel x:Name="PageSaving" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="Guardado" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Text="Dónde y con qué nombre se guardan las capturas, y el historial." />
+
                     <TextBlock Style="{StaticResource Section}" Text="Guardado automático" />
                     <CheckBox x:Name="AutoSaveBox" Content="Guardar cada captura que copio y cada grabación" />
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Además de copiarla, la guarda sola en la carpeta de abajo, sin preguntar. El botón Guardar sigue abriendo el cuadro para elegir otro lugar." />
-
-                    <TextBlock Style="{StaticResource Section}" Text="Carpeta" />
-                    <Grid>
+                    <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -233,7 +274,7 @@
                         <TextBox x:Name="AutoFolderBox" />
                         <Button Grid.Column="1" Content="Examinar…" Margin="8,0,0,0" Click="OnBrowseAutoFolder" />
                     </Grid>
-                    <TextBlock Style="{StaticResource Hint}" Text="Vacía usa Imágenes\Zarpazo. Se crea si no existe." />
+                    <TextBlock Style="{StaticResource Hint}" Text="Carpeta del guardado automático. Vacía usa Imágenes\Zarpazo; se crea si no existe." />
 
                     <TextBlock Style="{StaticResource Section}" Text="Nombre del archivo" />
                     <TextBox x:Name="TemplateBox" TextChanged="OnTemplateChanged" />
@@ -241,36 +282,66 @@
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Puedes usar {fecha} (2026-11-07), {hora} (14-30-05) y {n}, un contador que sube solo. {n:000} lo rellena con ceros: 001, 002… Si ya existe un archivo con ese nombre, se añade (2), (3)…" />
                     <Button Content="Usar el nombre por defecto" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnDefaultTemplate" />
-                </StackPanel>
-            </TabItem>
 
-            <TabItem Header="Acerca de">
-                <StackPanel Margin="4,10,4,14">
+                    <TextBlock Style="{StaticResource Section}" Text="Guardar a mano" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="FolderBox" />
+                        <Button Grid.Column="1" Content="Examinar…" Margin="8,0,0,0" Click="OnBrowseFolder" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource Hint}" Text="Carpeta donde se abre el cuadro de guardar. Vacía usa Imágenes." />
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Formato por defecto" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="FormatBox" Width="80">
+                            <ComboBoxItem Content="PNG" />
+                            <ComboBoxItem Content="JPG" />
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock Text="Calidad del JPG" VerticalAlignment="Center" Margin="0,0,8,0" Width="130" />
+                        <ComboBox x:Name="JpegQualityBox" Width="170">
+                            <ComboBoxItem Content="60 (muy pequeño)" />
+                            <ComboBoxItem Content="75" />
+                            <ComboBoxItem Content="85" />
+                            <ComboBoxItem Content="92 (recomendada)" />
+                            <ComboBoxItem Content="100 (máxima)" />
+                        </ComboBox>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Text="La calidad solo cuenta al guardar en JPG. Más calidad da una imagen más nítida y un archivo más grande." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Historial" />
+                    <CheckBox x:Name="KeepHistoryBox" Content="Guardar un historial de capturas y grabaciones" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Guarda en este equipo las últimas 100 capturas que copias o guardas y las últimas 10 grabaciones, para volver a usarlas desde el icono de la bandeja. Al desactivarlo no se borra lo ya guardado." />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="Borrar lo que tenga más de" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox x:Name="HistoryAgeBox" Width="130">
+                            <ComboBoxItem Content="Nunca" />
+                            <ComboBoxItem Content="7 días" />
+                            <ComboBoxItem Content="30 días" />
+                            <ComboBoxItem Content="90 días" />
+                        </ComboBox>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Se borra al abrir Zarpazo y al guardar una captura nueva, sin pasar por la papelera. Las capturas marcadas como conservadas en el Historial no se borran, y los archivos que guardaste tú en otra carpeta tampoco." />
+                </StackPanel>
+
+                <!-- Acerca de -->
+                <StackPanel x:Name="PageAbout" Visibility="Collapsed">
                     <TextBlock Text="Zarpazo" FontSize="24" FontWeight="SemiBold" />
                     <TextBlock x:Name="VersionText" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
                     <TextBlock Text="Desarrollado por provisorio43" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,12" />
                     <TextBlock TextWrapping="Wrap"
                                Text="Capturas de pantalla rápidas para Windows, con anotaciones, regla y cuentagotas." />
 
-                    <StackPanel x:Name="UpdatePanel">
-                        <TextBlock Style="{StaticResource Section}" Text="Actualizaciones" />
-                        <CheckBox x:Name="AutoUpdateBox" Content="Buscar actualizaciones automáticamente" />
-                        <TextBlock Style="{StaticResource Hint}"
-                                   Text="Una vez al día pregunta a GitHub cuál es la última versión publicada. No envía nada tuyo ni instala nada sin que lo pidas." />
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button x:Name="CheckUpdateButton" Content="Buscar ahora" Click="OnCheckUpdates" />
-                            <Button x:Name="InstallUpdateButton" Content="Descargar e instalar" Margin="8,0,0,0" Visibility="Collapsed" Click="OnInstallUpdate" />
-                            <Button x:Name="NotesButton" Content="Ver novedades" Margin="8,0,0,0" Visibility="Collapsed" Click="OnOpenReleasePage" />
-                        </StackPanel>
-                        <ProgressBar x:Name="UpdateProgress" Height="4" Margin="0,10,0,0" Minimum="0" Maximum="1" Visibility="Collapsed" />
-                        <TextBlock x:Name="UpdateStatus" Style="{StaticResource Hint}" />
-                    </StackPanel>
-
                     <TextBlock Style="{StaticResource Section}" Text="Tu configuración" />
                     <TextBlock x:Name="SettingsPathText" TextWrapping="Wrap" />
                     <Button Content="Abrir carpeta" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnOpenSettingsFolder" />
                 </StackPanel>
-            </TabItem>
-        </TabControl>
+            </Grid>
+        </ScrollViewer>
     </DockPanel>
 </Window>

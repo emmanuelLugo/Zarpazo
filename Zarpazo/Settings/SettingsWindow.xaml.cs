@@ -24,9 +24,9 @@ public partial class SettingsWindow : Window
     /// <param name="tryRegisterHotKey">Makes the combination the active capture shortcut; false if another program owns it.</param>
     /// <param name="tryRegisterRecordHotKey">The same for the recording shortcut.</param>
     /// <param name="updates">Looks for and installs new versions; without it the update section is hidden.</param>
-    /// <param name="showAbout">Opens on the About tab, where the update is.</param>
+    /// <param name="showUpdates">Opens on the General page, where the update is.</param>
     internal SettingsWindow(SettingsStore store, StartupRegistration startup, Func<HotKeyBinding, bool> tryRegisterHotKey,
-        Func<HotKeyBinding, bool> tryRegisterRecordHotKey, UpdateService? updates = null, bool showAbout = false,
+        Func<HotKeyBinding, bool> tryRegisterRecordHotKey, UpdateService? updates = null, bool showUpdates = false,
         Func<HotKeyBinding, bool>? tryRegisterGroupHotKey = null)
     {
         InitializeComponent();
@@ -38,45 +38,22 @@ public partial class SettingsWindow : Window
         _tryRegisterGroupHotKey = tryRegisterGroupHotKey;
 
         AppSettings settings = store.Current;
-        ThemeBox.SelectedIndex = (int)settings.AppearanceMode;
         CaptureHotKey.DefaultValue = HotKeyBinding.Default;
-        CaptureHotKey.Value = settings.HotKey;
         CaptureHotKey.ValueChanged += ShowPrintScreenNoticeIfNeeded;
-        ShowPrintScreenNoticeIfNeeded();
         GroupHotKey.DefaultValue = HotKeyBinding.DefaultGroup;
-        GroupHotKey.Value = settings.GroupHotKey;
-        GroupOneImageBox.IsChecked = settings.GroupCopyAsOneImage;
-        GroupNumberingBox.IsChecked = settings.GroupNumbering;
-        MagnifierBox.IsChecked = settings.ShowMagnifier;
         RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
-        RecordHotKey.Value = settings.RecordHotKey;
-        CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
-        AudioOffsetBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.AudioOffsetChoices, settings.RecordAudioOffsetMs));
-        JpegQualityBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.JpegQualityChoices, settings.JpegQuality));
-        RecordingQuality quality = settings.RecordingQuality;
-        GifFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.GifFramesPerSecondChoices, quality.GifFramesPerSecond));
-        GifMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.GifMaxSecondsChoices, quality.GifMaxSeconds));
-        GifDitherBox.IsChecked = quality.GifDither;
-        VideoFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoFramesPerSecondChoices, quality.VideoFramesPerSecond));
-        VideoQualityBox.SelectedIndex = (int)quality.VideoQuality;
-        VideoMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoMaxMinutesChoices, quality.VideoMaxMinutes));
-        StartupBox.IsChecked = startup.IsEnabled;
-        CopyAsFileBox.IsChecked = settings.CopyAsFile;
-        FolderBox.Text = settings.SaveFolder;
-        FormatBox.SelectedIndex = settings.SaveFormat == "jpg" ? 1 : 0;
-        RememberStyleBox.IsChecked = settings.RememberStyle;
-        KeepHistoryBox.IsChecked = settings.KeepHistory;
-        HistoryAgeBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.HistoryMaxAgeChoices, settings.HistoryMaxAgeDays));
-        AutoSaveBox.IsChecked = settings.AutoSave;
-        AutoFolderBox.Text = settings.AutoSaveFolder;
-        TemplateBox.Text = settings.FileNameTemplate;
+        StartupBox.IsChecked = startup.IsEnabled; // not part of AppSettings, so "Restablecer" leaves it alone
+        LoadGeneral(settings);
+        LoadHotKeys(settings);
+        LoadCapture(settings);
+        LoadRecording(settings);
+        LoadSaving(settings);
 
         // The version has a "+commit" suffix when built from git; that part means nothing to the person.
         string version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
         VersionText.Text = $"Versión {version.Split('+')[0]}";
         SettingsPathText.Text = store.FilePath;
 
-        AutoUpdateBox.IsChecked = settings.CheckForUpdates;
         _updates = updates;
         UpdatePanel.Visibility = updates == null ? Visibility.Collapsed : Visibility.Visible;
         if (updates != null)
@@ -89,13 +66,91 @@ public partial class SettingsWindow : Window
             };
             ShowUpdateState();
         }
-        if (showAbout)
+        ShowPage(0);
+    }
+
+    internal void ShowUpdates() => Nav.SelectedIndex = 0;
+
+    // Each page has its own Load method, so "Restablecer esta sección" can fill it with the factory values.
+    private void LoadGeneral(AppSettings settings)
+    {
+        ThemeBox.SelectedIndex = (int)settings.AppearanceMode;
+        AutoUpdateBox.IsChecked = settings.CheckForUpdates;
+    }
+
+    private void LoadHotKeys(AppSettings settings)
+    {
+        CaptureHotKey.Value = settings.HotKey;
+        RecordHotKey.Value = settings.RecordHotKey;
+        GroupHotKey.Value = settings.GroupHotKey;
+    }
+
+    private void LoadCapture(AppSettings settings)
+    {
+        MagnifierBox.IsChecked = settings.ShowMagnifier;
+        RememberStyleBox.IsChecked = settings.RememberStyle;
+        CopyAsFileBox.IsChecked = settings.CopyAsFile;
+        GroupOneImageBox.IsChecked = settings.GroupCopyAsOneImage;
+        GroupNumberingBox.IsChecked = settings.GroupNumbering;
+    }
+
+    private void LoadRecording(AppSettings settings)
+    {
+        CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
+        AudioOffsetBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.AudioOffsetChoices, settings.RecordAudioOffsetMs));
+        RecordingQuality quality = settings.RecordingQuality;
+        GifFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.GifFramesPerSecondChoices, quality.GifFramesPerSecond));
+        GifMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.GifMaxSecondsChoices, quality.GifMaxSeconds));
+        GifDitherBox.IsChecked = quality.GifDither;
+        VideoFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoFramesPerSecondChoices, quality.VideoFramesPerSecond));
+        VideoQualityBox.SelectedIndex = (int)quality.VideoQuality;
+        VideoMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoMaxMinutesChoices, quality.VideoMaxMinutes));
+    }
+
+    private void LoadSaving(AppSettings settings)
+    {
+        AutoSaveBox.IsChecked = settings.AutoSave;
+        AutoFolderBox.Text = settings.AutoSaveFolder;
+        TemplateBox.Text = settings.FileNameTemplate;
+        FolderBox.Text = settings.SaveFolder;
+        FormatBox.SelectedIndex = settings.SaveFormat == "jpg" ? 1 : 0;
+        JpegQualityBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.JpegQualityChoices, settings.JpegQuality));
+        KeepHistoryBox.IsChecked = settings.KeepHistory;
+        HistoryAgeBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.HistoryMaxAgeChoices, settings.HistoryMaxAgeDays));
+    }
+
+    private void OnPageSelected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (PageAbout != null) // it fires while the window is still being built; the last page is the last thing to exist
         {
-            Tabs.SelectedIndex = Tabs.Items.Count - 1;
+            ShowPage(Nav.SelectedIndex);
         }
     }
 
-    internal void ShowAboutTab() => Tabs.SelectedIndex = Tabs.Items.Count - 1;
+    private void ShowPage(int index)
+    {
+        UIElement[] pages = [PageGeneral, PageHotKeys, PageCapture, PageRecording, PageSaving, PageAbout];
+        for (int i = 0; i < pages.Length; i++)
+        {
+            pages[i].Visibility = i == index ? Visibility.Visible : Visibility.Collapsed;
+        }
+        ResetPageButton.Visibility = index == pages.Length - 1 ? Visibility.Collapsed : Visibility.Visible;
+        PageScroll.ScrollToTop();
+    }
+
+    // Only the controls change; nothing is saved until Aceptar, so Cancelar still undoes it.
+    private void OnResetPage(object sender, RoutedEventArgs e)
+    {
+        var factory = new AppSettings();
+        switch (Nav.SelectedIndex)
+        {
+            case 0: LoadGeneral(factory); break;
+            case 1: LoadHotKeys(factory); break;
+            case 2: LoadCapture(factory); break;
+            case 3: LoadRecording(factory); break;
+            case 4: LoadSaving(factory); break;
+        }
+    }
 
     // What the update section says and offers, from what the last check found.
     private void ShowUpdateState()
