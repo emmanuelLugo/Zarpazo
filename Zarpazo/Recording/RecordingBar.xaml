@@ -84,9 +84,9 @@
             <!-- Ready -->
             <StackPanel x:Name="DonePanel" Orientation="Horizontal" Visibility="Collapsed">
                 <TextBlock x:Name="DoneText" Style="{StaticResource Label}" Margin="4,0,10,0" />
-                <Button x:Name="TrimButton" Style="{StaticResource Action}" Click="OnTrim" Visibility="Collapsed"
-                        ToolTip="Quitar el principio o el final del video" AutomationProperties.Name="Recortar">
-                    <TextBlock Text="Recortar…" Style="{StaticResource Label}" />
+                <Button x:Name="EditButton" Style="{StaticResource Action}" Click="OnEdit" Visibility="Collapsed"
+                        ToolTip="Cortar partes del video, cambiar su orden y guardar el resultado" AutomationProperties.Name="Editar">
+                    <TextBlock Text="Editar…" Style="{StaticResource Label}" />
                 </Button>
                 <Button Style="{StaticResource Action}" Click="OnCopy" ToolTip="Copiar el archivo para pegarlo en un chat o un documento" AutomationProperties.Name="Copiar">
                     <TextBlock Text="Copiar" Style="{StaticResource Label}" />

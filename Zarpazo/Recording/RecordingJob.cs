@@ -15,7 +15,7 @@ internal abstract class RecordingJob
     public abstract string Extension { get; }
 
     /// <summary>Whether the finished file can be cut down afterwards (a video can; a GIF is already short).</summary>
-    public virtual bool CanTrim => false;
+    public virtual bool CanEdit => false;
 
     /// <summary>The filter of the Save dialog.</summary>
     public abstract string FileFilter { get; }

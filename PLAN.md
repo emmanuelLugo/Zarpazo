@@ -21,7 +21,7 @@ El MVP cubre la captura de área con atajo global; las capturas de ventana, scro
 | Repetir la última región capturada | Después (hecho: menú de la bandeja, mientras la app siga abierta) |
 | Lupa con zoom de píxeles y coordenadas para afinar la selección | Después (hecho: lupa con coordenadas al elegir el área y flechas del teclado para mover el cursor 1 px) |
 | Captura con scroll (páginas largas) | Avanzado |
-| Captura de GIF y video de pantalla | Avanzado (hecho: botón Grabar, Ctrl+G; GIF y video MP4 con micrófono y sonido de Windows) |
+| Captura de GIF y video de pantalla | Avanzado (hecho: botón Grabar, Ctrl+G; GIF y video MP4 con micrófono y sonido de Windows; editor de video para cortar, reordenar y unir partes) |
 | Captura de texto con OCR (copiar el texto de una imagen) | Avanzado (hecho: botón "Copiar texto", Ctrl+T) |
 
 ## 2. Editor de anotaciones

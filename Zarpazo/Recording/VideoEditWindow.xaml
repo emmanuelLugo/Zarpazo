@@ -1,0 +1,132 @@
+<Window x:Class="Zarpazo.Recording.VideoEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Zarpazo.Recording"
+        Title="Editar video"
+        Width="1000"
+        Height="740"
+        MinWidth="820"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        PreviewKeyDown="OnKeyDown"
+        Closing="OnClosing">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- The tool buttons never take the keyboard focus: Space and the letters go to the editor, not to a button. -->
+            <Style x:Key="Tool" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Padding" Value="11,4" />
+                <Setter Property="Margin" Value="0,0,6,0" />
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="180" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Background="Black" CornerRadius="6">
+            <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
+                          Stretch="Uniform" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="150" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="PlayButton" Style="{StaticResource Tool}" Width="112" Content="▶ Reproducir" Click="OnPlay" IsEnabled="False"
+                    ToolTip="Reproducir lo que quedará (Espacio)" />
+            <Button x:Name="BackButton" Grid.Column="1" Style="{StaticResource Tool}" Content="◀" Click="OnStepBack" IsEnabled="False"
+                    ToolTip="Un cuadro atrás (←). Con Mayús, un segundo" />
+            <Button x:Name="ForwardButton" Grid.Column="2" Style="{StaticResource Tool}" Content="▶" Click="OnStepForward" IsEnabled="False"
+                    ToolTip="Un cuadro adelante (→). Con Mayús, un segundo" />
+            <TextBlock x:Name="PositionText" Grid.Column="3" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <TextBlock Grid.Column="5" Text="Zoom" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
+                    VerticalAlignment="Center" ToolTip="Acerca la línea de tiempo (Ctrl + rueda del ratón)" />
+        </Grid>
+
+        <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+            <Button x:Name="SplitButton" Style="{StaticResource Tool}" Content="✂ Dividir" Click="OnSplit" IsEnabled="False"
+                    ToolTip="Corta la parte en el punto donde está la línea roja (S)" />
+            <Button x:Name="DeleteButton" Style="{StaticResource Tool}" Content="Eliminar" Click="OnDelete" IsEnabled="False"
+                    ToolTip="Quita la parte seleccionada; las siguientes se juntan (Supr)" />
+            <Button x:Name="DuplicateButton" Style="{StaticResource Tool}" Content="Duplicar" Click="OnDuplicate" IsEnabled="False"
+                    ToolTip="Repite la parte seleccionada justo después (Ctrl+D)" />
+            <Button x:Name="MuteButton" Style="{StaticResource Tool}" Content="Silenciar" Click="OnMute" IsEnabled="False"
+                    ToolTip="Quita el sonido de la parte seleccionada (M)" />
+            <Button x:Name="MoveLeftButton" Style="{StaticResource Tool}" Content="◀ Mover" Click="OnMoveLeft" IsEnabled="False"
+                    ToolTip="Pasa la parte seleccionada antes de la anterior (Alt+←). También se arrastra por su título" />
+            <Button x:Name="MoveRightButton" Style="{StaticResource Tool}" Content="Mover ▶" Click="OnMoveRight" IsEnabled="False"
+                    ToolTip="Pasa la parte seleccionada después de la siguiente (Alt+→)" />
+            <Button x:Name="UndoButton" Style="{StaticResource Tool}" Content="↶ Deshacer" Click="OnUndo" IsEnabled="False" Margin="12,0,6,0"
+                    ToolTip="Deshacer (Ctrl+Z)" />
+            <Button x:Name="RedoButton" Style="{StaticResource Tool}" Content="↷ Rehacer" Click="OnRedo" IsEnabled="False"
+                    ToolTip="Rehacer (Ctrl+Y)" />
+            <Button x:Name="ResetButton" Style="{StaticResource Tool}" Content="Restablecer" Click="OnReset" IsEnabled="False"
+                    ToolTip="Vuelve al video completo, tal como se grabó" />
+        </WrapPanel>
+
+        <Border Grid.Row="3" Margin="0,10,0,0" Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}"
+                BorderThickness="1" CornerRadius="8" Padding="0,0,0,2">
+            <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                          PreviewMouseWheel="OnTimelineWheel" SizeChanged="OnScrollerSizeChanged">
+                <local:TimelineView x:Name="View" SelectionChanged="OnSelectionChanged" Scrubbed="OnScrubbed" Previewed="OnPreviewed"
+                                    GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
+                    <local:TimelineView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Dividir aquí" InputGestureText="S" Click="OnSplit" />
+                            <MenuItem Header="Duplicar" InputGestureText="Ctrl+D" Click="OnDuplicate" />
+                            <MenuItem x:Name="MuteMenuItem" Header="Silenciar" InputGestureText="M" Click="OnMute" />
+                            <Separator />
+                            <MenuItem Header="Eliminar" InputGestureText="Supr" Click="OnDelete" />
+                        </ContextMenu>
+                    </local:TimelineView.ContextMenu>
+                </local:TimelineView>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="KeptText" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="SelectionText" Grid.Column="1" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+        </Grid>
+
+        <Grid Grid.Row="5" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ProgressBar x:Name="WorkBar" Height="4" Margin="0,0,16,0" Minimum="0" Maximum="1" VerticalAlignment="Center" Visibility="Collapsed" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="SaveButton" Content="Guardar video" Margin="0,0,8,0" IsDefault="True" IsEnabled="False" Click="OnSave"
+                        ToolTip="Guarda el resultado como un video nuevo; el original no se toca" />
+                <Button x:Name="CancelButton" Content="Cancelar" IsCancel="True" Click="OnCancel" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

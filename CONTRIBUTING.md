@@ -29,7 +29,7 @@ Las pruebas de grabación usan el escritorio real y tardan cerca de un minuto. P
 | `Zarpazo/Overlay` | Ventana de selección sobre el escritorio virtual |
 | `Zarpazo/Editor` | Anotaciones vectoriales y barra de herramientas |
 | `Zarpazo/Output` | Copiar, guardar, guardado automático y Embellecer |
-| `Zarpazo/Recording` | Grabación de GIF y MP4, audio y recorte |
+| `Zarpazo/Recording` | Grabación de GIF y MP4, audio y editor de video |
 | `Zarpazo/History`, `Pin`, `Ocr`, `Settings`, `Shell` | Historial, fijar, OCR, configuración, atajo global y bandeja |
 | `tests/Zarpazo.Tests` | Pruebas xUnit |
 | `tools/` | Scripts de publicación e instalador |

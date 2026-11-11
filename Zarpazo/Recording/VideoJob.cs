@@ -38,7 +38,7 @@ internal sealed class VideoJob : RecordingJob
 
     public override string Extension => ".mp4";
 
-    public override bool CanTrim => true;
+    public override bool CanEdit => true;
 
     public override string FileFilter => "Video MP4 (*.mp4)|*.mp4";
 

@@ -43,7 +43,7 @@
 - **GIF** y **video MP4** de un área (`Ctrl+G`), con micrófono y sonido de Windows, pausa, cuenta atrás de 3-2-1 y volumen por fuente.
 - Repetir la última área con un solo atajo (`Ctrl+Alt+R`).
 - Efectos: halo en el puntero, anillos al hacer clic y atajos de teclado mostrados en pantalla. Las letras que escribes nunca se muestran, así que tus contraseñas no salen en el video.
-- **Recortar** el video grabado antes de guardarlo.
+- **Editar** el video grabado antes de guardarlo: cortar partes (también del medio), cambiar su orden, repetirlas o quitarles el sonido, con una línea de tiempo.
 
 **Y además**
 - **Historial** de capturas y grabaciones con miniaturas, para reabrirlas y seguir editando.

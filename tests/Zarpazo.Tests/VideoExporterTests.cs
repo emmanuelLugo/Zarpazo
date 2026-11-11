@@ -150,17 +150,4 @@ public sealed class VideoExporterTests : IClassFixture<SampleVideos>, IDisposabl
 
         Assert.All(seen, value => Assert.InRange(value, 0, 1));
     }
-
-    [Fact]
-    public void The_trim_window_can_be_created_without_failing_while_its_controls_load()
-    {
-        Sta.Run(() =>
-        {
-            var window = new TrimWindow(Path.Combine(_folder, "not-there.mp4")); // opening the file fails later, asynchronously
-
-            Assert.False(window.SaveButton.IsEnabled); // nothing can be saved before the video has opened
-            Assert.Null(window.TrimmedPath);
-            window.Close();
-        });
-    }
 }

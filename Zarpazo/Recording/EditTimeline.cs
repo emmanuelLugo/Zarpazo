@@ -72,16 +72,24 @@ internal sealed class EditTimeline
     public double ToTimeline(int index, double sourceTime) =>
         StartOf(index) + Math.Clamp(sourceTime - _segments[index].Start, 0, _segments[index].Length);
 
-    /// <summary>Cuts the piece playing at a moment in two. Refused if either half would be too short.</summary>
-    public bool Split(double time)
+    /// <summary>Whether the piece playing at a moment can be cut there: both halves would be long enough.</summary>
+    public bool CanSplit(double time)
     {
         (int index, double at) = Locate(time);
         VideoSegment segment = _segments[index];
-        if (at - segment.Start < MinSeconds || segment.End - at < MinSeconds)
+        return at - segment.Start >= MinSeconds && segment.End - at >= MinSeconds;
+    }
+
+    /// <summary>Cuts the piece playing at a moment in two. Refused if either half would be too short.</summary>
+    public bool Split(double time)
+    {
+        if (!CanSplit(time))
         {
             return false;
         }
 
+        (int index, double at) = Locate(time);
+        VideoSegment segment = _segments[index];
         var list = _segments.ToList();
         list[index] = segment with { End = at };
         list.Insert(index + 1, segment with { Start = at });

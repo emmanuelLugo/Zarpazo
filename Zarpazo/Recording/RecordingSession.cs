@@ -70,7 +70,7 @@ internal sealed class RecordingSession
         _bar.GainChanged += (source, gain) => _job.SetSourceGain(source, gain);
         _bar.StopRequested += (_, _) => Stop();
         _bar.CancelRequested += (_, _) => Close();
-        _bar.TrimRequested += (_, _) => Trim();
+        _bar.EditRequested += (_, _) => Edit();
         _bar.CopyRequested += (_, _) => Copy();
         _bar.SaveRequested += (_, _) => Save();
         _bar.CloseRequested += (_, _) => Close();
@@ -209,7 +209,7 @@ internal sealed class RecordingSession
             _job.ReleaseThumbnail();
             MemoryTrim.Release();
             string saved = AutoSave(path);
-            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{saved}", _job.CanTrim);
+            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{saved}", _job.CanEdit);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -261,16 +261,16 @@ internal sealed class RecordingSession
         }
     }
 
-    // Opens the player to cut the start and end off. The trimmed video replaces the recording, in the history too.
-    private void Trim()
+    // Opens the video editor. The edited video replaces the recording, in the history too.
+    private void Edit()
     {
-        if (_filePath == null || _bar == null || !_job.CanTrim)
+        if (_filePath == null || _bar == null || !_job.CanEdit)
         {
             return;
         }
 
-        var window = new TrimWindow(_filePath) { Owner = _bar };
-        if (window.ShowDialog() != true || window.TrimmedPath is not { } trimmed)
+        var window = new VideoEditWindow(_filePath) { Owner = _bar };
+        if (window.ShowDialog() != true || window.EditedPath is not { } trimmed)
         {
             return;
         }
@@ -287,7 +287,7 @@ internal sealed class RecordingSession
             }
         }
         _historyPath = AddToHistory(trimmed);
-        _bar.ShowDone($"Video recortado · {SizeText(new FileInfo(trimmed).Length)}", canTrim: true);
+        _bar.ShowDone($"Video editado · {SizeText(new FileInfo(trimmed).Length)}", canEdit: true);
     }
 
     private string Describe(RecordingEnd reason) => reason switch
