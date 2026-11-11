@@ -919,7 +919,8 @@ public partial class OverlayWindow : Window
     private void UpdateProbe(Point point)
     {
         bool choosing = !IsSelectionFinal;
-        if (!choosing && Toolbar.Tool != AnnotationTool.Picker)
+        // Choosing the area shows it only if the settings say so; the color picker tool always does.
+        if (choosing ? !_settings.Current.ShowMagnifier : Toolbar.Tool != AnnotationTool.Picker)
         {
             Probe.Visibility = Visibility.Collapsed;
             return;

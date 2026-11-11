@@ -47,6 +47,7 @@ public partial class SettingsWindow : Window
         GroupHotKey.Value = settings.GroupHotKey;
         GroupOneImageBox.IsChecked = settings.GroupCopyAsOneImage;
         GroupNumberingBox.IsChecked = settings.GroupNumbering;
+        MagnifierBox.IsChecked = settings.ShowMagnifier;
         RecordHotKey.DefaultValue = HotKeyBinding.DefaultRecord;
         RecordHotKey.Value = settings.RecordHotKey;
         CountdownBox.SelectedIndex = Math.Max(0, Array.IndexOf(AppSettings.CountdownChoices, settings.RecordCountdownSeconds));
@@ -287,6 +288,7 @@ public partial class SettingsWindow : Window
         settings.GroupHotKey = GroupHotKey.Value;
         settings.GroupCopyAsOneImage = GroupOneImageBox.IsChecked == true;
         settings.GroupNumbering = GroupNumberingBox.IsChecked == true;
+        settings.ShowMagnifier = MagnifierBox.IsChecked == true;
         settings.RecordCountdownSeconds = AppSettings.CountdownChoices[Math.Max(0, CountdownBox.SelectedIndex)];
         settings.RecordAudioOffsetMs = AppSettings.AudioOffsetChoices[Math.Max(0, AudioOffsetBox.SelectedIndex)];
         settings.JpegQuality = AppSettings.JpegQualityChoices[Math.Max(0, JpegQualityBox.SelectedIndex)];

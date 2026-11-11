@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Configuración > General > «Elegir el área»: casilla para mostrar u ocultar la lupa (zoom con la posición y el color) que sigue al cursor al elegir el área. Viene activada; el cuentagotas de la barra de herramientas no cambia.
+
 ### Corregido
 - El nombre de archivo de la configuración (por ejemplo «Cap {fecha} {hora}») ahora también vale al copiar y pegar una captura o una grabación como archivo, no solo al guardar. En el archivo que se pega los espacios pasan a ser guiones bajos (Cap_2026-11-11_15-02-57.png) para que la ruta no necesite comillas.
 
