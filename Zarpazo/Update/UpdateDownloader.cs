@@ -10,7 +10,55 @@ namespace Zarpazo.Update;
 /// </summary>
 internal sealed class UpdateDownloader(HttpClient http, string folder)
 {
-    public static string DefaultFolder { get; } = Path.Combine(Path.GetTempPath(), "Zarpazo", "update");
+    // Not the temp folder: the installer can wait here for days, and Windows empties temp folders on its own.
+    public static string DefaultFolder { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "update");
+
+    /// <summary>Where the installer of <paramref name="release"/> is kept once downloaded.</summary>
+    public string PathFor(ReleaseInfo release) => Path.Combine(folder, $"Zarpazo-Setup-{release.Version}.exe");
+
+    /// <summary>
+    /// The installer of <paramref name="release"/> if it is already on disk and its size and SHA-256 are what was published,
+    /// else null. It is also what is run just before installing, as the file may have sat in the folder for a while.
+    /// </summary>
+    public async Task<string?> TryReuseAsync(ReleaseInfo release, CancellationToken cancel = default)
+    {
+        if (!release.CanInstallInPlace)
+        {
+            return null;
+        }
+
+        string target = PathFor(release);
+        try
+        {
+            if (!File.Exists(target) || (release.SetupSize > 0 && new FileInfo(target).Length != release.SetupSize))
+            {
+                return null;
+            }
+
+            await using var stream = new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            string hash = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancel));
+            return hash.Equals(release.SetupSha256, StringComparison.OrdinalIgnoreCase) ? target : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Deletes what was downloaded for updates, finished or not.</summary>
+    public void Clear()
+    {
+        if (!Directory.Exists(folder))
+        {
+            return;
+        }
+
+        foreach (string file in Directory.GetFiles(folder))
+        {
+            TryDelete(file);
+        }
+    }
 
     /// <returns>The path of the verified installer.</returns>
     /// <exception cref="UpdateException">It can't be downloaded, or what arrived is not what was published.</exception>
@@ -22,12 +70,9 @@ internal sealed class UpdateDownloader(HttpClient http, string folder)
         }
 
         Directory.CreateDirectory(folder);
-        foreach (string old in Directory.GetFiles(folder)) // earlier downloads, finished or not
-        {
-            TryDelete(old);
-        }
+        Clear(); // earlier downloads, finished or not
 
-        string target = Path.Combine(folder, $"Zarpazo-Setup-{release.Version}.exe");
+        string target = PathFor(release);
         string partial = target + ".part";
         try
         {

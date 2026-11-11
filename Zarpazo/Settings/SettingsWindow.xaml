@@ -117,6 +117,9 @@
                         <CheckBox x:Name="AutoUpdateBox" Content="Buscar actualizaciones automáticamente" />
                         <TextBlock Style="{StaticResource Hint}"
                                    Text="Una vez al día pregunta a GitHub cuál es la última versión publicada. No envía nada tuyo ni instala nada sin que lo pidas." />
+                        <CheckBox x:Name="BackgroundDownloadBox" Content="Descargar la versión nueva en segundo plano" Margin="0,10,0,0" />
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Así queda lista y actualizar es un solo clic. Se comprueba que sea la publicada antes de instalarla." />
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                             <Button x:Name="CheckUpdateButton" Content="Buscar ahora" Click="OnCheckUpdates" />
                             <Button x:Name="InstallUpdateButton" Content="Descargar e instalar" Margin="8,0,0,0" Visibility="Collapsed" Click="OnInstallUpdate" />

@@ -61,6 +61,18 @@ internal sealed class AppSettings
     /// <summary>The version the person was last told about, so the notice doesn't repeat every day.</summary>
     public string UpdateNotifiedVersion { get; set; } = "";
 
+    /// <summary>Download a newer version as soon as it is found, so installing it later takes one click.</summary>
+    public bool DownloadUpdatesInBackground { get; set; } = true;
+
+    /// <summary>The tag of a version already downloaded and checked, waiting to be installed. Empty when there is none.</summary>
+    public string PendingUpdateTag { get; set; } = "";
+
+    /// <summary>The published SHA-256 of that download, to check it again right before it is run.</summary>
+    public string PendingUpdateSha256 { get; set; } = "";
+
+    /// <summary>The published size in bytes of that download.</summary>
+    public long PendingUpdateSize { get; set; }
+
     /// <summary>Where the Save dialog opens. Empty means the Pictures folder.</summary>
     public string SaveFolder { get; set; } = "";
 
@@ -242,6 +254,9 @@ internal sealed class AppSettings
         SaveFormat = SaveFormat?.ToLowerInvariant() == "jpg" ? "jpg" : "png";
         SaveFolder ??= "";
         UpdateNotifiedVersion ??= "";
+        PendingUpdateTag ??= "";
+        PendingUpdateSha256 ??= "";
+        PendingUpdateSize = Math.Max(0, PendingUpdateSize);
         if (!HistoryMaxAgeChoices.Contains(HistoryMaxAgeDays))
         {
             HistoryMaxAgeDays = 0; // edited by hand to something the window can not show: keep everything

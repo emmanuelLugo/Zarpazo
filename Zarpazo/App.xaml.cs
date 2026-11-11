@@ -297,6 +297,16 @@ public partial class App : Application
     // stay open for days, and the look only goes to GitHub when a day has passed since the last good one.
     private async void StartUpdateChecks()
     {
+        try
+        {
+            // An update downloaded in an earlier run is ready again at once, with no network.
+            await _updates.RestorePendingAsync(AppVersion.Current);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // the pending download is checked again with the next look
+        }
+
         await Task.Delay(TimeSpan.FromSeconds(30));
         await CheckForUpdatesQuietlyAsync();
         _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(3) };

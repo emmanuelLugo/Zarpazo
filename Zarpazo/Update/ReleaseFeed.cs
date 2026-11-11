@@ -65,6 +65,23 @@ internal static class ReleaseFeed
         return new ReleaseInfo(version, tag.Trim(), page, Text(root, "body") ?? "", setupUrl, setupSize, sha256);
     }
 
+    /// <summary>
+    /// The release a remembered tag stands for, without asking GitHub: its installer link follows from the tag. Null when the
+    /// tag is not a version or the hash is not a SHA-256.
+    /// </summary>
+    public static ReleaseInfo? ForTag(string? tag, long setupSize, string? sha256)
+    {
+        if (!AppVersion.TryParse(tag, out Version version) || sha256 == null || sha256.Length != 64 || !sha256.All(Uri.IsHexDigit))
+        {
+            return null;
+        }
+
+        string clean = tag!.Trim();
+        string setupName = $"Zarpazo-Setup-{clean.TrimStart('v', 'V')}.exe";
+        return new ReleaseInfo(version, clean, $"{PagePrefix}releases/tag/{clean}", "", $"{DownloadPrefix}{clean}/{setupName}", setupSize,
+            sha256.ToLower(CultureInfo.InvariantCulture));
+    }
+
     // "sha256:" followed by 64 hex digits; anything else means the hash can't be relied on.
     private static string? Hash(string? digest)
     {

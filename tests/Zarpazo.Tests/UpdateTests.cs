@@ -372,6 +372,215 @@ public sealed class UpdateTests : IDisposable
         await Assert.ThrowsAsync<UpdateException>(() => service.InstallAsync());
     }
 
+    // ---- downloading in the background ----
+
+    private HttpResponseMessage Github(HttpRequestMessage request) => request.RequestUri!.AbsoluteUri == ReleaseFeed.LatestUrl
+        ? Ok(Json())
+        : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) };
+
+    private UpdateService Service(SettingsStore store, FakeHandler handler, bool installed = true, Func<string, string?>? launch = null, string? downloads = null)
+    {
+        var http = new HttpClient(handler);
+        return new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)),
+            new UpdateDownloader(http, downloads ?? Path.Combine(_folder, "dl")), launch ?? (_ => null), () => installed);
+    }
+
+    private static bool IsSetupRequest(HttpRequestMessage request) => request.RequestUri!.AbsoluteUri != ReleaseFeed.LatestUrl;
+
+    [Fact]
+    public async Task A_new_version_is_downloaded_in_the_background_and_becomes_ready()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var handler = new FakeHandler(Github);
+        UpdateService service = Service(store, handler);
+        int changes = 0;
+        service.Changed += () => changes++;
+
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.Equal(new Version(0, 3, 0), service.Ready?.Version);
+        Assert.False(service.IsDownloading);
+        Assert.True(File.Exists(Path.Combine(_folder, "dl", "Zarpazo-Setup-0.3.0.exe")));
+        Assert.Equal("v0.3.0", store.Current.PendingUpdateTag); // remembered for the next start
+        Assert.True(changes >= 3); // found, downloading, ready
+    }
+
+    [Fact]
+    public async Task Nothing_is_downloaded_when_the_person_turned_it_off()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        store.Current.DownloadUpdatesInBackground = false;
+        var handler = new FakeHandler(Github);
+        UpdateService service = Service(store, handler);
+
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.NotNull(service.Available);
+        Assert.Null(service.Ready);
+        Assert.DoesNotContain(handler.Requests, IsSetupRequest);
+    }
+
+    [Fact]
+    public async Task A_copy_the_installer_did_not_put_there_does_not_download_by_itself()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var handler = new FakeHandler(Github);
+        UpdateService service = Service(store, handler, installed: false);
+
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.NotNull(service.Available);
+        Assert.False(service.CanInstallInPlace);
+        Assert.Null(service.Ready);
+        Assert.DoesNotContain(handler.Requests, IsSetupRequest);
+    }
+
+    [Fact]
+    public async Task A_failed_background_download_leaves_the_update_available_for_the_next_look()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var handler = new FakeHandler(request => IsSetupRequest(request) ? new HttpResponseMessage(HttpStatusCode.BadGateway) : Ok(Json()));
+        UpdateService service = Service(store, handler);
+
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.NotNull(service.Available);
+        Assert.Null(service.Ready);
+        Assert.False(service.IsDownloading);
+        Assert.Equal("", store.Current.PendingUpdateTag);
+    }
+
+    [Fact]
+    public async Task A_ready_update_is_remembered_across_restarts_without_the_network()
+    {
+        string path = Path.Combine(_folder, "settings.json");
+        var first = new SettingsStore(path);
+        UpdateService before = Service(first, new FakeHandler(Github));
+        await before.CheckAsync();
+        await before.Staged;
+
+        var handler = new FakeHandler(_ => throw new InvalidOperationException("no request expected"));
+        UpdateService after = Service(new SettingsStore(path), handler);
+        await after.RestorePendingAsync(new Version(0, 2, 1));
+
+        Assert.Equal(new Version(0, 3, 0), after.Ready?.Version);
+        Assert.Equal(after.Ready, after.Available);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task A_remembered_update_that_was_installed_or_damaged_is_forgotten()
+    {
+        string path = Path.Combine(_folder, "settings.json");
+        UpdateService before = Service(new SettingsStore(path), new FakeHandler(Github));
+        await before.CheckAsync();
+        await before.Staged;
+
+        // already running that version (or a newer one)
+        var installed = new SettingsStore(path);
+        UpdateService same = Service(installed, new FakeHandler(Github));
+        await same.RestorePendingAsync(new Version(0, 3, 0));
+        Assert.Null(same.Ready);
+        Assert.Equal("", installed.Current.PendingUpdateTag);
+        Assert.Empty(Directory.GetFiles(Path.Combine(_folder, "dl")));
+
+        // the file was tampered with while it waited
+        UpdateService again = Service(new SettingsStore(path), new FakeHandler(Github));
+        await again.CheckAsync();
+        await again.Staged;
+        string setup = Path.Combine(_folder, "dl", "Zarpazo-Setup-0.3.0.exe");
+        await File.WriteAllTextAsync(setup, "something else");
+        var damaged = new SettingsStore(path);
+        UpdateService restored = Service(damaged, new FakeHandler(Github));
+        await restored.RestorePendingAsync(new Version(0, 2, 1));
+        Assert.Null(restored.Ready);
+        Assert.Equal("", damaged.Current.PendingUpdateTag);
+        Assert.False(File.Exists(setup));
+    }
+
+    [Fact]
+    public async Task Installing_a_ready_update_uses_the_file_already_on_disk()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var handler = new FakeHandler(Github);
+        string? launched = null;
+        UpdateService service = Service(store, handler, launch: path => { launched = path; return null; });
+        await service.CheckAsync();
+        await service.Staged;
+        int requests = handler.Requests.Count;
+
+        await service.InstallAsync();
+
+        Assert.Equal(Path.Combine(_folder, "dl", "Zarpazo-Setup-0.3.0.exe"), launched);
+        Assert.Equal(requests, handler.Requests.Count); // nothing downloaded twice
+        Assert.Equal("", store.Current.PendingUpdateTag); // a failed run must not be retried at every start
+    }
+
+    [Fact]
+    public async Task A_file_changed_after_it_was_checked_is_downloaded_again_before_installing()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var handler = new FakeHandler(Github);
+        string? launched = null;
+        UpdateService service = Service(store, handler, launch: path => { launched = path; return null; });
+        await service.CheckAsync();
+        await service.Staged;
+        string setup = Path.Combine(_folder, "dl", "Zarpazo-Setup-0.3.0.exe");
+        await File.WriteAllTextAsync(setup, "swapped by something else");
+
+        await service.InstallAsync();
+
+        Assert.Equal(setup, launched);
+        Assert.Equal(SetupBytes, await File.ReadAllBytesAsync(setup)); // what the installer was given is the published one
+    }
+
+    [Fact]
+    public async Task If_the_installer_does_not_start_the_ready_update_is_kept()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        UpdateService service = Service(store, new FakeHandler(Github), launch: _ => "No se pudo.");
+        await service.CheckAsync();
+        await service.Staged;
+
+        await Assert.ThrowsAsync<UpdateException>(() => service.InstallAsync());
+
+        Assert.Equal("v0.3.0", store.Current.PendingUpdateTag);
+        Assert.NotNull(service.Ready);
+    }
+
+    [Fact]
+    public async Task A_file_already_on_disk_is_reused_only_when_size_and_hash_match()
+    {
+        var handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) });
+        var downloader = new UpdateDownloader(new HttpClient(handler), _folder);
+        ReleaseInfo release = Release();
+
+        Assert.Null(await downloader.TryReuseAsync(release)); // nothing there yet
+        string path = await downloader.DownloadAsync(release);
+        Assert.Equal(path, await downloader.TryReuseAsync(release));
+        Assert.Null(await downloader.TryReuseAsync(Release(sha: new string('0', 64)))); // other hash
+        Assert.Null(await downloader.TryReuseAsync(Release(size: 5))); // other size
+    }
+
+    [Fact]
+    public void A_remembered_tag_gives_back_the_release_and_its_installer_link()
+    {
+        ReleaseInfo? release = ReleaseFeed.ForTag("v0.3.0", SetupBytes.Length, SetupHash.ToUpperInvariant());
+
+        Assert.NotNull(release);
+        Assert.Equal(new Version(0, 3, 0), release.Version);
+        Assert.Equal(Setup, release.SetupUrl);
+        Assert.Equal(SetupHash, release.SetupSha256);
+        Assert.True(release.CanInstallInPlace);
+        Assert.Null(ReleaseFeed.ForTag("", 1, SetupHash));
+        Assert.Null(ReleaseFeed.ForTag("v0.3.0", 1, "not-a-hash"));
+        Assert.Null(ReleaseFeed.ForTag("v0.3.0", 1, null));
+    }
+
     // ---- which copy updates itself ----
 
     [Theory]

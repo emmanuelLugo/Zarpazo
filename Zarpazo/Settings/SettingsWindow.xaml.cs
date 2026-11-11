@@ -76,6 +76,7 @@ public partial class SettingsWindow : Window
     {
         ThemeBox.SelectedIndex = (int)settings.AppearanceMode;
         AutoUpdateBox.IsChecked = settings.CheckForUpdates;
+        BackgroundDownloadBox.IsChecked = settings.DownloadUpdatesInBackground;
     }
 
     private void LoadHotKeys(AppSettings settings)
@@ -158,10 +159,13 @@ public partial class SettingsWindow : Window
         if (_updates?.Available is { } release)
         {
             bool inPlace = _updates.CanInstallInPlace;
-            InstallUpdateButton.Content = inPlace ? "Descargar e instalar" : "Abrir la página de descarga";
+            InstallUpdateButton.Content = !inPlace ? "Abrir la página de descarga"
+                : _updates.Ready != null ? "Instalar y reiniciar" : "Descargar e instalar";
             InstallUpdateButton.Visibility = NotesButton.Visibility = Visibility.Visible;
             UpdateStatus.Text = $"Hay una versión nueva: {release.Version} (tienes la {AppVersion.Current})."
-                + (inPlace ? "" : " Esta copia no se instaló con el instalador, así que se descarga desde la página.");
+                + (!inPlace ? " Esta copia no se instaló con el instalador, así que se descarga desde la página."
+                    : _updates.Ready != null ? " Ya está descargada y comprobada."
+                    : _updates.IsDownloading ? " Descargándola en segundo plano…" : "");
         }
         else
         {
@@ -338,6 +342,7 @@ public partial class SettingsWindow : Window
 
         settings.AppearanceMode = (ThemeMode)Math.Max(0, ThemeBox.SelectedIndex);
         settings.CheckForUpdates = AutoUpdateBox.IsChecked == true;
+        settings.DownloadUpdatesInBackground = BackgroundDownloadBox.IsChecked == true;
         settings.HotKey = CaptureHotKey.Value;
         settings.RecordHotKey = RecordHotKey.Value;
         settings.GroupHotKey = GroupHotKey.Value;
