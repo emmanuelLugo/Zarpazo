@@ -27,6 +27,12 @@ internal static partial class FileNameTemplate
         return Sanitize(name);
     }
 
+    /// <summary>
+    /// The name of a file that is put on the clipboard: the template, with underscores instead of spaces so that a
+    /// pasted path needs no quotes.
+    /// </summary>
+    public static string ForPaste(string? template, DateTime now, int counter) => Expand(template, now, counter).Replace(' ', '_');
+
     /// <summary>Takes out what Windows does not allow in a file name, and keeps it a sensible length.</summary>
     public static string Sanitize(string name)
     {

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Zarpazo.Output;
@@ -64,5 +64,25 @@ public sealed class ImageOutputTests : IDisposable
         string second = ImageOutput.SaveForPaste(Image(4, 4), _folder);
 
         Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public void The_pasted_file_takes_the_name_from_the_template_without_spaces()
+    {
+        string name = FileNameTemplate.ForPaste("Cap {fecha} {hora}", new DateTime(2026, 11, 11, 15, 2, 57), 1);
+
+        string path = ImageOutput.SaveForPaste(Image(4, 4), _folder, name);
+
+        Assert.Equal("Cap_2026-11-11_15-02-57.png", Path.GetFileName(path));
+    }
+
+    [Fact]
+    public void Two_pasted_files_with_the_same_name_do_not_overwrite_each_other()
+    {
+        string first = ImageOutput.SaveForPaste(Image(4, 4), _folder, "Cap_x");
+        string second = ImageOutput.SaveForPaste(Image(4, 4), _folder, "Cap_x");
+
+        Assert.Equal("Cap_x_2.png", Path.GetFileName(second));
+        Assert.True(File.Exists(first));
     }
 }

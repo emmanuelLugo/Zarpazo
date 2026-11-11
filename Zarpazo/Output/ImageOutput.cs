@@ -15,13 +15,20 @@ internal static class ImageOutput
     /// Puts the image on the clipboard twice: as pixels, for editors and chats, and as a PNG file, which is what a terminal
     /// needs to paste a path it can read (the same thing Explorer's "copy file" does).
     /// </summary>
-    public static bool CopyToClipboard(BitmapSource image, bool alsoAsFile)
+    public static bool CopyToClipboard(BitmapSource image, AppSettings settings)
+    {
+        string name = FileNameTemplate.ForPaste(settings.FileNameTemplate, DateTime.Now, settings.AutoSaveCounter + 1);
+        return CopyToClipboard(image, settings.CopyAsFile, name);
+    }
+
+    /// <param name="fileName">The name, without extension, of the PNG put on the clipboard; Zarpazo_ and the time if none.</param>
+    public static bool CopyToClipboard(BitmapSource image, bool alsoAsFile, string? fileName = null)
     {
         var data = new DataObject();
         data.SetImage(image);
         if (alsoAsFile)
         {
-            string path = SaveForPaste(image, Path.Combine(Path.GetTempPath(), "Zarpazo"));
+            string path = SaveForPaste(image, Path.Combine(Path.GetTempPath(), "Zarpazo"), fileName);
             data.SetFileDropList(new StringCollection { path });
         }
         Clipboard.SetDataObject(data, copy: true); // copy: keep it after the app closes the overlay
@@ -29,7 +36,7 @@ internal static class ImageOutput
     }
 
     /// <summary>Writes the PNG the clipboard will point to and removes the ones from earlier captures that are old enough.</summary>
-    internal static string SaveForPaste(BitmapSource image, string folder)
+    internal static string SaveForPaste(BitmapSource image, string folder, string? fileName = null)
     {
         Directory.CreateDirectory(folder);
         foreach (string old in Directory.EnumerateFiles(folder, "*.png"))
@@ -48,7 +55,12 @@ internal static class ImageOutput
         }
 
         // No spaces, so the pasted path needs no quotes.
-        string path = Path.Combine(folder, $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.png");
+        string name = string.IsNullOrWhiteSpace(fileName) ? $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}" : fileName;
+        string path = Path.Combine(folder, name + ".png");
+        for (int copy = 2; File.Exists(path); copy++)
+        {
+            path = Path.Combine(folder, $"{name}_{copy}.png"); // never over a file that may still be on the clipboard
+        }
         Write(path, image);
         return path;
     }

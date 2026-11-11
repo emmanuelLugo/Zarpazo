@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Corregido
+- El nombre de archivo de la configuración (por ejemplo «Cap {fecha} {hora}») ahora también vale al copiar y pegar una captura o una grabación como archivo, no solo al guardar. En el archivo que se pega los espacios pasan a ser guiones bajos (Cap_2026-11-11_15-02-57.png) para que la ruta no necesite comillas.
+
 ## [0.5.1] - 2026-11-11
 
 ### Cambiado

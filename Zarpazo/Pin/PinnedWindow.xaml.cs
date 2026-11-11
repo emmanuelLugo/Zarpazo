@@ -201,7 +201,7 @@ public partial class PinnedWindow : Window
     }
 
     private void OnCopy(object sender, RoutedEventArgs e) =>
-        Run(() => ImageOutput.CopyToClipboard(_image, _settings.Current.CopyAsFile));
+        Run(() => ImageOutput.CopyToClipboard(_image, _settings.Current));
 
     private void OnSave(object sender, RoutedEventArgs e) =>
         Run(() => ImageOutput.Save(_image, this, _settings.Current));

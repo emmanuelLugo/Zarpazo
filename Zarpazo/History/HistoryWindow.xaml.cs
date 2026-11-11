@@ -269,7 +269,7 @@ public partial class HistoryWindow : Window
                 StatusText.Text = $"{item.Kind} copiado al portapapeles";
                 return;
             }
-            ImageOutput.CopyToClipboard(CaptureHistory.Load(item.Path), _settings.Current.CopyAsFile);
+            ImageOutput.CopyToClipboard(CaptureHistory.Load(item.Path), _settings.Current);
             StatusText.Text = "Copiada al portapapeles";
         });
     }

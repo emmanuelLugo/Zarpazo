@@ -67,7 +67,7 @@ public partial class GuideWindow : Window
         GuideShare.CopyFiles(_guide.Steps, GuideShare.DefaultFolder, _settings.Current.GroupNumbering));
 
     private void OnCopyOne(object sender, RoutedEventArgs e) => Copy(() =>
-        GuideShare.CopyAsOneImage(_guide.Steps, _settings.Current.GroupNumbering, _settings.Current.CopyAsFile));
+        GuideShare.CopyAsOneImage(_guide.Steps, _settings.Current));
 
     private void Copy(Action copy)
     {

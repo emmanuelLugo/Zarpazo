@@ -24,7 +24,7 @@ internal static class GuideShare
     {
         if (settings.GroupCopyAsOneImage)
         {
-            CopyAsOneImage(steps, settings.GroupNumbering, settings.CopyAsFile);
+            CopyAsOneImage(steps, settings);
         }
         else
         {
@@ -42,8 +42,8 @@ internal static class GuideShare
         Clipboard.SetDataObject(data, copy: true); // copy: stays after Zarpazo closes
     }
 
-    public static void CopyAsOneImage(IReadOnlyList<GuideStep> steps, bool numbered, bool alsoAsFile) =>
-        ImageOutput.CopyToClipboard(Stack(steps, numbered), alsoAsFile);
+    public static void CopyAsOneImage(IReadOnlyList<GuideStep> steps, AppSettings settings) =>
+        ImageOutput.CopyToClipboard(Stack(steps, settings.GroupNumbering), settings);
 
     /// <summary>All the captures joined into one image.</summary>
     internal static BitmapSource Stack(IReadOnlyList<GuideStep> steps, bool numbered) =>

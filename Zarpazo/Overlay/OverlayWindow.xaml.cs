@@ -240,7 +240,7 @@ public partial class OverlayWindow : Window
         Finish(image =>
         {
             BitmapSource final = Embellished(image);
-            ImageOutput.CopyToClipboard(final, _settings.Current.CopyAsFile);
+            ImageOutput.CopyToClipboard(final, _settings.Current);
             AutoSave(final);
             return true;
         });

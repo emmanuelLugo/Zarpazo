@@ -41,6 +41,8 @@ internal sealed class RecordingSession
         _job = options.Format == RecordingFormat.Video
             ? new VideoJob(region, options, settings.Current.RecordAudioOffsetMs, settings.Current.RecordingQuality)
             : new GifJob(region, RecordingEffects.FromOptions(options), settings.Current.RecordingQuality);
+        _job.NameTemplate = settings.Current.FileNameTemplate;
+        _job.NameCounter = settings.Current.AutoSaveCounter + 1;
     }
 
     public bool IsCountingDown { get; private set; }

@@ -76,6 +76,11 @@ internal abstract class RecordingJob
         return picture;
     }
 
+    /// <summary>The template for the file's name (see <see cref="Output.FileNameTemplate"/>); Zarpazo_ and the time if none.</summary>
+    public string? NameTemplate { get; set; }
+
+    public int NameCounter { get; set; } = 1;
+
     /// <summary>A new file name in the folder (created if needed), after clearing out the old files of the same kind.</summary>
     protected string NewFilePath(string folder)
     {
@@ -96,6 +101,16 @@ internal abstract class RecordingJob
         }
 
         // No spaces, so a pasted path needs no quotes.
-        return Path.Combine(folder, $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}{Extension}");
+        if (NameTemplate == null)
+        {
+            return Path.Combine(folder, $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}{Extension}");
+        }
+        string name = Output.FileNameTemplate.ForPaste(NameTemplate, DateTime.Now, NameCounter);
+        string path = Path.Combine(folder, name + Extension);
+        for (int copy = 2; File.Exists(path); copy++)
+        {
+            path = Path.Combine(folder, $"{name}_{copy}{Extension}");
+        }
+        return path;
     }
 }
