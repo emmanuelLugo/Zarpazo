@@ -20,6 +20,10 @@ public class HotKeyBindingTests
     [InlineData(Key.A, ModifierKeys.None, false)]   // would be taken from every program's typing
     [InlineData(Key.A, ModifierKeys.Shift, false)]  // so would capital letters
     [InlineData(Key.Space, ModifierKeys.None, false)]
+    [InlineData(Key.PageUp, ModifierKeys.Shift, true)]
+    [InlineData(Key.Home, ModifierKeys.Shift, true)]
+    [InlineData(Key.PageUp, ModifierKeys.None, false)]
+    [InlineData(Key.Left, ModifierKeys.Shift, false)] // arrows with Shift would break text selection everywhere
     public void Only_combinations_that_do_not_break_typing_are_accepted(Key key, ModifierKeys modifiers, bool expected)
     {
         Assert.Equal(expected, HotKeyBinding.From(key, modifiers).IsAcceptable);
@@ -35,6 +39,7 @@ public class HotKeyBindingTests
     [InlineData(Key.S, ModifierKeys.Control | ModifierKeys.Shift, "Ctrl+Mayús+S")]
     [InlineData(Key.D4, ModifierKeys.Windows | ModifierKeys.Alt, "Alt+Win+4")]
     [InlineData(Key.F9, ModifierKeys.None, "F9")]
+    [InlineData(Key.PageUp, ModifierKeys.Shift, "Mayús+RePág")]
     public void Describes_the_combination_in_spanish_with_a_fixed_order(Key key, ModifierKeys modifiers, string expected)
     {
         Assert.Equal(expected, HotKeyBinding.From(key, modifiers).Describe());

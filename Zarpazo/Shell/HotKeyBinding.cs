@@ -11,6 +11,8 @@ internal readonly record struct HotKeyBinding(uint Modifiers, uint VirtualKey)
     public const uint Windows = 8;
 
     public const uint VkSnapshot = 0x2C;
+    private const uint VkPageUp = 0x21; // Page Up, Page Down, End, Home are 0x21 to 0x24
+    private const uint VkHome = 0x24;
     private const uint VkF1 = 0x70;
     private const uint VkF24 = 0x87;
 
@@ -27,11 +29,15 @@ internal readonly record struct HotKeyBinding(uint Modifiers, uint VirtualKey)
 
     /// <summary>
     /// A shortcut that would break typing is refused: a letter alone, or with only Shift, would be taken from every
-    /// program. Only Print Screen and the function keys may go without Ctrl, Alt or Win.
+    /// program. Only Print Screen and the function keys may go without Ctrl, Alt or Win, and Shift alone is enough
+    /// with Page Up, Page Down, End or Home (the person chose to give up selecting by page in other programs).
     /// </summary>
     public bool IsAcceptable =>
         VirtualKey != 0
-        && ((Modifiers & (Alt | Control | Windows)) != 0 || VirtualKey == VkSnapshot || VirtualKey is >= VkF1 and <= VkF24);
+        && ((Modifiers & (Alt | Control | Windows)) != 0
+            || VirtualKey == VkSnapshot
+            || VirtualKey is >= VkF1 and <= VkF24
+            || ((Modifiers & Shift) != 0 && VirtualKey is >= VkPageUp and <= VkHome));
 
     public static HotKeyBinding From(Key key, ModifierKeys modifiers)
     {
@@ -60,6 +66,10 @@ internal readonly record struct HotKeyBinding(uint Modifiers, uint VirtualKey)
             >= Key.D0 and <= Key.D9 => ((int)key - (int)Key.D0).ToString(),
             Key.Return => "Enter",
             Key.Space => "Espacio",
+            Key.PageUp => "RePág",
+            Key.PageDown => "AvPág",
+            Key.Home => "Inicio",
+            Key.End => "Fin",
             _ => key.ToString(),
         });
         return string.Join("+", parts);

@@ -61,7 +61,7 @@ public partial class HotKeyPicker : UserControl
         HotKeyBinding binding = HotKeyBinding.From(key, Keyboard.Modifiers);
         if (!binding.IsAcceptable)
         {
-            Hint.Text = "Usa Ctrl, Alt o Win junto con la tecla. Solo Impr Pant y F1 a F24 pueden ir solas.";
+            Hint.Text = "Usa Ctrl, Alt o Win junto con la tecla. Solo Impr Pant y F1 a F24 pueden ir solas, y RePág, AvPág, Inicio y Fin con Mayús.";
             return;
         }
 
