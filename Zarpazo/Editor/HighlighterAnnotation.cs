@@ -15,5 +15,7 @@ internal sealed class HighlighterAnnotation : DragAnnotation
         _fill.Freeze();
     }
 
+    public override bool UsesThickness => false;
+
     public override void Draw(DrawingContext context) => context.DrawRectangle(_fill, null, new Rect(Start, End));
 }

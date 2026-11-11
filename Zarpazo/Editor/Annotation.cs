@@ -6,24 +6,32 @@ namespace Zarpazo.Editor;
 /// <summary>A drawn object. Coordinates are in the overlay's layout units; the canvas rescales them on export.</summary>
 internal abstract class Annotation
 {
-    protected Pen Stroke { get; }
+    protected Pen Stroke { get; private set; }
 
-    protected Annotation(Color color, double thickness)
+    protected Annotation(Color color, double thickness) => Stroke = CreateStroke(color, thickness);
+
+    public Color Color => ((SolidColorBrush)Stroke.Brush).Color;
+
+    public double Thickness => Stroke.Thickness;
+
+    /// <summary>Whether the size changed with the mouse wheel has any effect on it. Use <see cref="AnnotationCanvas.ChangeThickness"/> to also make it undoable.</summary>
+    public virtual bool UsesThickness => true;
+
+    public void SetThickness(double thickness) => Stroke = CreateStroke(Color, thickness);
+
+    private static Pen CreateStroke(Color color, double thickness)
     {
         var brush = new SolidColorBrush(color);
         brush.Freeze();
-        Stroke = new Pen(brush, thickness)
+        var pen = new Pen(brush, thickness)
         {
             StartLineCap = PenLineCap.Round,
             EndLineCap = PenLineCap.Round,
             LineJoin = PenLineJoin.Round,
         };
-        Stroke.Freeze();
+        pen.Freeze();
+        return pen;
     }
-
-    public Color Color => ((SolidColorBrush)Stroke.Brush).Color;
-
-    public double Thickness => Stroke.Thickness;
 
     /// <summary>True while nothing visible was drawn yet, such as a click without dragging.</summary>
     public abstract bool IsEmpty { get; }

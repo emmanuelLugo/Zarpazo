@@ -102,7 +102,7 @@ public class EditorToolbarTests
     }
 
     [Fact]
-    public void Restore_picks_a_listed_color_and_thickness_and_checks_their_buttons()
+    public void Restore_picks_a_listed_color_and_the_thickness()
     {
         Sta.Run(() =>
         {
@@ -113,7 +113,6 @@ public class EditorToolbarTests
             Assert.Equal(System.Windows.Media.Color.FromRgb(0x1E, 0x88, 0xE5), toolbar.Color);
             Assert.Equal(8, toolbar.Thickness);
             Assert.True(Find(toolbar, "color", "#1E88E5").IsChecked);
-            Assert.True(Find(toolbar, "size", "8").IsChecked);
             Assert.Equal("#1E88E5", toolbar.ColorHex);
         });
     }
@@ -139,10 +138,27 @@ public class EditorToolbarTests
         {
             var toolbar = new EditorToolbar();
 
-            toolbar.Restore("not a color", 5);
+            toolbar.Restore("not a color", double.NaN);
 
             Assert.Equal("#E53935", toolbar.ColorHex);
             Assert.Equal(4, toolbar.Thickness);
+        });
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-3, 1)]
+    [InlineData(12.5, 12.5)]
+    [InlineData(500, 30)]
+    public void The_thickness_stays_within_its_limits(double asked, double expected)
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+
+            toolbar.SetThickness(asked);
+
+            Assert.Equal(expected, toolbar.Thickness);
         });
     }
 

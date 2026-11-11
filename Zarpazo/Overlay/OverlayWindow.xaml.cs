@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -60,6 +60,7 @@ public partial class OverlayWindow : Window
     private Point _textOrigin;
     private Color _textColor;
     private double _textThickness;
+    private Color _bubbleColor;
 
     /// <param name="screenshot">The virtual screen, one image pixel per physical pixel.</param>
     /// <param name="bounds">The virtual screen in physical pixels; its origin can be negative.</param>
@@ -95,6 +96,7 @@ public partial class OverlayWindow : Window
             return CropSelection()?.Final;
         };
         Closed += (_, _) => RememberStyle();
+        Toolbar.MouseEnter += (_, _) => SizeBubble.Visibility = Visibility.Collapsed;
         Loaded += (_, _) => PlaceGroupBadge(); // the size is known by now
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
@@ -692,6 +694,7 @@ public partial class OverlayWindow : Window
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
+        UpdateSizeBubble(e.GetPosition(this));
         if (!IsMouseCaptured)
         {
             HoverWindow(e.GetPosition(this));
@@ -740,6 +743,78 @@ public partial class OverlayWindow : Window
             }
             UpdateProbe(point);
         }
+    }
+
+    protected override void OnMouseLeave(MouseEventArgs e)
+    {
+        base.OnMouseLeave(e);
+        SizeBubble.Visibility = Visibility.Collapsed;
+    }
+
+    // The wheel sizes what is being drawn: the text in its box, the stroke being dragged, the picked annotation, or else the
+    // next one. Over the toolbar it keeps its normal job.
+    protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+    {
+        base.OnPreviewMouseWheel(e);
+        if (!IsSelectionFinal || Toolbar.IsMouseOver || e.Delta == 0)
+        {
+            return;
+        }
+
+        double change = Math.Max(1, Math.Abs(e.Delta) / 120) * Math.Sign(e.Delta) * StrokeSize.Step;
+        if (_textBox != null)
+        {
+            _textThickness = StrokeSize.Clamp(_textThickness + change);
+            _textBox.FontSize = TextAnnotation.SizeFor(_textThickness);
+            if (_editingText == null)
+            {
+                Toolbar.SetThickness(_textThickness); // a new text: the next one starts at this size too
+            }
+        }
+        else if (_drawing is { UsesThickness: true } drawing)
+        {
+            Toolbar.SetThickness(Toolbar.Thickness + change);
+            Annotations.ChangeThickness(drawing, Toolbar.Thickness);
+        }
+        else if (Toolbar.Tool == AnnotationTool.Move && Annotations.Selected is { UsesThickness: true } picked)
+        {
+            Annotations.ChangeThickness(picked, picked.Thickness + change);
+        }
+        else if (!IsMouseCaptured && StrokeSize.UsesWheel(Toolbar.Tool))
+        {
+            Toolbar.SetThickness(Toolbar.Thickness + change);
+        }
+        else
+        {
+            return;
+        }
+
+        e.Handled = true;
+        UpdateSizeBubble(e.GetPosition(this));
+    }
+
+    /// <summary>Shows the translucent circle at the pointer while a drawing tool is ready to draw inside the area.</summary>
+    private void UpdateSizeBubble(Point point)
+    {
+        bool show = IsSelectionFinal && _textBox == null && StrokeSize.UsesWheel(Toolbar.Tool) && !Toolbar.IsMouseOver
+                    && HasSelection && Selection.Rect.Contains(point);
+        if (!show)
+        {
+            SizeBubble.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double diameter = StrokeSize.BubbleDiameter(Toolbar.Tool, Toolbar.Thickness);
+        if (_bubbleColor != Toolbar.Color || SizeBubble.Fill == null)
+        {
+            _bubbleColor = Toolbar.Color;
+            SizeBubble.Fill = new SolidColorBrush(Color.FromArgb(0x66, _bubbleColor.R, _bubbleColor.G, _bubbleColor.B));
+        }
+        SizeBubble.Width = diameter;
+        SizeBubble.Height = diameter;
+        Canvas.SetLeft(SizeBubble, point.X - diameter / 2);
+        Canvas.SetTop(SizeBubble, point.Y - diameter / 2);
+        SizeBubble.Visibility = Visibility.Visible;
     }
 
     private void StartNewSelection(Point origin)
@@ -1027,6 +1102,7 @@ public partial class OverlayWindow : Window
         else
         {
             Annotations.EditText(editing, text);
+            Annotations.ChangeThickness(editing, _textThickness); // the wheel may have resized it while typing
         }
     }
 

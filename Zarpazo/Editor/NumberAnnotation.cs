@@ -16,7 +16,9 @@ internal sealed class NumberAnnotation(Color color, double thickness, Point cent
 
     public override bool IsEmpty => false;
 
-    private double Radius => 8 + Stroke.Thickness * 2;
+    public static double RadiusFor(double thickness) => 8 + thickness * 2;
+
+    private double Radius => RadiusFor(Stroke.Thickness);
 
     public override Rect Bounds => new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
 

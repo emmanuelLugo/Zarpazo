@@ -11,7 +11,7 @@ internal sealed class TextAnnotation(Color color, double thickness, Point origin
     public static readonly FontFamily Font = new("Segoe UI");
     public static readonly FontWeight Weight = FontWeights.SemiBold;
 
-    /// <summary>The thickness buttons double as text sizes: thin, medium and thick give small, medium and large text.</summary>
+    /// <summary>The thickness doubles as the text size: the wheel that thickens a stroke also makes the text bigger.</summary>
     public static double SizeFor(double thickness) => 10 + thickness * 3;
 
     public Point Origin => origin;

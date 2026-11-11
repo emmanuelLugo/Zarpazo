@@ -26,7 +26,8 @@
 - Atajo global configurable (**Impr Pant** por defecto) e icono en la bandeja.
 
 **Anotaciones** (objetos vectoriales: se pueden mover, borrar, deshacer y rehacer)
-- Barra ordenada: las herramientas parecidas comparten botón (formas, dibujo, medir) y el color y el grosor solo salen cuando la herramienta dibuja.
+- Barra ordenada: las herramientas parecidas comparten botón (formas, dibujo, medir) y el color solo sale cuando la herramienta dibuja.
+- **Rueda del mouse** para cambiar el grosor (o el tamaño del texto) al dibujar, con un círculo junto al puntero que muestra el tamaño.
 - Rectángulo, elipse, línea, flecha, lápiz y resaltador.
 - Texto, numeración de pasos, regla y cuentagotas de color.
 - **Pixelado** para ocultar datos sensibles.

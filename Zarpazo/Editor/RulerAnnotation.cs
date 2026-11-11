@@ -14,6 +14,8 @@ internal sealed class RulerAnnotation(Color color, double thickness, Point start
 
     private static readonly Brush LabelBackground = Frozen(new SolidColorBrush(Color.FromArgb(0xE6, 0, 0, 0)));
 
+    public override bool UsesThickness => false;
+
     public override void Draw(DrawingContext context)
     {
         base.Draw(context);

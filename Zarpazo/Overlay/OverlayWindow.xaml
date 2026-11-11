@@ -45,6 +45,13 @@
               Visibility="Collapsed" />
 
         <Canvas x:Name="UiLayer">
+            <!-- Follows the pointer with the size of the next mark; the mouse wheel changes it. -->
+            <Ellipse x:Name="SizeBubble"
+                     Stroke="#CCFFFFFF"
+                     StrokeThickness="1"
+                     IsHitTestVisible="False"
+                     Visibility="Collapsed" />
+
             <editor:EditorToolbar x:Name="Toolbar"
                                   Visibility="Collapsed"
                                   UndoRequested="OnUndo"

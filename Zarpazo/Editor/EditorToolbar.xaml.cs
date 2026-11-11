@@ -50,7 +50,7 @@ public partial class EditorToolbar : UserControl
             new ToolEntry(AnnotationTool.Ruler, "Regla", "IconRuler", "Regla: mide una distancia en píxeles"),
             new ToolEntry(AnnotationTool.Picker, "Cuentagotas", "IconPicker", "Cuentagotas: clic copia el color, X cambia entre HEX y RGB")));
         _toolRadios = ToolRadios(this).ToList();
-        ApplyTool(AnnotationTool.Select); // shows the groups' buttons and hides the color and thickness
+        ApplyTool(AnnotationTool.Select); // shows the groups' buttons and hides the color
         BuildBackgroundChoices();
         ShowBeautify();
         _beautifyReady = true;
@@ -78,11 +78,10 @@ public partial class EditorToolbar : UserControl
         Canvas.SetLeft(ActionsBar, placement.Actions.X);
         Canvas.SetTop(ActionsBar, placement.Actions.Y);
 
-        // The color and thickness pop-ups open away from the area.
+        // The color pop-up and the group menus open away from the area.
         var side = placement.ToolsOnRight ? System.Windows.Controls.Primitives.PlacementMode.Right : System.Windows.Controls.Primitives.PlacementMode.Left;
         _side = side;
         ColorPopup.Placement = side;
-        SizePopup.Placement = side;
         foreach (ToolGroup group in _groups)
         {
             group.Menu.Placement = side;
@@ -577,7 +576,10 @@ public partial class EditorToolbar : UserControl
     // Defaults match the buttons checked in the XAML.
     public AnnotationTool Tool { get; private set; } = AnnotationTool.Select;
     public Color Color { get; private set; } = (Color)ColorConverter.ConvertFromString("#E53935");
-    public double Thickness { get; private set; } = 4;
+    public double Thickness { get; private set; } = StrokeSize.Default;
+
+    /// <summary>Makes the strokes, the text and the step badges bigger or smaller, within the limits.</summary>
+    public void SetThickness(double thickness) => Thickness = StrokeSize.Clamp(thickness);
 
     public string ColorHex => $"#{Color.R:X2}{Color.G:X2}{Color.B:X2}";
 
@@ -600,7 +602,7 @@ public partial class EditorToolbar : UserControl
             }
         }
 
-        FindChoice(this, "size", thickness.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+        SetThickness(thickness);
     }
 
     private static RadioButton? FindChoice(DependencyObject root, string group, string tag)
@@ -651,23 +653,11 @@ public partial class EditorToolbar : UserControl
             case "color":
                 SetColor((Color)ColorConverter.ConvertFromString(value));
                 break;
-            case "size":
-                Thickness = double.Parse(value, CultureInfo.InvariantCulture);
-                if (choice.Content is Ellipse dot && SizeSwatch != null)
-                {
-                    SizeSwatch.Width = dot.Width;
-                    SizeSwatch.Height = dot.Height;
-                }
-                if (SizePopup != null)
-                {
-                    SizePopup.IsOpen = false;
-                }
-                break;
         }
     }
 
     // A radio button doesn't uncheck when pressed again, so pressing the active drawing tool goes back to adjusting
-    // the area instead. Color and size choices keep their normal behavior.
+    // the area instead. Color choices keep their normal behavior.
     private void OnChoicePressed(object sender, MouseButtonEventArgs e)
     {
         var choice = (RadioButton)sender;
@@ -689,8 +679,6 @@ public partial class EditorToolbar : UserControl
     }
 
     private void OnColorButton(object sender, RoutedEventArgs e) => ColorPopup.IsOpen = true;
-
-    private void OnSizeButton(object sender, RoutedEventArgs e) => SizePopup.IsOpen = true;
 
     private void OnCustomColor(object sender, RoutedEventArgs e)
     {

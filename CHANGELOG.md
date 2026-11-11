@@ -7,8 +7,12 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 ## [Sin publicar]
 
 ### Añadido
+- Tamaño con la rueda del mouse, como en Lightshot: con el pincel, la flecha, la línea, el rectángulo, la elipse, el texto o los números, girar la rueda sobre la captura cambia el grosor (o el tamaño de la letra y de los números). También vale mientras dibujas, mientras escribes un texto y, con la herramienta Mover, sobre la anotación elegida (se puede deshacer, y varios giros seguidos cuentan como un solo paso). Un círculo translúcido junto al puntero muestra el tamaño que tendrá lo siguiente que dibujes.
 - Configuración rediseñada: un menú lateral con seis secciones (General, Atajos, Captura, Grabación, Guardado y Acerca de) en vez de pestañas, con la ventana más ancha. Los tres atajos quedan juntos en «Atajos», la calidad del GIF y del video pasa a «Grabación», y todo lo de guardar (automático, a mano, nombre e historial) a «Guardado». Cada sección tiene un botón «Restablecer esta sección» que vuelve a los valores de fábrica solo ahí, sin guardar hasta pulsar Aceptar. Las actualizaciones pasan a «General».
 - Configuración > Captura > «Elegir el área»: casilla para mostrar u ocultar la lupa (zoom con la posición y el color) que sigue al cursor al elegir el área. Viene activada; el cuentagotas de la barra de herramientas no cambia.
+
+### Cambiado
+- El botón de grosor con sus tres puntos (fino, medio y grueso) ya no está en la barra de herramientas: el tamaño se cambia con la rueda del mouse, en cualquier valor entre 1 y 30. El último tamaño se recuerda como antes.
 
 ### Corregido
 - El nombre de archivo de la configuración (por ejemplo «Cap {fecha} {hora}») ahora también vale al copiar y pegar una captura o una grabación como archivo, no solo al guardar. En el archivo que se pega los espacios pasan a ser guiones bajos (Cap_2026-11-11_15-02-57.png) para que la ruta no necesite comillas.

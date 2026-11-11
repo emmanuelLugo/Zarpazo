@@ -12,7 +12,10 @@ internal sealed class AnnotationCanvas : FrameworkElement
 
     private static readonly Pen SelectionOutline = CreateSelectionOutline();
 
-    private readonly record struct Edit(Action Undo, Action Redo);
+    /// <summary>Wheel notches this close together count as one change, so a single undo takes them all back.</summary>
+    private const long ThicknessBurstMs = 800;
+
+    private readonly record struct Edit(Action Undo, Action Redo, Annotation? Sized = null, double SizeBefore = 0, long At = 0);
 
     private readonly List<Annotation> _done = [];
     private readonly Stack<Edit> _history = new();
@@ -114,6 +117,30 @@ internal sealed class AnnotationCanvas : FrameworkElement
         {
             Record(new Edit(() => annotation.Resize(after, before), () => annotation.Resize(before, after)));
         }
+    }
+
+    /// <summary>Gives an annotation another size. A drag in progress just takes it; one already placed can be undone, and a burst of changes is one step.</summary>
+    public void ChangeThickness(Annotation annotation, double thickness)
+    {
+        double before = annotation.Thickness;
+        double after = StrokeSize.Clamp(thickness);
+        if (after == before)
+        {
+            return;
+        }
+
+        annotation.SetThickness(after);
+        if (annotation != _preview)
+        {
+            long now = Environment.TickCount64;
+            if (_future.Count == 0 && _history.Count > 0 && _history.Peek() is { Sized: { } last } top && last == annotation && now - top.At < ThicknessBurstMs)
+            {
+                _history.Pop();
+                before = top.SizeBefore;
+            }
+            Record(new Edit(() => annotation.SetThickness(before), () => annotation.SetThickness(after), annotation, before, now));
+        }
+        InvalidateVisual();
     }
 
     /// <summary>The grip of the selected annotation under the point, if it can be stretched.</summary>

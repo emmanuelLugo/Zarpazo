@@ -209,8 +209,8 @@
             <StackPanel x:Name="StyleTools" Visibility="Collapsed">
                 <Border Style="{StaticResource DividerH}" />
 
-            <!-- Color and thickness are one button each showing the current choice; the options live in popups so they
-                 don't take bar space. -->
+            <!-- The color is one button showing the current choice; the options live in a popup so they don't take bar
+                 space. The size has no control: the mouse wheel changes it over the capture. -->
             <Button x:Name="ColorButton" Style="{StaticResource Action}" ToolTip="Color" AutomationProperties.Name="Color" Click="OnColorButton">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse x:Name="ColorSwatch" Width="16" Height="16" Fill="#E53935" Stroke="#88FFFFFF" StrokeThickness="1" />
@@ -267,34 +267,6 @@
                             </RadioButton>
                         </WrapPanel>
                         <Button Style="{StaticResource Action}" Content="Personalizado…" Margin="1,4,1,0" Click="OnCustomColor" />
-                    </StackPanel>
-                </Border>
-            </Popup>
-
-            <Button x:Name="SizeButton" Style="{StaticResource Action}" ToolTip="Grosor (y tamaño del texto)"
-                    AutomationProperties.Name="Grosor" Click="OnSizeButton">
-                <StackPanel Orientation="Horizontal">
-                    <Grid Width="16" Height="16">
-                        <Ellipse x:Name="SizeSwatch" Width="8" Height="8" Fill="White" />
-                    </Grid>
-                </StackPanel>
-            </Button>
-            <Popup x:Name="SizePopup"
-                   PlacementTarget="{Binding ElementName=SizeButton}"
-                   Placement="Right"
-                   StaysOpen="False"
-                   AllowsTransparency="True">
-                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="6">
-                    <StackPanel Orientation="Horizontal" RadioButton.Checked="OnChoice">
-                        <RadioButton GroupName="size" Tag="2" Style="{StaticResource Choice}" ToolTip="Fino">
-                            <Ellipse Width="4" Height="4" Fill="White" />
-                        </RadioButton>
-                        <RadioButton GroupName="size" Tag="4" IsChecked="True" Style="{StaticResource Choice}" ToolTip="Medio">
-                            <Ellipse Width="8" Height="8" Fill="White" />
-                        </RadioButton>
-                        <RadioButton GroupName="size" Tag="8" Style="{StaticResource Choice}" ToolTip="Grueso">
-                            <Ellipse Width="13" Height="13" Fill="White" />
-                        </RadioButton>
                     </StackPanel>
                 </Border>
             </Popup>

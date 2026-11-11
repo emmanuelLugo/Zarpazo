@@ -14,6 +14,8 @@ internal sealed class PixelateAnnotation(Color color, double thickness, Point st
     // Draw runs on every repaint, but the pixels only change while dragging.
     private (Int32Rect Area, BitmapSource Image)? _cache;
 
+    public override bool UsesThickness => false;
+
     public override void Draw(DrawingContext context)
     {
         var box = new Rect(Start, End);
