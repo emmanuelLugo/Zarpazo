@@ -236,7 +236,7 @@ public sealed class UpdateTests : IDisposable
         var fail = true;
         var handler = new FakeHandler(_ => fail ? new HttpResponseMessage(HttpStatusCode.BadGateway) : Ok(Json()));
         var http = new HttpClient(handler);
-        var service = new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)), new UpdateDownloader(http, _folder), _ => null);
+        var service = new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)), new UpdateDownloader(http, _folder), (_, _) => null);
         int changes = 0;
         service.Changed += () => changes++;
 
@@ -338,7 +338,7 @@ public sealed class UpdateTests : IDisposable
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) }));
         string? launched = null;
         var service = new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)), new UpdateDownloader(http, Path.Combine(_folder, "dl")),
-            path => { launched = path; return null; });
+            (path, _) => { launched = path; return null; });
         await service.CheckAsync();
 
         await service.InstallAsync();
@@ -354,7 +354,7 @@ public sealed class UpdateTests : IDisposable
             ? Ok(Json())
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) }));
         var service = new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)), new UpdateDownloader(http, Path.Combine(_folder, "dl")),
-            _ => "Hay una grabación en curso.");
+            (_, _) => "Hay una grabación en curso.");
         await service.CheckAsync();
 
         var ex = await Assert.ThrowsAsync<UpdateException>(() => service.InstallAsync());
@@ -367,7 +367,7 @@ public sealed class UpdateTests : IDisposable
     {
         var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
         var http = new HttpClient(new FakeHandler(_ => Ok(Json())));
-        var service = new UpdateService(store, new UpdateChecker(http, new Version(0, 9, 0)), new UpdateDownloader(http, _folder), _ => null);
+        var service = new UpdateService(store, new UpdateChecker(http, new Version(0, 9, 0)), new UpdateDownloader(http, _folder), (_, _) => null);
 
         await Assert.ThrowsAsync<UpdateException>(() => service.InstallAsync());
     }
@@ -378,11 +378,11 @@ public sealed class UpdateTests : IDisposable
         ? Ok(Json())
         : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) };
 
-    private UpdateService Service(SettingsStore store, FakeHandler handler, bool installed = true, Func<string, string?>? launch = null, string? downloads = null)
+    private UpdateService Service(SettingsStore store, FakeHandler handler, bool installed = true, Func<string, bool, string?>? launch = null, string? downloads = null)
     {
         var http = new HttpClient(handler);
         return new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)),
-            new UpdateDownloader(http, downloads ?? Path.Combine(_folder, "dl")), launch ?? (_ => null), () => installed);
+            new UpdateDownloader(http, downloads ?? Path.Combine(_folder, "dl")), launch ?? ((_, _) => null), () => installed);
     }
 
     private static bool IsSetupRequest(HttpRequestMessage request) => request.RequestUri!.AbsoluteUri != ReleaseFeed.LatestUrl;
@@ -508,7 +508,7 @@ public sealed class UpdateTests : IDisposable
         var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
         var handler = new FakeHandler(Github);
         string? launched = null;
-        UpdateService service = Service(store, handler, launch: path => { launched = path; return null; });
+        UpdateService service = Service(store, handler, launch: (path, _) => { launched = path; return null; });
         await service.CheckAsync();
         await service.Staged;
         int requests = handler.Requests.Count;
@@ -526,7 +526,7 @@ public sealed class UpdateTests : IDisposable
         var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
         var handler = new FakeHandler(Github);
         string? launched = null;
-        UpdateService service = Service(store, handler, launch: path => { launched = path; return null; });
+        UpdateService service = Service(store, handler, launch: (path, _) => { launched = path; return null; });
         await service.CheckAsync();
         await service.Staged;
         string setup = Path.Combine(_folder, "dl", "Zarpazo-Setup-0.3.0.exe");
@@ -542,7 +542,7 @@ public sealed class UpdateTests : IDisposable
     public async Task If_the_installer_does_not_start_the_ready_update_is_kept()
     {
         var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
-        UpdateService service = Service(store, new FakeHandler(Github), launch: _ => "No se pudo.");
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, _) => "No se pudo.");
         await service.CheckAsync();
         await service.Staged;
 
@@ -550,6 +550,77 @@ public sealed class UpdateTests : IDisposable
 
         Assert.Equal("v0.3.0", store.Current.PendingUpdateTag);
         Assert.NotNull(service.Ready);
+    }
+
+    [Fact]
+    public async Task Restarting_now_asks_the_installer_to_open_the_app_again_and_closing_does_not()
+    {
+        var calls = new List<bool>();
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, relaunch) => { calls.Add(relaunch); return "stay"; });
+        await service.CheckAsync();
+        await service.Staged;
+
+        await Assert.ThrowsAsync<UpdateException>(() => service.InstallAsync());
+        await Assert.ThrowsAsync<UpdateException>(() => service.InstallAsync(relaunch: false));
+
+        Assert.Equal([true, false], calls);
+    }
+
+    [Fact]
+    public async Task Installing_on_close_is_only_possible_for_a_ready_update_and_is_remembered()
+    {
+        string path = Path.Combine(_folder, "settings.json");
+        var store = new SettingsStore(path);
+        UpdateService service = Service(store, new FakeHandler(Github));
+
+        service.InstallOnClose = true; // nothing ready yet
+        Assert.False(service.InstallOnClose);
+
+        await service.CheckAsync();
+        await service.Staged;
+        service.InstallOnClose = true;
+
+        Assert.True(service.InstallOnClose);
+        UpdateService next = Service(new SettingsStore(path), new FakeHandler(Github)); // after a restart
+        await next.RestorePendingAsync(new Version(0, 2, 1));
+        Assert.True(next.InstallOnClose);
+    }
+
+    [Fact]
+    public async Task Choosing_close_is_forgotten_once_the_update_is_installed_or_replaced()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        bool newer = false;
+        var handler = new FakeHandler(request => IsSetupRequest(request) ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) }
+            : Ok(newer ? Json(tag: "v0.4.0", setupUrl: Setup.Replace("0.3.0", "0.4.0"), assetName: "Zarpazo-Setup-0.4.0.exe") : Json()));
+        UpdateService service = Service(store, handler);
+        await service.CheckAsync();
+        await service.Staged;
+        service.InstallOnClose = true;
+
+        newer = true; // another version comes out before the person closes the app
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.Equal(new Version(0, 4, 0), service.Ready?.Version);
+        Assert.False(service.InstallOnClose); // the new one has to be chosen again
+        Assert.False(store.Current.ApplyUpdateOnClose);
+    }
+
+    [Fact]
+    public async Task Installing_resets_the_choice_so_a_failed_install_is_not_retried_at_every_start()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, _) => null);
+        await service.CheckAsync();
+        await service.Staged;
+        service.InstallOnClose = true;
+
+        await service.InstallAsync(relaunch: false);
+
+        Assert.False(store.Current.ApplyUpdateOnClose);
+        Assert.Equal("", store.Current.PendingUpdateTag);
     }
 
     [Fact]

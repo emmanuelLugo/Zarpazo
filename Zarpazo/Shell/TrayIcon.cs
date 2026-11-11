@@ -24,6 +24,7 @@ internal sealed class TrayIcon : IDisposable
     private readonly ToolStripMenuItem _groupMode;
     private string _idleText = "Zarpazo";
     private bool _recordingShown;
+    private bool _updateReady;
     private Action? _balloonClick;
     private Icon? _recordingIcon;
     private Icon? _pausedIcon;
@@ -52,7 +53,17 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add("Configuración…", null, (_, _) => onSettings());
         _stopRecording = menu.Items.Add("Detener grabación", null, (_, _) => onStopRecording());
         _stopRecording.Visible = false; // only while recording
-        _updateItem = menu.Items.Add("", null, (_, _) => UpdateRequested?.Invoke());
+        _updateItem = menu.Items.Add("", null, (_, _) =>
+        {
+            if (_updateReady)
+            {
+                RestartForUpdateRequested?.Invoke();
+            }
+            else
+            {
+                UpdateRequested?.Invoke();
+            }
+        });
         _updateItem.Visible = false; // only while a newer version is waiting
         menu.Items.Add("Buscar actualizaciones", null, (_, _) => CheckUpdatesRequested?.Invoke());
         menu.Items.Add(new ToolStripSeparator());
@@ -92,11 +103,18 @@ internal sealed class TrayIcon : IDisposable
     /// <summary>The person asked to look for a new version right now.</summary>
     public event Action? CheckUpdatesRequested;
 
-    /// <summary>Shows a menu entry for the new version, or hides it when <paramref name="version"/> is null.</summary>
-    public void SetUpdateAvailable(string? version)
+    /// <summary>The person chose, from the menu, to restart and install the update that is already downloaded.</summary>
+    public event Action? RestartForUpdateRequested;
+
+    /// <summary>
+    /// Shows a menu entry for the new version, or hides it when <paramref name="version"/> is null. A downloaded update
+    /// restarts the app with that one click; one that isn't yet opens the settings where it can be downloaded.
+    /// </summary>
+    public void SetUpdate(string? version, bool ready)
     {
+        _updateReady = ready;
         _updateItem.Visible = version != null;
-        _updateItem.Text = $"Actualizar a la versión {version}…";
+        _updateItem.Text = ready ? $"Reiniciar para actualizar a la versión {version}" : $"Actualizar a la versión {version}…";
     }
 
     /// <summary>A notice that, when clicked, asks to see the waiting update.</summary>

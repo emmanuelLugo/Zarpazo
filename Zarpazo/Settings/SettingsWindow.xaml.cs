@@ -159,17 +159,19 @@ public partial class SettingsWindow : Window
         if (_updates?.Available is { } release)
         {
             bool inPlace = _updates.CanInstallInPlace;
-            InstallUpdateButton.Content = !inPlace ? "Abrir la página de descarga"
-                : _updates.Ready != null ? "Instalar y reiniciar" : "Descargar e instalar";
+            bool ready = inPlace && _updates.Ready != null;
+            InstallUpdateButton.Content = !inPlace ? "Abrir la página de descarga" : ready ? "Reiniciar y actualizar" : "Descargar e instalar";
             InstallUpdateButton.Visibility = NotesButton.Visibility = Visibility.Visible;
+            InstallLaterButton.Visibility = ready && !_updates.InstallOnClose ? Visibility.Visible : Visibility.Collapsed;
             UpdateStatus.Text = $"Hay una versión nueva: {release.Version} (tienes la {AppVersion.Current})."
                 + (!inPlace ? " Esta copia no se instaló con el instalador, así que se descarga desde la página."
-                    : _updates.Ready != null ? " Ya está descargada y comprobada."
+                    : ready && _updates.InstallOnClose ? " Está descargada y se instalará al salir de Zarpazo, o la próxima vez que la abras."
+                    : ready ? " Ya está descargada y comprobada: al reiniciar se instala sola y Zarpazo vuelve a abrirse."
                     : _updates.IsDownloading ? " Descargándola en segundo plano…" : "");
         }
         else
         {
-            InstallUpdateButton.Visibility = NotesButton.Visibility = Visibility.Collapsed;
+            InstallUpdateButton.Visibility = InstallLaterButton.Visibility = NotesButton.Visibility = Visibility.Collapsed;
             DateTime last = _store.Current.LastUpdateCheck;
             UpdateStatus.Text = last > DateTime.MinValue
                 ? $"Tienes la última versión. Última comprobación: {last.ToLocalTime():g}."
@@ -210,10 +212,11 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        InstallUpdateButton.IsEnabled = CheckUpdateButton.IsEnabled = false;
+        bool downloaded = _updates.Ready != null;
+        InstallUpdateButton.IsEnabled = InstallLaterButton.IsEnabled = CheckUpdateButton.IsEnabled = false;
         UpdateProgress.Value = 0;
-        UpdateProgress.Visibility = Visibility.Visible;
-        UpdateStatus.Text = $"Descargando la versión {release.Version}…";
+        UpdateProgress.Visibility = downloaded ? Visibility.Collapsed : Visibility.Visible;
+        UpdateStatus.Text = downloaded ? "Reiniciando para actualizar…" : $"Descargando la versión {release.Version}…";
         _download = new CancellationTokenSource();
         try
         {
@@ -223,12 +226,21 @@ public partial class SettingsWindow : Window
         catch (UpdateException ex)
         {
             UpdateStatus.Text = ex.Message;
-            InstallUpdateButton.IsEnabled = CheckUpdateButton.IsEnabled = true;
+            InstallUpdateButton.IsEnabled = InstallLaterButton.IsEnabled = CheckUpdateButton.IsEnabled = true;
             UpdateProgress.Visibility = Visibility.Collapsed;
         }
         catch (OperationCanceledException)
         {
             // the window was closed while downloading
+        }
+    }
+
+    // Keeps the downloaded update for when Zarpazo closes (or starts again), instead of restarting right now.
+    private void OnInstallLater(object sender, RoutedEventArgs e)
+    {
+        if (_updates?.Ready != null)
+        {
+            _updates.InstallOnClose = true; // raises Changed, which redraws this section
         }
     }
 

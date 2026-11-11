@@ -14,14 +14,17 @@ internal sealed class UpdateService
     private readonly SettingsStore _settings;
     private readonly UpdateChecker _checker;
     private readonly UpdateDownloader _downloader;
-    private readonly Func<string, string?> _launchInstaller;
+    private readonly Func<string, bool, string?> _launchInstaller;
     private readonly Func<bool> _isInstalledCopy;
     private Task<UpdateCheck>? _running;
     private Task _staging = Task.CompletedTask;
 
-    /// <param name="launchInstaller">Runs the downloaded installer and closes the app; returns null, or why it couldn't.</param>
+    /// <param name="launchInstaller">
+    /// Runs the downloaded installer, with no window, and closes the app; the second argument says whether the installer opens
+    /// Zarpazo again when it is done. Returns null, or why it couldn't.
+    /// </param>
     /// <param name="isInstalledCopy">Whether this running copy is the one the installer put on the PC; only that one updates itself.</param>
-    public UpdateService(SettingsStore settings, UpdateChecker checker, UpdateDownloader downloader, Func<string, string?> launchInstaller,
+    public UpdateService(SettingsStore settings, UpdateChecker checker, UpdateDownloader downloader, Func<string, bool, string?> launchInstaller,
         Func<bool>? isInstalledCopy = null)
     {
         _settings = settings;
@@ -51,6 +54,21 @@ internal sealed class UpdateService
 
     /// <summary>True when the update can be downloaded, checked and installed from inside the app.</summary>
     public bool CanInstallInPlace => Available?.CanInstallInPlace == true && _isInstalledCopy();
+
+    /// <summary>
+    /// The person chose to install the ready update when Zarpazo closes, or at its next start if it stays open. It only means
+    /// something while an update is ready; installing, or a newer version coming out, resets it.
+    /// </summary>
+    public bool InstallOnClose
+    {
+        get => Ready != null && _settings.Current.ApplyUpdateOnClose;
+        set
+        {
+            _settings.Current.ApplyUpdateOnClose = value && Ready != null;
+            TrySave();
+            Changed?.Invoke();
+        }
+    }
 
     /// <summary>A quiet check is due when they're turned on and a day has passed since the last good one.</summary>
     public static bool IsDue(bool enabled, DateTime lastCheckUtc, DateTime nowUtc) =>
@@ -159,9 +177,10 @@ internal sealed class UpdateService
 
     /// <summary>
     /// Checks the waiting update (downloading it first if it isn't yet) and hands it to the installer, which closes the app.
+    /// With <paramref name="relaunch"/> the installer opens Zarpazo again when it is done, with nothing shown in between.
     /// </summary>
     /// <exception cref="UpdateException">There is nothing to install, or a step failed.</exception>
-    public async Task InstallAsync(IProgress<double>? progress = null, CancellationToken cancel = default)
+    public async Task InstallAsync(IProgress<double>? progress = null, CancellationToken cancel = default, bool relaunch = true)
     {
         ReleaseInfo release = Available ?? throw new UpdateException("No hay ninguna actualización pendiente.");
         await _staging; // a background download under way is finished first, they would both write the same file
@@ -169,7 +188,7 @@ internal sealed class UpdateService
         // Checked again even when it was downloaded earlier: the file may have sat in the folder for days.
         string setup = await _downloader.TryReuseAsync(release, cancel) ?? await _downloader.DownloadAsync(release, progress, cancel);
         ForgetPending(deleteFile: false); // from here the installer decides; a failed run must not be retried at every start
-        if (_launchInstaller(setup) is { } problem)
+        if (_launchInstaller(setup, relaunch) is { } problem)
         {
             RememberPending(release); // it didn't start: the file is still good
             throw new UpdateException(problem);
@@ -192,10 +211,11 @@ internal sealed class UpdateService
         }
 
         AppSettings settings = _settings.Current;
-        if (settings.PendingUpdateTag.Length > 0)
+        if (settings.PendingUpdateTag.Length > 0 || settings.ApplyUpdateOnClose)
         {
             settings.PendingUpdateTag = settings.PendingUpdateSha256 = "";
             settings.PendingUpdateSize = 0;
+            settings.ApplyUpdateOnClose = false;
             TrySave();
         }
     }

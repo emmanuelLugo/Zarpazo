@@ -42,6 +42,7 @@ public partial class App : Application
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
     private UpdateService _updates = null!; // the same
     private DispatcherTimer? _updateTimer;
+    private UpdateToast? _updateToast;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -64,15 +65,16 @@ public partial class App : Application
             // The folder is not reachable right now; the history is cleaned the next time.
         }
         _tray = new TrayIcon(CaptureFromMenu, CaptureFullScreen, RepeatLastArea, () => _lastArea != null, CaptureAfterDelay,
-            ShowHistory, ShowGuide, () => _guide.AddsOnCapture = !_guide.AddsOnCapture, () => ShowSettings(), () => _recording?.Stop(), Shutdown);
+            ShowHistory, ShowGuide, () => _guide.AddsOnCapture = !_guide.AddsOnCapture, () => ShowSettings(), () => _recording?.Stop(), ExitFromMenu);
         ThemeManager.Changed += () => _tray.SetDark(ThemeManager.IsDark);
         ThemeManager.Apply(_settings.Current.AppearanceMode);
 
         var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // each request sets its own limit
         _updates = new UpdateService(_settings, new UpdateChecker(http, AppVersion.Current),
             new UpdateDownloader(http, UpdateDownloader.DefaultFolder), LaunchInstaller);
-        _updates.Changed += () => _tray.SetUpdateAvailable(_updates.Available?.Version.ToString());
+        _updates.Changed += OnUpdateChanged;
         _tray.UpdateRequested += () => ShowSettings(showAbout: true);
+        _tray.RestartForUpdateRequested += ApplyUpdateNow;
         _tray.CheckUpdatesRequested += async () => await CheckForUpdatesNowAsync();
         StartUpdateChecks();
         _hotKey = new GlobalHotKey(() => ShowOverlay());
@@ -307,6 +309,13 @@ public partial class App : Application
             // the pending download is checked again with the next look
         }
 
+        // "Al cerrar" was chosen but Zarpazo was never closed from its menu (Windows shut down, the PC restarted): the next
+        // start installs it, before anything else is shown.
+        if (_updates.InstallOnClose && await ApplyUpdateAsync(relaunch: true))
+        {
+            return;
+        }
+
         await Task.Delay(TimeSpan.FromSeconds(30));
         await CheckForUpdatesQuietlyAsync();
         _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(3) };
@@ -323,14 +332,7 @@ public partial class App : Application
                 return;
             }
 
-            UpdateCheck result = await _updates.CheckAsync();
-            // Told once per version: not again at every start-up while the person decides.
-            if (result.Newer is { } release && _settings.Current.UpdateNotifiedVersion != release.Tag)
-            {
-                _settings.Current.UpdateNotifiedVersion = release.Tag;
-                _settings.Save();
-                _tray!.ShowUpdateNotice($"Zarpazo {release.Version} está disponible. Haz clic aquí para verla.");
-            }
+            await AnnounceAsync(await _updates.CheckAsync(), manual: false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -348,11 +350,9 @@ public partial class App : Application
             {
                 _tray!.ShowWarning("No se pudo buscar actualizaciones. Revisa tu conexión e inténtalo de nuevo.");
             }
-            else if (result.Newer is { } release)
+            else if (result.Newer != null)
             {
-                _settings.Current.UpdateNotifiedVersion = release.Tag;
-                _settings.Save();
-                _tray!.ShowUpdateNotice($"Zarpazo {release.Version} está disponible. Haz clic aquí para verla.");
+                await AnnounceAsync(result, manual: true);
             }
             else
             {
@@ -365,8 +365,134 @@ public partial class App : Application
         }
     }
 
-    // Runs the downloaded installer and closes this copy so it can be replaced; null if all went well, else why not.
-    private string? LaunchInstaller(string setupPath)
+    // Says that a newer version exists. If it is being downloaded in the background, it waits for that and announces it once it
+    // is ready (the card); a version that can't be, or couldn't be, downloaded gets the plain notice that opens the settings.
+    private async Task AnnounceAsync(UpdateCheck result, bool manual)
+    {
+        if (result.Newer is not { } release)
+        {
+            return;
+        }
+
+        if (manual && _updates.IsDownloading)
+        {
+            _tray!.ShowInfo($"Descargando la versión {release.Version}…");
+        }
+        await _updates.Staged;
+
+        if (_updates.Ready is { } ready)
+        {
+            // OnUpdateChanged already showed the card unless this one was announced before; asked by hand it is shown again.
+            if (manual)
+            {
+                ShowUpdateToast(ready);
+            }
+            return;
+        }
+
+        // Told once per version: not again at every start-up while the person decides. By hand, always.
+        if (manual || _settings.Current.UpdateNotifiedVersion != release.Tag)
+        {
+            RememberNotified(release);
+            _tray!.ShowUpdateNotice($"Zarpazo {release.Version} está disponible. Haz clic aquí para verla.");
+        }
+    }
+
+    // The tray entry follows the update, and a version that just became ready is announced with the card, once per version.
+    private void OnUpdateChanged()
+    {
+        ReleaseInfo? ready = _updates.Ready;
+        _tray!.SetUpdate(_updates.Available?.Version.ToString(), ready != null);
+        if (ready == null)
+        {
+            _updateToast?.Dismiss(); // it was about a version that has been replaced
+        }
+        else if (_settings.Current.UpdateNotifiedVersion != ready.Tag)
+        {
+            ShowUpdateToast(ready);
+        }
+    }
+
+    private void ShowUpdateToast(ReleaseInfo release)
+    {
+        if (_updateToast != null)
+        {
+            return;
+        }
+
+        RememberNotified(release);
+        var toast = new UpdateToast(release.Version.ToString(), ApplyUpdateNow, InstallUpdateOnClose, () => OpenReleasePage(release));
+        toast.Closed += (_, _) => _updateToast = null;
+        _updateToast = toast;
+        toast.Show();
+    }
+
+    private void RememberNotified(ReleaseInfo release)
+    {
+        _settings.Current.UpdateNotifiedVersion = release.Tag;
+        try
+        {
+            _settings.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // at worst the same version is announced once more
+        }
+    }
+
+    private static void OpenReleasePage(ReleaseInfo release)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(release.PageUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            // no browser to open it with
+        }
+    }
+
+    // One click: the app closes, the installer runs with no window, and Zarpazo opens again on the new version.
+    private async void ApplyUpdateNow() => await ApplyUpdateAsync(relaunch: true);
+
+    private void InstallUpdateOnClose()
+    {
+        _updates.InstallOnClose = true;
+        _tray!.ShowInfo("Se instalará al salir de Zarpazo, o la próxima vez que la abras.");
+    }
+
+    // The tray's Exit: a ready update chosen for "Al cerrar" is installed on the way out, with nothing opened afterwards.
+    private async void ExitFromMenu()
+    {
+        if (_updates.InstallOnClose && await ApplyUpdateAsync(relaunch: false, warn: false))
+        {
+            return; // the installer has taken over and the app is closing
+        }
+
+        Shutdown();
+    }
+
+    /// <returns>True when the installer was started and the app is closing.</returns>
+    private async Task<bool> ApplyUpdateAsync(bool relaunch, bool warn = true)
+    {
+        try
+        {
+            await _updates.InstallAsync(relaunch: relaunch);
+            return true;
+        }
+        catch (UpdateException ex)
+        {
+            if (warn)
+            {
+                _tray?.ShowWarning(ex.Message);
+            }
+            return false;
+        }
+    }
+
+    // Runs the downloaded installer, with no window at all, and closes this copy so it can be replaced; null if all went well,
+    // else why not.
+    private string? LaunchInstaller(string setupPath, bool relaunch)
     {
         if (_recording is { IsRecording: true } or { IsCountingDown: true })
         {
@@ -379,8 +505,8 @@ public partial class App : Application
         _instanceMutex = null;
         try
         {
-            // /RELAUNCH=1: the installer opens Zarpazo again when it finishes, as a silent install shows no "open" box.
-            Process.Start(new ProcessStartInfo(setupPath, "/SILENT /NORESTART /RELAUNCH=1") { UseShellExecute = true });
+            // Nothing is shown. /RELAUNCH=1: the installer opens Zarpazo again when it finishes, as a silent install has no "open" box.
+            Process.Start(new ProcessStartInfo(setupPath, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" + (relaunch ? " /RELAUNCH=1" : "")) { UseShellExecute = true });
         }
         catch (Exception ex) when (ex is Win32Exception or IOException or InvalidOperationException)
         {

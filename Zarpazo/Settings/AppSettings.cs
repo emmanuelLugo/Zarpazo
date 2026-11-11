@@ -73,6 +73,9 @@ internal sealed class AppSettings
     /// <summary>The published size in bytes of that download.</summary>
     public long PendingUpdateSize { get; set; }
 
+    /// <summary>The person chose to install the pending update when Zarpazo is closed, or else the next time it starts.</summary>
+    public bool ApplyUpdateOnClose { get; set; }
+
     /// <summary>Where the Save dialog opens. Empty means the Pictures folder.</summary>
     public string SaveFolder { get; set; } = "";
 
