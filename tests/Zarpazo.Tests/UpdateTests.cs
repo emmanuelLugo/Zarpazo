@@ -378,11 +378,12 @@ public sealed class UpdateTests : IDisposable
         ? Ok(Json())
         : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) };
 
-    private UpdateService Service(SettingsStore store, FakeHandler handler, bool installed = true, Func<string, bool, string?>? launch = null, string? downloads = null)
+    private UpdateService Service(SettingsStore store, FakeHandler handler, bool installed = true, Func<string, bool, string?>? launch = null, string? downloads = null,
+        Func<bool>? busy = null)
     {
         var http = new HttpClient(handler);
         return new UpdateService(store, new UpdateChecker(http, new Version(0, 2, 1)),
-            new UpdateDownloader(http, downloads ?? Path.Combine(_folder, "dl")), launch ?? ((_, _) => null), () => installed);
+            new UpdateDownloader(http, downloads ?? Path.Combine(_folder, "dl")), launch ?? ((_, _) => null), () => installed, busy);
     }
 
     private static bool IsSetupRequest(HttpRequestMessage request) => request.RequestUri!.AbsoluteUri != ReleaseFeed.LatestUrl;
@@ -621,6 +622,142 @@ public sealed class UpdateTests : IDisposable
 
         Assert.False(store.Current.ApplyUpdateOnClose);
         Assert.Equal("", store.Current.PendingUpdateTag);
+    }
+
+    // ---- not interrupting ----
+
+    [Fact]
+    public async Task Restarting_while_the_person_is_busy_is_put_off_and_nothing_is_lost()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var launches = new List<bool>();
+        bool busy = true;
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, relaunch) => { launches.Add(relaunch); return null; }, busy: () => busy);
+        await service.CheckAsync();
+        await service.Staged;
+        int changes = 0;
+        service.Changed += () => changes++;
+
+        bool started = await service.RestartAsync();
+
+        Assert.False(started);
+        Assert.True(service.RestartQueued);
+        Assert.Empty(launches);
+        Assert.NotNull(service.Ready); // still downloaded and remembered
+        Assert.Equal("v0.3.0", store.Current.PendingUpdateTag);
+        Assert.Equal(1, changes); // so the tray and settings can say it is waiting
+
+        await service.RestartAsync(); // asked again while waiting: still one queued restart
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
+    public async Task A_put_off_restart_happens_as_soon_as_nothing_is_in_use()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var launches = new List<bool>();
+        bool busy = true;
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, relaunch) => { launches.Add(relaunch); return null; }, busy: () => busy);
+        await service.CheckAsync();
+        await service.Staged;
+        await service.RestartAsync();
+
+        Assert.False(await service.ResumeIfIdleAsync()); // still doing something
+        Assert.Empty(launches);
+
+        busy = false;
+        Assert.True(await service.ResumeIfIdleAsync());
+
+        Assert.Equal([true], launches);
+        Assert.False(service.RestartQueued);
+    }
+
+    [Fact]
+    public async Task Nothing_restarts_by_itself_when_the_person_never_asked()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var launches = new List<bool>();
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, relaunch) => { launches.Add(relaunch); return null; }, busy: () => false);
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.False(await service.ResumeIfIdleAsync());
+
+        Assert.Empty(launches);
+    }
+
+    [Fact]
+    public async Task Something_started_during_the_last_check_stops_the_restart()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var launches = new List<bool>();
+        int asked = 0;
+        // free when the restart is asked for, busy by the time the installer would be launched
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, relaunch) => { launches.Add(relaunch); return null; }, busy: () => ++asked > 1);
+        await service.CheckAsync();
+        await service.Staged;
+
+        bool started = await service.RestartAsync();
+
+        Assert.False(started);
+        Assert.True(service.RestartQueued);
+        Assert.Empty(launches);
+        Assert.Equal("v0.3.0", store.Current.PendingUpdateTag); // not forgotten: the file is still good
+    }
+
+    [Fact]
+    public async Task Installing_directly_while_busy_is_refused_but_closing_the_app_is_not_held_up()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        var launches = new List<bool>();
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, relaunch) => { launches.Add(relaunch); return null; }, busy: () => true);
+        await service.CheckAsync();
+        await service.Staged;
+
+        await Assert.ThrowsAsync<UpdateBusyException>(() => service.InstallAsync());
+        Assert.Empty(launches);
+
+        await service.InstallAsync(relaunch: false); // the person is leaving: nothing to protect
+        Assert.Equal([false], launches);
+    }
+
+    [Fact]
+    public async Task A_put_off_restart_is_dropped_when_a_newer_version_replaces_the_ready_one()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        bool newer = false;
+        var handler = new FakeHandler(request => IsSetupRequest(request) ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SetupBytes) }
+            : Ok(newer ? Json(tag: "v0.4.0", setupUrl: Setup.Replace("0.3.0", "0.4.0"), assetName: "Zarpazo-Setup-0.4.0.exe") : Json()));
+        UpdateService service = Service(store, handler, busy: () => true);
+        await service.CheckAsync();
+        await service.Staged;
+        await service.RestartAsync();
+        Assert.True(service.RestartQueued);
+
+        newer = true;
+        await service.CheckAsync();
+        await service.Staged;
+
+        Assert.False(service.RestartQueued); // it was about the old version; the new one is announced again
+        Assert.Equal(new Version(0, 4, 0), service.Ready?.Version);
+    }
+
+    [Fact]
+    public async Task If_a_put_off_restart_fails_later_it_is_reported_once_and_not_retried()
+    {
+        var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        bool busy = true;
+        UpdateService service = Service(store, new FakeHandler(Github), launch: (_, _) => "No se pudo iniciar el instalador.", busy: () => busy);
+        await service.CheckAsync();
+        await service.Staged;
+        await service.RestartAsync();
+        busy = false;
+
+        var ex = await Assert.ThrowsAsync<UpdateException>(() => service.ResumeIfIdleAsync());
+
+        Assert.Equal("No se pudo iniciar el instalador.", ex.Message);
+        Assert.False(service.RestartQueued);
+        Assert.False(await service.ResumeIfIdleAsync());
     }
 
     [Fact]

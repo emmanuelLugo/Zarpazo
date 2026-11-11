@@ -31,7 +31,12 @@ public partial class App : Application
     private GlobalHotKey? _groupHotKey;
     private Rectangle? _lastRecordingRegion; // what the recording shortcut repeats
     private Rectangle? _lastArea; // the last area copied, saved, pinned or recorded, for "Repetir la última zona"
-    private bool _delayPending; // a delayed capture is counting down
+    private bool _delayPending; // a delayed capture is counting down, or about to show its overlay
+    private bool _recordingStarting; // the area was chosen and the recording is about to begin
+
+    // Anything a restart would cut short: choosing an area or editing a capture (the overlay), a recording from the countdown until its
+    // bar is closed (which covers encoding the video and the video editor), and the moments in between.
+    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting;
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
@@ -71,7 +76,7 @@ public partial class App : Application
 
         var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // each request sets its own limit
         _updates = new UpdateService(_settings, new UpdateChecker(http, AppVersion.Current),
-            new UpdateDownloader(http, UpdateDownloader.DefaultFolder), LaunchInstaller);
+            new UpdateDownloader(http, UpdateDownloader.DefaultFolder), LaunchInstaller, isBusy: () => IsBusy);
         _updates.Changed += OnUpdateChanged;
         _tray.UpdateRequested += () => ShowSettings(showAbout: true);
         _tray.RestartForUpdateRequested += ApplyUpdateNow;
@@ -140,26 +145,33 @@ public partial class App : Application
             return;
         }
 
-        _delayPending = true;
-        var countdown = new RecordingCountdown(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds);
+        _delayPending = true; // kept until the overlay is up, so there is no moment in between when nothing seems to be going on
         try
         {
-            await Task.Delay(MenuCloseDelayMs);
-            countdown.Show();
-            for (int left = seconds; left > 0 && _overlay == null; left--) // the shortcut during the wait captures right away
+            var countdown = new RecordingCountdown(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds);
+            try
             {
-                countdown.ShowNumber(left);
-                await Task.Delay(1000);
+                await Task.Delay(MenuCloseDelayMs);
+                countdown.Show();
+                for (int left = seconds; left > 0 && _overlay == null; left--) // the shortcut during the wait captures right away
+                {
+                    countdown.ShowNumber(left);
+                    await Task.Delay(1000);
+                }
             }
+            finally
+            {
+                countdown.Close();
+            }
+
+            await Task.Delay(MenuCloseDelayMs / 2); // the number is excluded from the picture, but older Windows versions ignore that
+            ShowOverlay();
         }
         finally
         {
-            countdown.Close();
             _delayPending = false;
+            OnMaybeIdle();
         }
-
-        await Task.Delay(MenuCloseDelayMs / 2); // the number is excluded from the picture, but older Windows versions ignore that
-        ShowOverlay();
     }
 
     private void ShowGuide()
@@ -247,6 +259,7 @@ public partial class App : Application
                 _historyWindow?.Reload(); // the edited capture replaced the old one
                 _historyWindow?.Show();
                 ReleaseMemoryWhenIdle();
+                OnMaybeIdle();
             };
             _overlay.Show();
         }
@@ -402,12 +415,39 @@ public partial class App : Application
     private void OnUpdateChanged()
     {
         ReleaseInfo? ready = _updates.Ready;
-        _tray!.SetUpdate(_updates.Available?.Version.ToString(), ready != null);
+        _tray!.SetUpdate(_updates.Available?.Version.ToString(), ready != null, _updates.RestartQueued);
         if (ready == null)
         {
             _updateToast?.Dismiss(); // it was about a version that has been replaced
         }
-        else if (_settings.Current.UpdateNotifiedVersion != ready.Tag)
+        else if (_settings.Current.UpdateNotifiedVersion != ready.Tag && !IsBusy)
+        {
+            ShowUpdateToast(ready); // while busy it waits: OnMaybeIdle shows it when the person is done
+        }
+    }
+
+    // Called whenever something the person was doing ends. A restart they asked for and that was put off happens now, and a
+    // new version that was not announced because they were busy is announced.
+    private async void OnMaybeIdle()
+    {
+        if (IsBusy || _updates == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (await _updates.ResumeIfIdleAsync())
+            {
+                return; // the installer has taken over
+            }
+        }
+        catch (UpdateException ex)
+        {
+            _tray?.ShowWarning(ex.Message);
+        }
+
+        if (_updates.Ready is { } ready && _settings.Current.UpdateNotifiedVersion != ready.Tag && !IsBusy)
         {
             ShowUpdateToast(ready);
         }
@@ -452,8 +492,22 @@ public partial class App : Application
         }
     }
 
-    // One click: the app closes, the installer runs with no window, and Zarpazo opens again on the new version.
-    private async void ApplyUpdateNow() => await ApplyUpdateAsync(relaunch: true);
+    // One click: the app closes, the installer runs with no window, and Zarpazo opens again on the new version. If the person is
+    // in the middle of a capture, an edit or a recording it waits until they are done, and says so.
+    private async void ApplyUpdateNow()
+    {
+        try
+        {
+            if (!await _updates.RestartAsync())
+            {
+                _tray!.ShowInfo("Estás usando Zarpazo. Se reiniciará para actualizar en cuanto termines.");
+            }
+        }
+        catch (UpdateException ex)
+        {
+            _tray!.ShowWarning(ex.Message);
+        }
+    }
 
     private void InstallUpdateOnClose()
     {
@@ -494,10 +548,7 @@ public partial class App : Application
     // else why not.
     private string? LaunchInstaller(string setupPath, bool relaunch)
     {
-        if (_recording is { IsRecording: true } or { IsCountingDown: true })
-        {
-            return "Hay una grabación en curso. Termínala y vuelve a intentarlo.";
-        }
+        // Whether the person is in the middle of something was asked by the update service just before this.
 
         // The installer refuses to go on while it sees this mutex, so it is let go before the installer starts.
         _instanceMutex?.ReleaseMutex();
@@ -543,10 +594,24 @@ public partial class App : Application
     private async void BeginRecording(Rectangle region, RecordingOptions options)
     {
         _lastRecordingRegion = region;
-        await Task.Delay(MenuCloseDelayMs);
-        _recording?.Close(); // a finished one still on screen makes way for the new one
-        var session = new RecordingSession(region, options, _settings, _history, () => _recording = null);
-        _recording = session;
+        _recordingStarting = true; // the overlay is about to go: from here to the session being created the app is still busy
+        RecordingSession session;
+        try
+        {
+            await Task.Delay(MenuCloseDelayMs);
+            _recording?.Close(); // a finished one still on screen makes way for the new one
+            session = new RecordingSession(region, options, _settings, _history, () =>
+            {
+                _recording = null;
+                OnMaybeIdle();
+            });
+            _recording = session;
+        }
+        finally
+        {
+            _recordingStarting = false;
+        }
+
         // The tray icon shows that something is being recorded, even when the bar is out of sight.
         session.StateChanged += () => _tray?.SetRecording(session.IsCountingDown || session.IsRecording, session.IsPaused);
         session.Failed += message => _tray!.ShowWarning(message);
@@ -556,7 +621,7 @@ public partial class App : Application
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            session.Close();
+            session.Close(); // sets _recording to null and checks whether the app is idle
             _tray!.ShowWarning($"No se pudo empezar a grabar: {ex.Message}");
         }
     }
@@ -599,6 +664,7 @@ public partial class App : Application
         {
             _overlay = null;
             ReleaseMemoryWhenIdle();
+            OnMaybeIdle();
         };
         _overlay.Show();
     }

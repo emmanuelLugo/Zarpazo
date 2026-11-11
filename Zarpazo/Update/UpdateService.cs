@@ -16,6 +16,7 @@ internal sealed class UpdateService
     private readonly UpdateDownloader _downloader;
     private readonly Func<string, bool, string?> _launchInstaller;
     private readonly Func<bool> _isInstalledCopy;
+    private readonly Func<bool> _isBusy;
     private Task<UpdateCheck>? _running;
     private Task _staging = Task.CompletedTask;
 
@@ -24,15 +25,23 @@ internal sealed class UpdateService
     /// Zarpazo again when it is done. Returns null, or why it couldn't.
     /// </param>
     /// <param name="isInstalledCopy">Whether this running copy is the one the installer put on the PC; only that one updates itself.</param>
+    /// <param name="isBusy">Whether the person is in the middle of something that a restart would cut short.</param>
     public UpdateService(SettingsStore settings, UpdateChecker checker, UpdateDownloader downloader, Func<string, bool, string?> launchInstaller,
-        Func<bool>? isInstalledCopy = null)
+        Func<bool>? isInstalledCopy = null, Func<bool>? isBusy = null)
     {
         _settings = settings;
         _checker = checker;
         _downloader = downloader;
         _launchInstaller = launchInstaller;
         _isInstalledCopy = isInstalledCopy ?? InstalledCopy.IsThisCopyInstalled;
+        _isBusy = isBusy ?? (() => false);
     }
+
+    /// <summary>True while the person is capturing, editing or recording: nothing may restart the app then.</summary>
+    public bool IsBusy => _isBusy();
+
+    /// <summary>The person asked to restart while busy: it happens by itself as soon as nothing is in use.</summary>
+    public bool RestartQueued { get; private set; }
 
     /// <summary>The newer version found by the last check, or null.</summary>
     public ReleaseInfo? Available { get; private set; }
@@ -129,6 +138,7 @@ internal sealed class UpdateService
             if (Ready != null && Ready.Tag != result.Newer?.Tag)
             {
                 Ready = null; // a newer one came out, or this one was installed by hand
+                RestartQueued = false;
                 ForgetPending(deleteFile: true);
             }
 
@@ -179,6 +189,7 @@ internal sealed class UpdateService
     /// Checks the waiting update (downloading it first if it isn't yet) and hands it to the installer, which closes the app.
     /// With <paramref name="relaunch"/> the installer opens Zarpazo again when it is done, with nothing shown in between.
     /// </summary>
+    /// <exception cref="UpdateBusyException">Restarting, and the person is capturing, editing or recording. Nothing is lost: the update stays ready.</exception>
     /// <exception cref="UpdateException">There is nothing to install, or a step failed.</exception>
     public async Task InstallAsync(IProgress<double>? progress = null, CancellationToken cancel = default, bool relaunch = true)
     {
@@ -187,11 +198,74 @@ internal sealed class UpdateService
 
         // Checked again even when it was downloaded earlier: the file may have sat in the folder for days.
         string setup = await _downloader.TryReuseAsync(release, cancel) ?? await _downloader.DownloadAsync(release, progress, cancel);
+
+        // Asked last, with nothing awaited between here and the launch: the person may have started something meanwhile.
+        // Closing the app for good (relaunch is false) is not held up, as it ends whatever is open anyway.
+        if (relaunch && _isBusy())
+        {
+            throw new UpdateBusyException();
+        }
+
         ForgetPending(deleteFile: false); // from here the installer decides; a failed run must not be retried at every start
         if (_launchInstaller(setup, relaunch) is { } problem)
         {
             RememberPending(release); // it didn't start: the file is still good
             throw new UpdateException(problem);
+        }
+    }
+
+    /// <summary>
+    /// Restarts to install the update now, or, if the person is in the middle of something, as soon as nothing is in use
+    /// (see <see cref="ResumeIfIdleAsync"/>).
+    /// </summary>
+    /// <returns>True when the installer was started and the app is closing; false when the restart was put off.</returns>
+    /// <exception cref="UpdateException">There is nothing to install, or a step failed.</exception>
+    public async Task<bool> RestartAsync(IProgress<double>? progress = null, CancellationToken cancel = default)
+    {
+        try
+        {
+            if (_isBusy())
+            {
+                throw new UpdateBusyException();
+            }
+
+            RestartQueued = false;
+            await InstallAsync(progress, cancel, relaunch: true);
+            return true;
+        }
+        catch (UpdateBusyException)
+        {
+            if (!RestartQueued)
+            {
+                RestartQueued = true;
+                Changed?.Invoke();
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// To be called whenever something that kept the app busy ends. If a restart was put off and nothing is in use now, it
+    /// happens.
+    /// </summary>
+    /// <returns>True when the installer was started and the app is closing.</returns>
+    /// <exception cref="UpdateException">A step failed.</exception>
+    public async Task<bool> ResumeIfIdleAsync(CancellationToken cancel = default)
+    {
+        if (!RestartQueued || _isBusy())
+        {
+            return false;
+        }
+
+        try
+        {
+            return await RestartAsync(cancel: cancel);
+        }
+        catch (UpdateException)
+        {
+            RestartQueued = false; // it failed for another reason: say so once, don't retry at every pause
+            Changed?.Invoke();
+            throw;
         }
     }
 

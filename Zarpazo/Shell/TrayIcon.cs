@@ -108,13 +108,17 @@ internal sealed class TrayIcon : IDisposable
 
     /// <summary>
     /// Shows a menu entry for the new version, or hides it when <paramref name="version"/> is null. A downloaded update
-    /// restarts the app with that one click; one that isn't yet opens the settings where it can be downloaded.
+    /// restarts the app with that one click; one that isn't yet opens the settings where it can be downloaded. While a restart is
+    /// put off because the person is busy, the entry says so and can't be clicked again.
     /// </summary>
-    public void SetUpdate(string? version, bool ready)
+    public void SetUpdate(string? version, bool ready, bool restartQueued = false)
     {
         _updateReady = ready;
         _updateItem.Visible = version != null;
-        _updateItem.Text = ready ? $"Reiniciar para actualizar a la versión {version}" : $"Actualizar a la versión {version}…";
+        _updateItem.Enabled = !restartQueued;
+        _updateItem.Text = restartQueued ? $"Se actualizará a la {version} al terminar lo que haces"
+            : ready ? $"Reiniciar para actualizar a la versión {version}"
+            : $"Actualizar a la versión {version}…";
     }
 
     /// <summary>A notice that, when clicked, asks to see the waiting update.</summary>

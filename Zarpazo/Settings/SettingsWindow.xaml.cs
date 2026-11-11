@@ -20,6 +20,7 @@ public partial class SettingsWindow : Window
     private readonly Func<HotKeyBinding, bool>? _tryRegisterGroupHotKey;
     private readonly UpdateService? _updates;
     private CancellationTokenSource? _download;
+    private bool _restartQueuedShown;
 
     /// <param name="tryRegisterHotKey">Makes the combination the active capture shortcut; false if another program owns it.</param>
     /// <param name="tryRegisterRecordHotKey">The same for the recording shortcut.</param>
@@ -163,8 +164,14 @@ public partial class SettingsWindow : Window
             InstallUpdateButton.Content = !inPlace ? "Abrir la página de descarga" : ready ? "Reiniciar y actualizar" : "Descargar e instalar";
             InstallUpdateButton.Visibility = NotesButton.Visibility = Visibility.Visible;
             InstallLaterButton.Visibility = ready && !_updates.InstallOnClose ? Visibility.Visible : Visibility.Collapsed;
+            if (_updates.RestartQueued != _restartQueuedShown) // the buttons come back when a put-off restart is over
+            {
+                _restartQueuedShown = _updates.RestartQueued;
+                InstallUpdateButton.IsEnabled = InstallLaterButton.IsEnabled = CheckUpdateButton.IsEnabled = !_restartQueuedShown;
+            }
             UpdateStatus.Text = $"Hay una versión nueva: {release.Version} (tienes la {AppVersion.Current})."
                 + (!inPlace ? " Esta copia no se instaló con el instalador, así que se descarga desde la página."
+                    : _updates.RestartQueued ? " Se reiniciará para actualizar en cuanto termines lo que haces."
                     : ready && _updates.InstallOnClose ? " Está descargada y se instalará al salir de Zarpazo, o la próxima vez que la abras."
                     : ready ? " Ya está descargada y comprobada: al reiniciar se instala sola y Zarpazo vuelve a abrirse."
                     : _updates.IsDownloading ? " Descargándola en segundo plano…" : "");
@@ -220,8 +227,16 @@ public partial class SettingsWindow : Window
         _download = new CancellationTokenSource();
         try
         {
-            await _updates.InstallAsync(new Progress<double>(done => UpdateProgress.Value = done), _download.Token);
-            UpdateStatus.Text = "Instalando. Zarpazo se cierra y se abre de nuevo solo."; // the app is closing now
+            if (await _updates.RestartAsync(new Progress<double>(done => UpdateProgress.Value = done), _download.Token))
+            {
+                UpdateStatus.Text = "Instalando. Zarpazo se cierra y se abre de nuevo solo."; // the app is closing now
+            }
+            else
+            {
+                // Something is open (a capture, an edit, a recording): it restarts by itself when that ends. The buttons stay off.
+                UpdateProgress.Visibility = Visibility.Collapsed;
+                UpdateStatus.Text = "Estás usando Zarpazo. Se reiniciará para actualizar en cuanto termines.";
+            }
         }
         catch (UpdateException ex)
         {
