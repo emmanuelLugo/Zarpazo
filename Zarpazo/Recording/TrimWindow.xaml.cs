@@ -148,7 +148,7 @@ public partial class TrimWindow : Window
         try
         {
             var progress = new Progress<double>(value => WorkBar.Value = value);
-            await VideoTrimmer.TrimAsync(_source, target, TimeSpan.FromSeconds(Start), TimeSpan.FromSeconds(End), progress);
+            await VideoExporter.ExportAsync(_source, target, new[] { new VideoSegment(Start, End) }, progress);
             TrimmedPath = target;
             DialogResult = true;
         }
