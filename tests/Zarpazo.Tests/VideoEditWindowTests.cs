@@ -139,7 +139,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
     }
 
     // A picture of the window for looking at it: only when the environment variable names a folder.
-    [Fact]
+    [NeedsGpuFact]
     public void The_window_draws_the_timeline_with_pictures_of_the_video()
     {
         string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
