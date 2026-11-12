@@ -1,18 +1,19 @@
 namespace Zarpazo.Recording;
 
 /// <summary>
-/// The edit of a recording: an ordered list of pieces of the original, played one after the other. Cutting, deleting,
-/// reordering, repeating and trimming a piece all change that list; every change can be undone. No window code here, so
-/// the rules can be tested alone.
+/// The edit of a recording: an ordered list of pieces of the original, played one after the other, and the zooms. Cutting,
+/// deleting, reordering, repeating and trimming a piece all change that list; every change, zooms included, can be undone.
+/// No window code here, so the rules can be tested alone.
 /// </summary>
 internal sealed class EditTimeline
 {
     /// <summary>No piece is shorter than this, so every piece can be seen and grabbed.</summary>
     public const double MinSeconds = 0.2;
 
-    private readonly List<VideoSegment[]> _undo = new();
-    private readonly List<VideoSegment[]> _redo = new();
+    private readonly List<Snapshot> _undo = new();
+    private readonly List<Snapshot> _redo = new();
     private VideoSegment[] _segments;
+    private ZoomRegion[] _zooms = [];
     private bool _inGesture;
     private bool _gestureSaved;
 
@@ -30,6 +31,9 @@ internal sealed class EditTimeline
     public double SourceDuration { get; }
 
     public IReadOnlyList<VideoSegment> Segments => _segments;
+
+    /// <summary>The zooms, on the original's clock, in order and never overlapping.</summary>
+    public IReadOnlyList<ZoomRegion> Zooms => _zooms;
 
     /// <summary>The length of the edited video: the pieces added up.</summary>
     public double Duration => _segments.Sum(segment => segment.Length);
@@ -199,8 +203,8 @@ internal sealed class EditTimeline
             return;
         }
 
-        _redo.Add(_segments);
-        _segments = _undo[^1];
+        _redo.Add(Current);
+        Restore(_undo[^1]);
         _undo.RemoveAt(_undo.Count - 1);
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -212,8 +216,8 @@ internal sealed class EditTimeline
             return;
         }
 
-        _undo.Add(_segments);
-        _segments = _redo[^1];
+        _undo.Add(Current);
+        Restore(_redo[^1]);
         _redo.RemoveAt(_redo.Count - 1);
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -233,15 +237,166 @@ internal sealed class EditTimeline
         return true;
     }
 
-    private void Apply(List<VideoSegment> list)
+    private void Apply(List<VideoSegment> list) => Apply(list.ToArray(), _zooms);
+
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms)
     {
         if (!_inGesture || !_gestureSaved)
         {
-            _undo.Add(_segments);
+            _undo.Add(Current);
             _gestureSaved = _inGesture;
         }
         _redo.Clear();
-        _segments = list.ToArray();
+        _segments = segments;
+        _zooms = zooms;
         Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    private Snapshot Current => new(_segments, _zooms);
+
+    private void Restore(Snapshot snapshot) => (_segments, _zooms) = (snapshot.Segments, snapshot.Zooms);
+
+    // ---- Zooms ----
+
+    /// <summary>Replaces all the zooms at once (the automatic ones), as one change. Overlaps are trimmed away.</summary>
+    public void SetZooms(IEnumerable<ZoomRegion> zooms)
+    {
+        var list = new List<ZoomRegion>();
+        foreach (ZoomRegion zoom in zooms.Select(zoom => zoom.Clamped()).OrderBy(zoom => zoom.Start))
+        {
+            double start = Math.Max(Math.Max(0, zoom.Start), list.Count > 0 ? list[^1].End : 0);
+            double end = Math.Min(zoom.End, SourceDuration);
+            if (end - start >= ZoomRegion.MinSeconds)
+            {
+                list.Add(zoom with { Start = start, End = end });
+            }
+        }
+        if (!list.SequenceEqual(_zooms))
+        {
+            Apply(_segments, list.ToArray());
+        }
+    }
+
+    /// <summary>
+    /// Adds a zoom, shortened to fit the free space around it. Returns its place in <see cref="Zooms"/>, or -1 when there is
+    /// no room (it falls on another zoom, or less than <see cref="ZoomRegion.MinSeconds"/> is free there).
+    /// </summary>
+    public int AddZoom(ZoomRegion zoom)
+    {
+        zoom = zoom.Clamped();
+        double middle = (zoom.Start + zoom.End) / 2;
+        if (_zooms.Any(other => middle >= other.Start && middle < other.End))
+        {
+            return -1;
+        }
+
+        (double lower, double upper) = FreeAround(middle);
+        zoom = zoom with { Start = Math.Max(zoom.Start, lower), End = Math.Min(zoom.End, upper) };
+        if (zoom.Length < ZoomRegion.MinSeconds)
+        {
+            return -1;
+        }
+
+        ZoomRegion[] list = _zooms.Append(zoom).OrderBy(other => other.Start).ToArray();
+        Apply(_segments, list);
+        return Array.IndexOf(list, zoom);
+    }
+
+    public bool DeleteZoom(int index)
+    {
+        if (!IsValidZoom(index))
+        {
+            return false;
+        }
+        Apply(_segments, _zooms.Where((_, i) => i != index).ToArray());
+        return true;
+    }
+
+    /// <summary>Slides a zoom to start at <paramref name="start"/>, keeping its length, without passing its neighbours.</summary>
+    public bool MoveZoom(int index, double start)
+    {
+        if (!IsValidZoom(index))
+        {
+            return false;
+        }
+
+        ZoomRegion zoom = _zooms[index];
+        (double lower, double upper) = Neighbours(index);
+        start = Math.Clamp(start, lower, Math.Max(lower, upper - zoom.Length));
+        return ReplaceZoom(index, zoom with { Start = start, End = start + zoom.Length });
+    }
+
+    /// <summary>Moves where a zoom starts, not past the previous zoom nor too close to its own end.</summary>
+    public bool SetZoomStart(int index, double start)
+    {
+        if (!IsValidZoom(index))
+        {
+            return false;
+        }
+
+        ZoomRegion zoom = _zooms[index];
+        (double lower, _) = Neighbours(index);
+        return ReplaceZoom(index, zoom with { Start = Math.Clamp(start, lower, zoom.End - ZoomRegion.MinSeconds) });
+    }
+
+    /// <summary>Moves where a zoom ends, not past the next zoom nor too close to its own start.</summary>
+    public bool SetZoomEnd(int index, double end)
+    {
+        if (!IsValidZoom(index))
+        {
+            return false;
+        }
+
+        ZoomRegion zoom = _zooms[index];
+        (_, double upper) = Neighbours(index);
+        return ReplaceZoom(index, zoom with { End = Math.Clamp(end, zoom.Start + ZoomRegion.MinSeconds, upper) });
+    }
+
+    /// <summary>Changes the point a zoom looks at, in shares of the picture (0 to 1).</summary>
+    public bool SetZoomFocus(int index, double x, double y) =>
+        IsValidZoom(index) && ReplaceZoom(index, (_zooms[index] with { FocusX = x, FocusY = y }).Clamped());
+
+    /// <summary>Changes how close a zoom goes.</summary>
+    public bool SetZoomScale(int index, double scale) =>
+        IsValidZoom(index) && ReplaceZoom(index, (_zooms[index] with { Scale = scale }).Clamped());
+
+    private bool IsValidZoom(int index) => index >= 0 && index < _zooms.Length;
+
+    private bool ReplaceZoom(int index, ZoomRegion zoom)
+    {
+        if (zoom == _zooms[index])
+        {
+            return false;
+        }
+
+        ZoomRegion[] list = (ZoomRegion[])_zooms.Clone();
+        list[index] = zoom;
+        Apply(_segments, list);
+        return true;
+    }
+
+    // Where a zoom may reach: from the end of the one before to the start of the one after, inside the recording.
+    private (double Lower, double Upper) Neighbours(int index) =>
+        (index > 0 ? _zooms[index - 1].End : 0, index < _zooms.Length - 1 ? _zooms[index + 1].Start : SourceDuration);
+
+    // The free stretch around a moment that no zoom covers.
+    private (double Lower, double Upper) FreeAround(double time)
+    {
+        double lower = 0, upper = SourceDuration;
+        foreach (ZoomRegion zoom in _zooms)
+        {
+            if (zoom.End <= time)
+            {
+                lower = Math.Max(lower, zoom.End);
+            }
+            else if (zoom.Start >= time)
+            {
+                upper = Math.Min(upper, zoom.Start);
+            }
+        }
+        return (lower, upper);
+    }
+
+    /// <summary>Everything that can be undone, as it was at one moment.</summary>
+    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms);
 }
