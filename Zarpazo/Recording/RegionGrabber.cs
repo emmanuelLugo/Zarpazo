@@ -33,6 +33,9 @@ internal sealed class RegionGrabber : IDisposable
     /// <summary>Whether the screen is copied through the graphics card (fast) rather than with CopyFromScreen.</summary>
     public bool UsesGraphicsCard => _duplicator != null;
 
+    /// <summary>How the graphics card copy went, for the diagnosis file; null when it is not used.</summary>
+    public string? GraphicsCardReport => _duplicator?.Report;
+
     public int Width { get; }
 
     public int Height { get; }

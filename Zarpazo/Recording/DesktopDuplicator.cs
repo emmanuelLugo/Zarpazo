@@ -28,6 +28,15 @@ internal sealed class DesktopDuplicator : IDisposable
     private readonly Point _offset; // where the area starts on its screen
     private IDXGIOutputDuplication? _duplication;
     private bool _hasPicture;
+    private long _nextRestart; // after a failure, starting again is tried at most once a second: it is slow
+    private int _copied;
+    private int _reused;
+    private int _failed;
+    private int _restarts;
+    private string? _lastError;
+
+    /// <summary>What happened so far, for the diagnosis file: new pictures, repeated ones, failures and the last error.</summary>
+    public string Report => $"copias {_copied}, sin cambios {_reused}, fallos {_failed}, reinicios {_restarts}" + (_lastError == null ? "" : $", último error: {_lastError}");
 
     private DesktopDuplicator(Rectangle region, IDXGIAdapter1 adapter, IDXGIOutput1 output, Point offset)
     {
@@ -95,23 +104,35 @@ internal sealed class DesktopDuplicator : IDisposable
     {
         try
         {
-            if (_duplication == null && !Restart())
+            if (_duplication == null && (Environment.TickCount64 < _nextRestart || !Restart()))
             {
+                _failed++;
                 return false;
             }
 
-            Result result = _duplication!.AcquireNextFrame(0, out OutduplFrameInfo _, out IDXGIResource? resource);
+            Result result = _duplication!.AcquireNextFrame(0, out OutduplFrameInfo info, out IDXGIResource? resource);
             if (result.Code == Vortice.DXGI.ResultCode.WaitTimeout.Code)
             {
                 // Nothing new on the screen: the last picture still holds, if there is one.
+                _reused++;
                 return _hasPicture && Read(into);
             }
             if (result.Code == Vortice.DXGI.ResultCode.AccessLost.Code)
             {
-                Stop(); // the screen changed mode, or Windows switched to another desktop; start again next time
+                Fail("acceso perdido"); // the screen changed mode, or Windows switched to another desktop
                 return false;
             }
             result.CheckError();
+
+            if (info.LastPresentTime == 0)
+            {
+                // Only the pointer moved. The first frame after starting is always like this, and its picture is empty
+                // (all zeros), so the last good copy is used, or none yet.
+                resource?.Dispose();
+                _duplication.ReleaseFrame();
+                _reused++;
+                return _hasPicture && Read(into);
+            }
 
             try
             {
@@ -119,6 +140,7 @@ internal sealed class DesktopDuplicator : IDisposable
                 var box = new Box(_offset.X, _offset.Y, 0, _offset.X + _region.Width, _offset.Y + _region.Height, 1);
                 _context.CopySubresourceRegion(_staging, 0, 0, 0, 0, screen, 0, box);
                 _hasPicture = true;
+                _copied++;
             }
             finally
             {
@@ -129,9 +151,17 @@ internal sealed class DesktopDuplicator : IDisposable
         }
         catch (Exception ex) when (ex is SharpGenException or COMException)
         {
-            Stop();
+            Fail(ex.Message);
             return false;
         }
+    }
+
+    private void Fail(string reason)
+    {
+        _failed++;
+        _lastError = reason;
+        Stop();
+        _nextRestart = Environment.TickCount64 + 1000;
     }
 
     // The area, from the graphics card's memory into the bitmap, row by row (the card's rows can be longer).
@@ -165,12 +195,15 @@ internal sealed class DesktopDuplicator : IDisposable
     {
         try
         {
+            _restarts++;
             _duplication = _output.DuplicateOutput(_device);
             return true;
         }
-        catch (SharpGenException)
+        catch (SharpGenException ex)
         {
-            _duplication = null; // for instance while the UAC prompt is up; tried again next picture
+            _duplication = null; // for instance while the UAC prompt is up; tried again in a second
+            _lastError = ex.Message;
+            _nextRestart = Environment.TickCount64 + 1000;
             return false;
         }
     }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -19,6 +20,8 @@ internal sealed class VideoJob : RecordingJob
     private RegionGrabber? _grabber;
     private FrameInputState? _input;
     private CursorRecorder? _cursor;
+    private readonly CaptureStats _stats = new();
+    private string? _folder;
     private AudioRecorder? _audio;
     private Thread? _thread;
     private volatile bool _stopRequested;
@@ -60,6 +63,7 @@ internal sealed class VideoJob : RecordingJob
         (int width, int height) = RegionGrabber.FitSize(_region, MaxSide, even: true);
         (_width, _height) = (width, height);
         _path = NewFilePath(folder);
+        _folder = folder;
 
         var inputs = new List<AudioInput>();
         try
@@ -126,6 +130,8 @@ internal sealed class VideoJob : RecordingJob
 
         await _writer.FinishAsync();
         SaveCursor();
+        _stats.Save(_folder!, _path!, _quality.VideoFramesPerSecond,
+            _grabber?.UsesGraphicsCard == true ? "tarjeta de video (DXGI)" : "CopyFromScreen", _grabber?.GraphicsCardReport);
         if (_firstPicture != null)
         {
             Thumbnail = PictureOf(_firstPicture, _width, _height);
@@ -221,10 +227,13 @@ internal sealed class VideoJob : RecordingJob
             // The array goes into the encoder's queue and comes back for reuse once it has been encoded.
             byte[] pixels = _writer!.RentPicture();
             _input!.Refresh();
+            long grabStart = Stopwatch.GetTimestamp();
             grabber.Grab(pixels, now);
+            double grabMs = Stopwatch.GetElapsedTime(grabStart).TotalMilliseconds;
             _cursor!.Update((long)stamp.TotalMilliseconds);
             _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
-            _writer!.AddVideo(pixels, stamp); // dropped, not queued, if the encoder is a second behind
+            bool queued = _writer!.AddVideo(pixels, stamp); // dropped, not queued, if the encoder is a second behind
+            _stats.Picture(grabMs, late: now - due > OnTimeMilliseconds, dropped: !queued);
 
             // After a slow picture the next ones are not rushed: the schedule restarts from where the clock is.
             frame = Math.Max(frame + 1, now * _quality.VideoFramesPerSecond / 1000 + 1);

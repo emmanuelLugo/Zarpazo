@@ -12,6 +12,7 @@ namespace Zarpazo.Recording;
 internal static class ZoomRenderer
 {
     private const double MinBitsPerPixel = 0.15;
+    private const int MinFramesPerSecond = 30;
 
     private static readonly int[] StandardRates = [10, 12, 15, 20, 24, 25, 30, 48, 50, 60];
 
@@ -29,7 +30,8 @@ internal static class ZoomRenderer
             ?? profile.Video.FrameRate.Numerator / (double)Math.Max(1u, profile.Video.FrameRate.Denominator);
         // Recordings stamp their pictures in whole milliseconds (gaps of 33 and 34 ms make 29.4), so the rate is taken as the
         // nearest usual one.
-        int fps = StandardRates.MinBy(rate => Math.Abs(rate - recordedRate));
+        // Never fewer than 30: the camera moves every picture, so even over a recording with few pictures it glides.
+        int fps = Math.Max(MinFramesPerSecond, StandardRates.MinBy(rate => Math.Abs(rate - recordedRate)));
         bool withAudio = profile.Audio != null;
         double duration = Math.Max(0.1, info.Duration.TotalSeconds);
         // At least the quality of the original, and never less than about 9 Mbps at 1080p: while the camera moves every pixel
