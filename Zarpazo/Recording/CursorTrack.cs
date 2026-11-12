@@ -43,6 +43,31 @@ internal sealed record CursorTrack(int Width, int Height, IReadOnlyList<CursorSa
         }
     }
 
+    /// <summary>Where the pointer was at a moment, in shares of the picture (0 to 1, outside when it was off the picture); null if it never moved.</summary>
+    public (double X, double Y)? PositionAt(long timeMs)
+    {
+        if (Moves.Count == 0)
+        {
+            return null;
+        }
+
+        // The last move at or before that moment: the pointer stays where it is until it moves again.
+        int low = 0, high = Moves.Count - 1;
+        while (low < high)
+        {
+            int middle = (low + high + 1) / 2;
+            if (Moves[middle].TimeMs <= timeMs)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+        return (Moves[low].X / (double)Width, Moves[low].Y / (double)Height);
+    }
+
     /// <summary>Copies the pointer of <paramref name="video"/>, if it has one, to go with <paramref name="copy"/>.</summary>
     public static void CopyAlong(string video, string copy)
     {

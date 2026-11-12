@@ -138,6 +138,68 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [Fact]
+    public void A_recording_with_clicks_opens_with_its_zooms_ready_to_save_without_asking_to_discard_them()
+    {
+        string copy = Path.Combine(_folder, "clicked.mp4");
+        File.Copy(_samples.Silent, copy);
+        new CursorTrack(320, 180, [new CursorSample(0, 80, 45)], [new CursorClick(1500, 1600, 80, 45, ClickButton.Left)]).Save(copy);
+
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(copy);
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                ZoomRegion zoom = Assert.Single(window.Timeline!.Zooms);
+                Assert.Equal((0.25, 0.25), (zoom.FocusX, zoom.FocusY));
+                Pump(() => false, 100);
+                Assert.True(window.SaveButton.IsEnabled, "the zooms alone make a different video");
+                Assert.False(window.UndoButton.IsEnabled, "the automatic zooms are where the edit starts");
+                Assert.True(window.AutoZoomButton.IsEnabled);
+
+                window.Lane.SelectedZoom = 0;
+                Pump(() => false, 100);
+                Assert.Equal(Visibility.Visible, window.ZoomDetails.Visibility);
+                Assert.Equal(Visibility.Visible, window.FocusLayer.Visibility); // the whole picture, to choose where it looks
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void An_older_recording_without_clicks_opens_without_zooms_and_can_still_get_one_by_hand()
+    {
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.Silent);
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                Assert.Empty(window.Timeline!.Zooms);
+                Assert.False(window.AutoZoomButton.IsEnabled);
+
+                window.AddZoomButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 100);
+                Assert.Single(window.Timeline.Zooms);
+                Assert.True(window.UndoButton.IsEnabled);
+                Assert.True(window.Timeline.HasChanges);
+
+                window.Timeline.Undo(); // or closing would ask whether to throw the zoom away
+                Assert.False(window.Timeline.HasChanges);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A picture of the window for looking at it: only when the environment variable names a folder.
     [NeedsGpuFact]
     public void The_window_draws_the_timeline_with_pictures_of_the_video()
@@ -159,11 +221,20 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 timeline.SetMuted(1, true);
                 window.View.SelectedIndex = 1;
                 window.View.Playhead = 1.2;
+                timeline.AddZoom(new ZoomRegion(0.3, 1.4, 2, 0.7, 0.3));
                 Pump(() => false, 500);
                 Shot(window, folder, "editor.png");
+
+                window.Lane.SelectedZoom = 0;
+                Pump(() => false, 300);
+                Shot(window, folder, "editor-zoom-chosen.png");
             }
             finally
             {
+                while (window.Timeline?.CanUndo == true)
+                {
+                    window.Timeline.Undo(); // with changes, closing would stop to ask whether to discard them
+                }
                 window.Close();
             }
         });

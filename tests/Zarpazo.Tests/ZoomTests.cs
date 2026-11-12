@@ -128,7 +128,50 @@ public sealed class ZoomTests
         Assert.True(ZoomEasing.Out(0.3) > 0.7, "zooming in is quick at first");
     }
 
+    // ---- The row of zooms ----
+
+    [Fact]
+    public void The_row_tells_the_middle_of_a_zoom_from_its_sides()
+    {
+        // At 10 pixels a second a zoom from 2 s to 6 s goes from x = 34 to x = 74 (after the padding of 14).
+        ZoomSpan[] spans = [new ZoomSpan(2, 6, 2, 0.5, 0.5, 0)];
+
+        Assert.Equal((ZoomLaneView.Part.StartEdge, 0), ZoomLaneView.HitTest(spans, 10, new System.Windows.Point(35, 15)));
+        Assert.Equal((ZoomLaneView.Part.Body, 0), ZoomLaneView.HitTest(spans, 10, new System.Windows.Point(54, 15)));
+        Assert.Equal((ZoomLaneView.Part.EndEdge, 0), ZoomLaneView.HitTest(spans, 10, new System.Windows.Point(73, 15)));
+        Assert.Equal((ZoomLaneView.Part.None, -1), ZoomLaneView.HitTest(spans, 10, new System.Windows.Point(100, 15)));
+        Assert.Equal((ZoomLaneView.Part.None, -1), ZoomLaneView.HitTest(spans, 10, new System.Windows.Point(54, 80)));
+    }
+
     // ---- Editing ----
+
+    [Fact]
+    public void The_zooms_an_edit_starts_with_are_not_a_change_to_undo()
+    {
+        var timeline = new EditTimeline(20);
+
+        timeline.StartWithZooms([new ZoomRegion(2, 4, 2, 0.5, 0.5)]);
+
+        Assert.Single(timeline.Zooms);
+        Assert.False(timeline.CanUndo);
+        Assert.False(timeline.HasChanges);
+
+        timeline.SetZoomScale(0, 3);
+        Assert.True(timeline.HasChanges);
+        timeline.SetZoomScale(0, 2); // back as it opened
+        Assert.False(timeline.HasChanges);
+    }
+
+    [Fact]
+    public void The_pointer_position_at_a_moment_is_where_it_last_moved()
+    {
+        var track = new CursorTrack(200, 100, [new CursorSample(0, 20, 10), new CursorSample(1000, 100, 50)], []);
+
+        Assert.Equal((0.1, 0.1), track.PositionAt(500));
+        Assert.Equal((0.5, 0.5), track.PositionAt(1000));
+        Assert.Equal((0.5, 0.5), track.PositionAt(9000));
+        Assert.Null(new CursorTrack(200, 100, [], []).PositionAt(0));
+    }
 
     [Fact]
     public void Zooms_can_be_added_moved_resized_and_deleted_and_every_change_undone()

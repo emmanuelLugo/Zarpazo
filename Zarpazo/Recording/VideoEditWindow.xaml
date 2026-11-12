@@ -4,9 +4,9 @@
         xmlns:local="clr-namespace:Zarpazo.Recording"
         Title="Editar video"
         Width="1000"
-        Height="740"
+        Height="820"
         MinWidth="820"
-        MinHeight="600"
+        MinHeight="680"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
         Background="{DynamicResource WindowBackground}"
@@ -38,11 +38,24 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Background="Black" CornerRadius="6">
-            <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
-                          Stretch="Uniform" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+        <!-- The picture is drawn at the video's own size inside the Viewbox, so the zoom can be set in pixels of the video. -->
+        <Border Background="Black" CornerRadius="6" ClipToBounds="True">
+            <Viewbox Stretch="Uniform">
+                <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
+                      MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
+                    <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
+                                  Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+                    <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
+                    <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
+                        <Path x:Name="FocusShade" Fill="#99000000" />
+                        <Rectangle x:Name="FocusFrame" Stroke="#8E6CEF" />
+                        <Ellipse x:Name="FocusDot" Fill="#8E6CEF" Stroke="White" />
+                    </Canvas>
+                </Grid>
+            </Viewbox>
         </Border>
 
         <Grid Grid.Row="1" Margin="0,12,0,0">
@@ -62,7 +75,7 @@
             <Button x:Name="ForwardButton" Grid.Column="2" Style="{StaticResource Tool}" Content="▶" Click="OnStepForward" IsEnabled="False"
                     ToolTip="Un cuadro adelante (→). Con Mayús, un segundo" />
             <TextBlock x:Name="PositionText" Grid.Column="3" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0" />
-            <TextBlock Grid.Column="5" Text="Zoom" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock Grid.Column="5" Text="Acercar línea" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
             <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
                     VerticalAlignment="Center" ToolTip="Acerca la línea de tiempo (Ctrl + rueda del ratón)" />
         </Grid>
@@ -92,7 +105,8 @@
                 BorderThickness="1" CornerRadius="8" Padding="0,0,0,2">
             <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                           PreviewMouseWheel="OnTimelineWheel" SizeChanged="OnScrollerSizeChanged">
-                <local:TimelineView x:Name="View" SelectionChanged="OnSelectionChanged" Scrubbed="OnScrubbed" Previewed="OnPreviewed"
+                <StackPanel>
+                <local:TimelineView x:Name="View" SelectionChanged="OnSelectionChanged" Scrubbed="OnTimelineScrubbed" Previewed="OnPreviewed"
                                     GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
                     <local:TimelineView.ContextMenu>
                         <ContextMenu>
@@ -104,10 +118,41 @@
                         </ContextMenu>
                     </local:TimelineView.ContextMenu>
                 </local:TimelineView>
+                <local:ZoomLaneView x:Name="Lane" Margin="0,0,0,4" SelectionChanged="OnZoomSelectionChanged" Scrubbed="OnScrubbed"
+                                    AddRequested="OnZoomAddRequested" GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
+                    <local:ZoomLaneView.ContextMenu>
+                        <ContextMenu x:Name="ZoomMenu">
+                            <MenuItem Header="Quitar zoom" InputGestureText="Supr" Click="OnDeleteZoom" />
+                        </ContextMenu>
+                    </local:ZoomLaneView.ContextMenu>
+                </local:ZoomLaneView>
+                </StackPanel>
             </ScrollViewer>
         </Border>
 
-        <Grid Grid.Row="4" Margin="0,10,0,0">
+        <WrapPanel Grid.Row="4" Margin="0,10,0,0">
+            <Button x:Name="AutoZoomButton" Style="{StaticResource Tool}" Content="✨ Zoom automático" Click="OnAutoZoom" IsEnabled="False" />
+            <Button x:Name="AddZoomButton" Style="{StaticResource Tool}" Content="+ Añadir zoom" Click="OnAddZoom" IsEnabled="False"
+                    ToolTip="Añade un zoom donde está la línea roja (Z). También con doble clic en la fila de zooms" />
+            <StackPanel x:Name="ZoomDetails" Orientation="Horizontal" Visibility="Collapsed" Margin="12,0,0,0">
+                <TextBlock Text="Acercar" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <ComboBox x:Name="ZoomDepthBox" Width="86" Focusable="False" SelectionChanged="OnZoomDepthChanged" Margin="0,0,6,0"
+                          ToolTip="Cuánto se acerca este zoom">
+                    <ComboBoxItem Content="1,25×" Tag="1.25" />
+                    <ComboBoxItem Content="1,5×" Tag="1.5" />
+                    <ComboBoxItem Content="1,8×" Tag="1.8" />
+                    <ComboBoxItem Content="2×" Tag="2" />
+                    <ComboBoxItem Content="2,5×" Tag="2.5" />
+                    <ComboBoxItem Content="3×" Tag="3" />
+                </ComboBox>
+                <Button x:Name="DeleteZoomButton" Style="{StaticResource Tool}" Content="Quitar zoom" Click="OnDeleteZoom"
+                        ToolTip="Quita el zoom elegido (Supr)" />
+                <TextBlock Text="Haz clic o arrastra en el video para elegir adónde mira" Foreground="{DynamicResource TextSecondary}"
+                           VerticalAlignment="Center" Margin="6,0,0,0" />
+            </StackPanel>
+        </WrapPanel>
+
+        <Grid Grid.Row="5" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -116,7 +161,7 @@
             <TextBlock x:Name="SelectionText" Grid.Column="1" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
         </Grid>
 
-        <Grid Grid.Row="5" Margin="0,12,0,0">
+        <Grid Grid.Row="6" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

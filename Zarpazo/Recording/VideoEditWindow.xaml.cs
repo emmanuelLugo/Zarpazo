@@ -1,9 +1,11 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Windows.Media.Editing;
@@ -14,7 +16,7 @@ namespace Zarpazo.Recording;
 
 /// <summary>
 /// A small video editor for a recording: cut it in pieces, delete the ones that are not wanted, change their order, repeat
-/// or mute them, adjust where each one starts and ends, and save the result as a new video.
+/// or mute them, adjust where each one starts and ends, zoom in on what was clicked, and save the result as a new video.
 /// </summary>
 public partial class VideoEditWindow : Window
 {
@@ -34,6 +36,10 @@ public partial class VideoEditWindow : Window
     private bool _busy;
     private bool _saved;
     private bool _closed;
+    private CursorTrack? _track;
+    private ZoomView _shownView = ZoomView.Full; // what the player shows now, to turn a click on it into a point of the picture
+    private bool _aiming; // dragging on the picture to move where a zoom looks
+    private bool _showingDepth;
 
     internal VideoEditWindow(string source)
     {
@@ -89,9 +95,19 @@ public partial class VideoEditWindow : Window
                 return;
             }
 
+            // The picture at the video's own size: the zoom is worked out in its pixels.
+            Stage.Width = Player.NaturalVideoWidth > 0 ? Player.NaturalVideoWidth : clip.GetVideoEncodingProperties().Width;
+            Stage.Height = Player.NaturalVideoHeight > 0 ? Player.NaturalVideoHeight : clip.GetVideoEncodingProperties().Height;
+
             _timeline = new EditTimeline(duration);
-            _timeline.Changed += OnTimelineChanged;
             View.Timeline = _timeline;
+            Lane.Timeline = _timeline; // before the window listens, so the zooms are placed again before the window looks at them
+            _timeline.Changed += OnTimelineChanged;
+            _track = CursorTrack.Load(_source);
+            if (_track != null)
+            {
+                _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration)); // like Recordly: the clicks come zoomed already
+            }
             View.SelectedIndex = 0;
             SetPlayhead(0);
             UpdateScale();
@@ -149,12 +165,13 @@ public partial class VideoEditWindow : Window
         StopPlayback();
         View.SelectedIndex = Math.Clamp(View.SelectedIndex, 0, _timeline!.Segments.Count - 1);
         _playhead = Math.Clamp(_playhead, 0, _timeline.Duration);
-        View.Playhead = _playhead;
-        if (!View.IsDragging)
+        View.Playhead = Lane.Playhead = _playhead;
+        if (!View.IsDragging && !Lane.IsDragging)
         {
             UpdateScale();
             ShowFrame();
         }
+        ApplyZoomPreview();
         RefreshState();
     }
 
@@ -177,13 +194,14 @@ public partial class VideoEditWindow : Window
     {
         UpdateScale();
         ShowFrame();
+        ApplyZoomPreview();
         RefreshState();
     }
 
     // The whole edit fits the width at zoom 1; more than that and the timeline scrolls.
     private void UpdateScale()
     {
-        if (_timeline == null || View.IsDragging)
+        if (_timeline == null || View.IsDragging || Lane.IsDragging)
         {
             return;
         }
@@ -194,8 +212,9 @@ public partial class VideoEditWindow : Window
             return;
         }
 
-        View.MinWidth = viewport;
+        View.MinWidth = Lane.MinWidth = viewport;
         View.PixelsPerSecond = (viewport - TimelineLayout.Padding * 2 - 1) / Math.Max(0.1, _timeline.Duration) * _zoom;
+        Lane.PixelsPerSecond = View.PixelsPerSecond;
     }
 
     private void OnScrollerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateScale();
@@ -246,12 +265,13 @@ public partial class VideoEditWindow : Window
     private void SetPlayhead(double time, bool show = true)
     {
         _playhead = Math.Clamp(time, 0, _timeline?.Duration ?? 0);
-        View.Playhead = _playhead;
+        View.Playhead = Lane.Playhead = _playhead;
         UpdatePositionText();
         if (show)
         {
             ShowFrame();
         }
+        ApplyZoomPreview();
     }
 
     private void UpdatePositionText() =>
@@ -306,6 +326,7 @@ public partial class VideoEditWindow : Window
         _playing = true;
         PlayButton.Content = "⏸ Pausa";
         _timer.Start();
+        ApplyZoomPreview(); // a chosen zoom stops showing the whole picture: it plays as it will look
     }
 
     private void StopPlayback()
@@ -383,8 +404,9 @@ public partial class VideoEditWindow : Window
         }
 
         _playhead = _timeline.ToTimeline(_playIndex, position);
-        View.Playhead = _playhead;
+        View.Playhead = Lane.Playhead = _playhead;
         UpdatePositionText();
+        ApplyZoomPreview();
         EnsurePlayheadVisible();
     }
 
@@ -552,8 +574,14 @@ public partial class VideoEditWindow : Window
             case Key.S:
                 Split();
                 break;
+            case Key.Delete or Key.Back when Lane.SelectedZoom >= 0:
+                DeleteZoom();
+                break;
             case Key.Delete or Key.Back:
                 Delete();
+                break;
+            case Key.Z when !ctrl:
+                AddZoomAt(_playhead);
                 break;
             case Key.D when ctrl:
                 Duplicate();
@@ -623,8 +651,22 @@ public partial class VideoEditWindow : Window
         UndoButton.IsEnabled = free && _timeline.CanUndo;
         RedoButton.IsEnabled = free && _timeline.CanRedo;
         ResetButton.IsEnabled = free && _timeline.IsEdited;
-        SaveButton.IsEnabled = free && _timeline.IsEdited;
+        SaveButton.IsEnabled = free && HasResult;
         CancelButton.IsEnabled = free;
+
+        int zooms = _timeline.Zooms.Count;
+        int chosenZoom = Lane.SelectedZoom;
+        AutoZoomButton.IsEnabled = free && _track != null;
+        AutoZoomButton.ToolTip = _track != null
+            ? "Pone un zoom en cada grupo de clics de la grabación. Reemplaza los zooms que haya (se puede deshacer)"
+            : "Esta grabación no guardó dónde se hizo clic (se grabó con una versión anterior de Zarpazo). Puedes añadir zooms a mano";
+        AddZoomButton.IsEnabled = free;
+        ZoomDetails.Visibility = free && chosenZoom >= 0 && chosenZoom < zooms ? Visibility.Visible : Visibility.Collapsed;
+        if (ZoomDetails.Visibility == Visibility.Visible)
+        {
+            ShowDepth(_timeline.Zooms[chosenZoom].Scale);
+        }
+        string zoomText = zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" };
 
         string muteText = hasSelection && _timeline.Segments[selected].Muted ? "Activar sonido" : "Silenciar";
         MuteButton.Content = muteText;
@@ -638,8 +680,10 @@ public partial class VideoEditWindow : Window
         else
         {
             KeptText.Text = _timeline.IsEdited
-                ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)}) · {count} {(count == 1 ? "parte" : "partes")}"
-                : "Sin cambios. Divide con S, elimina con Supr y arrastra el título de una parte para cambiar su orden.";
+                ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)}) · {count} {(count == 1 ? "parte" : "partes")}{zoomText}"
+                : zooms > 0
+                    ? $"Sin cortes{zoomText}. Divide con S, elimina con Supr; arrastra un zoom para moverlo o sus bordes para alargarlo."
+                    : "Sin cambios. Divide con S, elimina con Supr y arrastra el título de una parte para cambiar su orden.";
         }
 
         SelectionText.Text = hasSelection
@@ -647,18 +691,21 @@ public partial class VideoEditWindow : Window
             : "";
     }
 
+    // There is something to save: pieces cut or moved, or zooms (the automatic ones count: the video comes out different).
+    private bool HasResult => _timeline != null && (_timeline.IsEdited || _timeline.Zooms.Count > 0);
+
     private void SetBusy(bool busy)
     {
         _busy = busy;
         WorkBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         WorkBar.Value = 0;
-        View.IsEnabled = !busy;
+        View.IsEnabled = Lane.IsEnabled = Stage.IsEnabled = !busy;
         RefreshState();
     }
 
     private async void OnSave(object sender, RoutedEventArgs e)
     {
-        if (_timeline == null || _busy || !_timeline.IsEdited)
+        if (_timeline == null || _busy || !HasResult)
         {
             return;
         }
@@ -708,6 +755,208 @@ public partial class VideoEditWindow : Window
         }
     }
 
+
+    // ---------- zoom
+
+    /// <summary>The pointer recorded with the video, for the automatic zooms; null for an older recording.</summary>
+    internal CursorTrack? Track => _track;
+
+    // The player shows what the edited video will show at the playhead: zoomed in, or the whole picture. While a zoom is
+    // chosen (and not playing) it shows the whole picture with the zoomed part marked, so where it looks can be changed.
+    private void ApplyZoomPreview()
+    {
+        ZoomCamera? camera = Lane.Camera;
+        double width = Stage.Width, height = Stage.Height;
+        if (camera == null || double.IsNaN(width) || double.IsNaN(height))
+        {
+            return;
+        }
+
+        int chosen = Lane.SelectedZoom;
+        bool picking = chosen >= 0 && !_playing && _timeline != null && chosen < _timeline.Zooms.Count;
+        ZoomView view = picking ? ZoomView.Full : camera.ViewAt(_playhead);
+        _shownView = view;
+        Player.RenderTransform = view.IsFull
+            ? Transform.Identity
+            : new MatrixTransform(1 / view.Width, 0, 0, 1 / view.Height, -view.X * width / view.Width, -view.Y * height / view.Height);
+
+        FocusLayer.Visibility = picking ? Visibility.Visible : Visibility.Collapsed;
+        if (!picking)
+        {
+            return;
+        }
+
+        ZoomRegion zoom = _timeline!.Zooms[chosen];
+        double half = 0.5 / zoom.Scale;
+        ZoomView target = ZoomView.Around(zoom.Scale, Math.Clamp(zoom.FocusX, half, 1 - half), Math.Clamp(zoom.FocusY, half, 1 - half));
+        var frame = new Rect(target.X * width, target.Y * height, target.Width * width, target.Height * height);
+        double line = Math.Max(2, width / 320); // the picture is shrunk to fit, so the lines are drawn thicker in its pixels
+        FocusShade.Data = new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(0, 0, width, height)), new RectangleGeometry(frame));
+        FocusFrame.StrokeThickness = line;
+        FocusFrame.Width = frame.Width;
+        FocusFrame.Height = frame.Height;
+        Canvas.SetLeft(FocusFrame, frame.X);
+        Canvas.SetTop(FocusFrame, frame.Y);
+        double dot = line * 5;
+        FocusDot.Width = FocusDot.Height = dot;
+        FocusDot.StrokeThickness = line / 2;
+        Canvas.SetLeft(FocusDot, zoom.FocusX * width - dot / 2);
+        Canvas.SetTop(FocusDot, zoom.FocusY * height - dot / 2);
+    }
+
+    private void OnZoomSelectionChanged(object? sender, EventArgs e)
+    {
+        if (Lane.SelectedZoom >= 0)
+        {
+            StopPlayback(); // choosing a zoom shows the whole picture to pick where it looks
+        }
+        ApplyZoomPreview();
+        RefreshState();
+    }
+
+    private void OnTimelineScrubbed(object? sender, double time)
+    {
+        Lane.SelectedZoom = -1; // working on the pieces: Supr and the buttons act on them again
+        OnScrubbed(sender, time);
+    }
+
+    private void OnZoomAddRequested(object? sender, double time) => AddZoomAt(time);
+
+    private void OnAddZoom(object sender, RoutedEventArgs e) => AddZoomAt(_playhead);
+
+    // A zoom of two seconds around a moment of the edited video, looking at where the pointer was then.
+    private void AddZoomAt(double time)
+    {
+        if (!CanEdit)
+        {
+            return;
+        }
+
+        StopPlayback();
+        (_, double at) = _timeline!.Locate(time);
+        (double X, double Y) focus = _track?.PositionAt((long)(at * 1000)) is { } pointer
+            ? (Math.Clamp(pointer.X, 0, 1), Math.Clamp(pointer.Y, 0, 1))
+            : (0.5, 0.5);
+        int index = _timeline.AddZoom(new ZoomRegion(at - 1, at + 1, ZoomRegion.DefaultScale, focus.X, focus.Y));
+        if (index < 0)
+        {
+            KeptText.Text = "Ahí ya hay un zoom o no queda sitio para otro. Elige otro momento.";
+            return;
+        }
+        Lane.SelectedZoom = index;
+        SetPlayhead(time);
+    }
+
+    private void OnAutoZoom(object sender, RoutedEventArgs e)
+    {
+        if (!CanEdit || _track == null)
+        {
+            return;
+        }
+
+        StopPlayback();
+        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(_track, _timeline!.SourceDuration);
+        if (zooms.Count == 0)
+        {
+            KeptText.Text = "No hay clics dentro de la zona grabada, así que no hay dónde hacer zoom.";
+            return;
+        }
+        Lane.SelectedZoom = -1;
+        _timeline.SetZooms(zooms);
+    }
+
+    private void OnDeleteZoom(object sender, RoutedEventArgs e) => DeleteZoom();
+
+    private void DeleteZoom()
+    {
+        int index = Lane.SelectedZoom;
+        if (CanEdit && index >= 0)
+        {
+            Lane.SelectedZoom = -1;
+            _timeline!.DeleteZoom(index);
+        }
+    }
+
+    private void OnZoomDepthChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || _showingDepth || !CanEdit || Lane.SelectedZoom < 0 || ZoomDepthBox.SelectedItem is not ComboBoxItem { Tag: string tag })
+        {
+            return;
+        }
+        _timeline!.SetZoomScale(Lane.SelectedZoom, double.Parse(tag, CultureInfo.InvariantCulture));
+    }
+
+    // Clicking or dragging on the picture moves where the zoom looks: the chosen one, or the one playing at the playhead.
+    private void OnStageMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!CanEdit)
+        {
+            return;
+        }
+
+        int index = Lane.SelectedZoom;
+        if (index < 0 && Lane.Camera?.Spans.FirstOrDefault(span => _playhead >= span.Start && _playhead < span.End) is { End: > 0 } span)
+        {
+            index = span.Index;
+        }
+        if (index < 0)
+        {
+            KeptText.Text = "Elige un zoom en su fila (o añade uno con Z) para decidir adónde mira.";
+            return;
+        }
+
+        StopPlayback();
+        Lane.SelectedZoom = index;
+        _aiming = true;
+        _timeline!.BeginGesture(); // the whole drag is one step to undo
+        Stage.CaptureMouse();
+        AimAt(e.GetPosition(Stage));
+        e.Handled = true;
+    }
+
+    private void OnStageMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_aiming)
+        {
+            AimAt(e.GetPosition(Stage));
+        }
+    }
+
+    private void OnStageMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_aiming)
+        {
+            return;
+        }
+        _aiming = false;
+        _timeline?.EndGesture();
+        Stage.ReleaseMouseCapture();
+    }
+
+    // A point of the player, in pixels of the video as it is shown, to shares of the whole picture.
+    private void AimAt(Point point)
+    {
+        int index = Lane.SelectedZoom;
+        if (_timeline == null || index < 0 || double.IsNaN(Stage.Width))
+        {
+            return;
+        }
+
+        double x = _shownView.X + point.X / Stage.Width * _shownView.Width;
+        double y = _shownView.Y + point.Y / Stage.Height * _shownView.Height;
+        _timeline.SetZoomFocus(index, x, y);
+        ApplyZoomPreview();
+    }
+
+    // Shows the chosen zoom's depth without that counting as a change.
+    private void ShowDepth(double scale)
+    {
+        _showingDepth = true;
+        ZoomDepthBox.SelectedItem = ZoomDepthBox.Items.Cast<ComboBoxItem>()
+            .MinBy(item => Math.Abs(double.Parse((string)item.Tag, CultureInfo.InvariantCulture) - scale));
+        _showingDepth = false;
+    }
+
     private void OnCancel(object sender, RoutedEventArgs e) => Close();
 
     private void OnClosing(object? sender, CancelEventArgs e)
@@ -718,7 +967,8 @@ public partial class VideoEditWindow : Window
             return;
         }
 
-        if (!_saved && _timeline?.IsEdited == true)
+        // Only what the person changed asks first: the automatic zooms alone are not worth a question.
+        if (!_saved && _timeline?.HasChanges == true)
         {
             MessageBoxResult answer = MessageBox.Show(this, "Hay cambios sin guardar. ¿Quieres descartarlos?", "Zarpazo", MessageBoxButton.YesNo, MessageBoxImage.Question);
             e.Cancel = answer != MessageBoxResult.Yes;

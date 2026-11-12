@@ -14,6 +14,7 @@ internal sealed class EditTimeline
     private readonly List<Snapshot> _redo = new();
     private VideoSegment[] _segments;
     private ZoomRegion[] _zooms = [];
+    private ZoomRegion[] _startZooms = []; // the zooms the edit opened with, to tell whether anything changed
     private bool _inGesture;
     private bool _gestureSaved;
 
@@ -44,6 +45,9 @@ internal sealed class EditTimeline
 
     /// <summary>True when the pieces are no longer just the whole recording.</summary>
     public bool IsEdited => _segments.Length != 1 || _segments[0].Start > 0 || _segments[0].End < SourceDuration || _segments[0].Muted;
+
+    /// <summary>True when the edit is no longer as it opened: pieces changed, or zooms other than the ones it started with.</summary>
+    public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms);
 
     /// <summary>Where in the edited video a piece begins.</summary>
     public double StartOf(int index)
@@ -261,6 +265,23 @@ internal sealed class EditTimeline
     /// <summary>Replaces all the zooms at once (the automatic ones), as one change. Overlaps are trimmed away.</summary>
     public void SetZooms(IEnumerable<ZoomRegion> zooms)
     {
+        List<ZoomRegion> list = Tidy(zooms);
+        if (!list.SequenceEqual(_zooms))
+        {
+            Apply(_segments, list.ToArray());
+        }
+    }
+
+    /// <summary>The zooms the edit starts with, before anything is done: they are not a change, so there is nothing to undo.</summary>
+    public void StartWithZooms(IEnumerable<ZoomRegion> zooms)
+    {
+        _zooms = _startZooms = Tidy(zooms).ToArray();
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    // In order, in range and never overlapping: a zoom that starts inside the one before starts where that one ends.
+    private List<ZoomRegion> Tidy(IEnumerable<ZoomRegion> zooms)
+    {
         var list = new List<ZoomRegion>();
         foreach (ZoomRegion zoom in zooms.Select(zoom => zoom.Clamped()).OrderBy(zoom => zoom.Start))
         {
@@ -271,10 +292,7 @@ internal sealed class EditTimeline
                 list.Add(zoom with { Start = start, End = end });
             }
         }
-        if (!list.SequenceEqual(_zooms))
-        {
-            Apply(_segments, list.ToArray());
-        }
+        return list;
     }
 
     /// <summary>
