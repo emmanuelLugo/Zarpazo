@@ -13,6 +13,7 @@ namespace Zarpazo.Recording;
 internal sealed class CaptureStats
 {
     private readonly List<double> _grabMs = [];
+    private readonly List<GrabTimings> _steps = [];
     private readonly List<double> _loopMs = [];
     private long _lastPicture = -1;
 
@@ -21,8 +22,9 @@ internal sealed class CaptureStats
     public int Dropped { get; private set; }
 
     /// <summary>One picture: how long copying the screen took and whether it was taken more than a few ms after its turn.</summary>
-    public void Picture(double grabMs, bool late, bool dropped)
+    public void Picture(double grabMs, bool late, bool dropped, GrabTimings steps)
     {
+        _steps.Add(steps);
         long now = Stopwatch.GetTimestamp();
         if (_lastPicture >= 0)
         {
@@ -50,6 +52,11 @@ internal sealed class CaptureStats
             text.AppendLine(c, $"Cuadros: {_grabMs.Count} a {fps} por segundo; tarde: {Late}; descartados por el codificador: {Dropped}");
             text.AppendLine(c, $"Copiar la pantalla (ms): {Summary(_grabMs)}");
             text.AppendLine(c, $"Entre cuadros (ms): {Summary(_loopMs)}");
+            text.AppendLine(c, $"  leer teclado y mouse: {Summary(_steps.Select(s => s.InputMs).ToList())}");
+            text.AppendLine(c, $"  copiar la pantalla: {Summary(_steps.Select(s => s.CopyMs).ToList())} (por la tarjeta: {_steps.Count(s => s.ByGraphicsCard)} de {_steps.Count})");
+            text.AppendLine(c, $"  dibujar puntero y efectos: {Summary(_steps.Select(s => s.DrawMs).ToList())}");
+            text.AppendLine(c, $"  achicar: {Summary(_steps.Select(s => s.ScaleMs).ToList())}");
+            text.AppendLine(c, $"  pasar al video: {Summary(_steps.Select(s => s.OutMs).ToList())}");
             File.WriteAllText(Path.Combine(folder, "ultima-grabacion.txt"), text.ToString());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -59,17 +60,23 @@ internal sealed class RegionGrabber : IDisposable
     /// <param name="timeMs">The time in the recording, for effects that move (the ring that fades after a click).</param>
     public void Grab(byte[] into, long timeMs = 0)
     {
+        long start = Stopwatch.GetTimestamp();
         _effects?.Update(timeMs);
+        long read = Stopwatch.GetTimestamp();
         bool copied = _duplicator?.TryCopy(_full) == true;
+        long copy;
+        long draw;
         using (Graphics graphics = Graphics.FromImage(_full))
         {
             if (!copied)
             {
                 graphics.CopyFromScreen(_region.Location, Point.Empty, _region.Size); // two screens, or the card said no this time
             }
+            copy = Stopwatch.GetTimestamp();
             _effects?.DrawUnderPointer(graphics, _region.Location, timeMs);
             CursorPainter.Draw(graphics, _region.Location, _effects?.CursorScale ?? 1);
             _effects?.DrawKeys(graphics, _region.Size);
+            draw = Stopwatch.GetTimestamp();
         }
 
         Bitmap source = _full;
@@ -82,6 +89,7 @@ internal sealed class RegionGrabber : IDisposable
             source = _scaled;
         }
 
+        long scale = Stopwatch.GetTimestamp();
         BitmapData data = source.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         try
         {
@@ -91,7 +99,14 @@ internal sealed class RegionGrabber : IDisposable
         {
             source.UnlockBits(data);
         }
+        long end = Stopwatch.GetTimestamp();
+        LastTimings = new GrabTimings(Ms(start, read), Ms(read, copy), Ms(copy, draw), Ms(draw, scale), Ms(scale, end), copied);
     }
+
+    /// <summary>How long each step of the last <see cref="Grab"/> took, for the diagnosis file.</summary>
+    public GrabTimings LastTimings { get; private set; }
+
+    private static double Ms(long from, long to) => Stopwatch.GetElapsedTime(from, to).TotalMilliseconds;
 
     public void Dispose()
     {

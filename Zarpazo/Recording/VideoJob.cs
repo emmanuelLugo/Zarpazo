@@ -233,7 +233,7 @@ internal sealed class VideoJob : RecordingJob
             _cursor!.Update((long)stamp.TotalMilliseconds);
             _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
             bool queued = _writer!.AddVideo(pixels, stamp); // dropped, not queued, if the encoder is a second behind
-            _stats.Picture(grabMs, late: now - due > OnTimeMilliseconds, dropped: !queued);
+            _stats.Picture(grabMs, late: now - due > OnTimeMilliseconds, dropped: !queued, grabber.LastTimings);
 
             // After a slow picture the next ones are not rushed: the schedule restarts from where the clock is.
             frame = Math.Max(frame + 1, now * _quality.VideoFramesPerSecond / 1000 + 1);
