@@ -6,6 +6,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.6.0] - 2026-11-12
+
 ### Añadido
 - Actualización automática más cómoda. La versión nueva se descarga sola en segundo plano y se comprueba que sea la publicada; cuando está lista, una tarjeta en la esquina de la pantalla dice «Zarpazo X está lista» con tres opciones: **Reiniciar ahora** (un clic: Zarpazo se cierra, se instala sin mostrar ninguna ventana y vuelve a abrirse con la versión nueva), **Al cerrar** (se instala al salir de Zarpazo desde la bandeja, o la próxima vez que se abra) y **Novedades**. El menú de la bandeja muestra «Reiniciar para actualizar» mientras haya una versión lista, y la descarga se recuerda aunque se cierre Zarpazo. En Configuración > General hay una casilla para apagar la descarga en segundo plano.
 - Si se pide reiniciar mientras se elige un área, se edita una captura o se graba, Zarpazo espera a que termines y entonces se reinicia solo. La tarjeta de una versión nueva tampoco aparece mientras haces algo.
@@ -96,7 +98,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.1...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.3.0...v0.4.0
