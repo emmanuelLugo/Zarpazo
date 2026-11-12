@@ -10,8 +10,9 @@
 # Needs Inno Setup 6 and the .NET 8 SDK and Desktop Runtime. The test copies read ZARPAZO_TEST_* variables because they are built
 # with -p:UpdateTest=true; a normal or published build never does. Takes a few minutes (it builds twice).
 # Run from anywhere: pwsh tools\test-update.ps1   (-Scenario Online|OnStart, -KeepFiles to look at the result afterwards)
+#   pwsh tools\test-update.ps1 -Scenario Manual   to see and try it yourself: it leaves the 9.0.0 copy open with 9.0.1 waiting
 param(
-    [ValidateSet('All', 'Online', 'OnStart')][string]$Scenario = 'All',
+    [ValidateSet('All', 'Online', 'OnStart', 'Manual')][string]$Scenario = 'All',
     [int]$Port = 47831,
     [int]$TimeoutSeconds = 120,
     [switch]$KeepFiles
@@ -223,6 +224,27 @@ try {
         Check ((Get-InstalledVersion) -like '9.0.0*') 'se instaló la 9.0.0 de prueba'
         Run-Update $data 'OnStart'
         Uninstall-Copy
+    }
+
+    if ($Scenario -eq 'Manual') {
+        Step 'Caso Manual: lo pruebas tú con la copia 9.0.0 (se limpia todo al terminar)'
+        $env:ZARPAZO_TEST_DATA = Join-Path $work 'data-manual'
+        $env:ZARPAZO_TEST_CHECKDELAY = '3'
+        Install-Copy $setup900
+        $server = Start-FeedServer $setup901 '9.0.1'
+        Start-Process -FilePath (Join-Path $installDir 'Zarpazo.exe') | Out-Null
+        Write-Host ''
+        Write-Host '   Se abrió una copia de PRUEBA de Zarpazo 9.0.0 (otro icono en la bandeja; los atajos globales siguen siendo los de la tuya).'
+        Write-Host '   En unos 5 segundos descargará la 9.0.1 y saldrá la tarjeta "Zarpazo 9.0.1 está lista". Cosas que probar:'
+        Write-Host '    - Menú de la bandeja (clic derecho en el icono): "Reiniciar para actualizar a la versión 9.0.1".'
+        Write-Host '    - Configuración > General > Actualizaciones: "Reiniciar y actualizar" y "Al cerrar".'
+        Write-Host '    - "Reiniciar ahora": se cierra, no se ve ninguna ventana, vuelve a abrirse sola y a los ~4 s sale "Zarpazo se actualizó a la versión 9.0.1".'
+        Write-Host '    - "Al cerrar" y luego Salir desde la bandeja: se instala al salir y NO se vuelve a abrir.'
+        Write-Host '    - Para ver la espera: empieza una captura (el área sin soltar) y pulsa "Reiniciar para actualizar" en la bandeja: dice que se reiniciará al terminar.'
+        Write-Host ''
+        Read-Host 'Cuando termines, pulsa Enter para cerrar la copia de prueba y limpiarlo todo' | Out-Null
+        Stop-FeedServer $server
+        $server = $null
     }
 
     Step 'Comprobando que no se tocó tu instalación'
