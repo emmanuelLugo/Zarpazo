@@ -200,6 +200,39 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [NeedsGpuFact]
+    public void Turning_the_frame_on_puts_the_recording_on_a_background_and_makes_it_worth_saving()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.WithSound);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                Assert.False(window.SaveButton.IsEnabled,
+                    $"edited {window.Timeline!.IsEdited}, zooms {window.Timeline.Zooms.Count}, frame {window.FrameBox.IsChecked}, track {window.Track != null}");
+                Assert.Equal(8, window.FrameBackgrounds.Children.Count);
+
+                window.FrameBox.IsChecked = true;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 300);
+
+                Assert.Equal(Visibility.Visible, window.Backdrop.Visibility);
+                Assert.True(window.ContentHost.Width < window.Stage.Width, "the recording is smaller, inside its frame");
+                Assert.True(window.SaveButton.IsEnabled, "a framed video is a different video");
+                Assert.False(window.Timeline!.HasChanges, "the frame is a style, not an edit to discard");
+                Shot(window, folder, "editor-frame.png");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A picture of the window for looking at it: only when the environment variable names a folder.
     [NeedsGpuFact]
     public void The_window_draws_the_timeline_with_pictures_of_the_video()

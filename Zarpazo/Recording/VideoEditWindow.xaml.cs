@@ -41,11 +41,20 @@ public partial class VideoEditWindow : Window
     private bool _aiming; // dragging on the picture to move where a zoom looks
     private bool _showingDepth;
     private long _playheadStamp; // when the playhead was last read from the player, to move the zoom smoothly in between
+    private readonly Settings.SettingsStore? _settings;
+    private VideoFrameStyle _frame;
+    private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
+    private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
+    private bool _showingFrame;
 
-    internal VideoEditWindow(string source)
+    /// <param name="settings">Where the frame chosen is remembered; none in tests.</param>
+    internal VideoEditWindow(string source, Settings.SettingsStore? settings = null)
     {
         InitializeComponent();
         Theme.TitleBarTheme.Follow(this);
+        _settings = settings;
+        _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
+        BuildFrameChoices();
         _ready = true;
         _source = source;
         _timer.Tick += (_, _) => FollowPlayback();
@@ -111,6 +120,7 @@ public partial class VideoEditWindow : Window
             {
                 _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration)); // like Recordly: the clicks come zoomed already
             }
+            ApplyFrame();
             View.SelectedIndex = 0;
             SetPlayhead(0);
             UpdateScale();
@@ -165,6 +175,7 @@ public partial class VideoEditWindow : Window
 
     private void OnTimelineChanged(object? sender, EventArgs e)
     {
+        RebuildPreviewCamera();
         StopPlayback();
         View.SelectedIndex = Math.Clamp(View.SelectedIndex, 0, _timeline!.Segments.Count - 1);
         _playhead = Math.Clamp(_playhead, 0, _timeline.Duration);
@@ -670,7 +681,7 @@ public partial class VideoEditWindow : Window
         {
             ShowDepth(_timeline.Zooms[chosenZoom].Scale);
         }
-        string zoomText = zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" };
+        string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "");
 
         string muteText = hasSelection && _timeline.Segments[selected].Muted ? "Activar sonido" : "Silenciar";
         MuteButton.Content = muteText;
@@ -679,13 +690,15 @@ public partial class VideoEditWindow : Window
 
         if (_busy)
         {
-            KeptText.Text = _timeline.Zooms.Count > 0 ? "Guardando el video con los zooms… (se vuelve a crear cada cuadro, puede tardar)" : "Guardando el video…";
+            KeptText.Text = _timeline.Zooms.Count > 0 || _frame.Enabled
+                ? "Guardando el video… (se vuelve a crear cada cuadro con el zoom y el marco, puede tardar)"
+                : "Guardando el video…";
         }
         else
         {
             KeptText.Text = _timeline.IsEdited
                 ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)}) · {count} {(count == 1 ? "parte" : "partes")}{zoomText}"
-                : zooms > 0
+                : zooms > 0 || _frame.Enabled
                     ? $"Sin cortes{zoomText}. Divide con S, elimina con Supr; arrastra un zoom para moverlo o sus bordes para alargarlo."
                     : "Sin cambios. Divide con S, elimina con Supr y arrastra el título de una parte para cambiar su orden.";
         }
@@ -696,7 +709,7 @@ public partial class VideoEditWindow : Window
     }
 
     // There is something to save: pieces cut or moved, or zooms (the automatic ones count: the video comes out different).
-    private bool HasResult => _timeline != null && (_timeline.IsEdited || _timeline.Zooms.Count > 0);
+    private bool HasResult => _timeline != null && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled);
 
     private void SetBusy(bool busy)
     {
@@ -720,7 +733,7 @@ public partial class VideoEditWindow : Window
         try
         {
             var progress = new Progress<double>(value => WorkBar.Value = value);
-            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, progress);
+            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress);
             EditedPath = target;
             _saved = true;
             _busy = false; // or Closing would refuse
@@ -771,7 +784,7 @@ public partial class VideoEditWindow : Window
     // draws, the playhead is carried on from the last reading by the time that has passed.
     private void OnRendering(object? sender, EventArgs e)
     {
-        if (_playing && Lane.Camera is { IsEmpty: false })
+        if (_playing && _previewCamera is { IsEmpty: false })
         {
             double since = Math.Min(0.1, Stopwatch.GetElapsedTime(_playheadStamp).TotalSeconds);
             ApplyZoomPreview(_playhead + since);
@@ -782,7 +795,7 @@ public partial class VideoEditWindow : Window
 
     private void ApplyZoomPreview(double time)
     {
-        ZoomCamera? camera = Lane.Camera;
+        ZoomCamera? camera = _previewCamera;
         double width = Stage.Width, height = Stage.Height;
         if (camera == null || double.IsNaN(width) || double.IsNaN(height))
         {
@@ -793,7 +806,7 @@ public partial class VideoEditWindow : Window
         bool picking = chosen >= 0 && !_playing && _timeline != null && chosen < _timeline.Zooms.Count;
         ZoomView view = picking ? ZoomView.Full : camera.ViewAt(time);
         _shownView = view;
-        Player.RenderTransform = view.IsFull
+        Scene.RenderTransform = view.IsFull
             ? Transform.Identity
             : new MatrixTransform(1 / view.Width, 0, 0, 1 / view.Height, -view.X * width / view.Width, -view.Y * height / view.Height);
 
@@ -804,6 +817,11 @@ public partial class VideoEditWindow : Window
         }
 
         ZoomRegion zoom = _timeline!.Zooms[chosen];
+        if (_layout is { } layout)
+        {
+            (double sceneX, double sceneY) = layout.ToScene(zoom.FocusX, zoom.FocusY);
+            zoom = zoom with { FocusX = sceneX, FocusY = sceneY };
+        }
         double half = 0.5 / zoom.Scale;
         ZoomView target = ZoomView.Around(zoom.Scale, Math.Clamp(zoom.FocusX, half, 1 - half), Math.Clamp(zoom.FocusY, half, 1 - half));
         var frame = new Rect(target.X * width, target.Y * height, target.Width * width, target.Height * height);
@@ -961,6 +979,12 @@ public partial class VideoEditWindow : Window
 
         double x = _shownView.X + point.X / Stage.Width * _shownView.Width;
         double y = _shownView.Y + point.Y / Stage.Height * _shownView.Height;
+        if (_layout is { } layout)
+        {
+            // A point of the scene, as a point of the recording in it.
+            x = (x * layout.Width - layout.Content.X) / layout.Content.Width;
+            y = (y * layout.Height - layout.Content.Y) / layout.Content.Height;
+        }
         _timeline.SetZoomFocus(index, x, y);
         ApplyZoomPreview();
     }
@@ -972,6 +996,118 @@ public partial class VideoEditWindow : Window
         ZoomDepthBox.SelectedItem = ZoomDepthBox.Items.Cast<ComboBoxItem>()
             .MinBy(item => Math.Abs(double.Parse((string)item.Tag, CultureInfo.InvariantCulture) - scale));
         _showingDepth = false;
+    }
+
+
+    // ---------- frame
+
+    // The swatches of the backgrounds on offer, the same as Embellecer's.
+    private void BuildFrameChoices()
+    {
+        foreach (Output.BeautifyBackground background in Output.BeautifyBackground.All)
+        {
+            var swatch = new RadioButton
+            {
+                Style = (Style)FindResource("Swatch"),
+                GroupName = "frameBackground",
+                Background = background.ToBrush(),
+                Tag = background.Key,
+                ToolTip = background.Name,
+            };
+            swatch.Checked += OnFrameChanged;
+            FrameBackgrounds.Children.Add(swatch);
+        }
+        ShowFrameChoices();
+    }
+
+    private void ShowFrameChoices()
+    {
+        _showingFrame = true;
+        FrameBox.IsChecked = _frame.Enabled;
+        foreach (RadioButton swatch in FrameBackgrounds.Children.OfType<RadioButton>())
+        {
+            swatch.IsChecked = (string)swatch.Tag == _frame.Background;
+        }
+        FramePaddingBox.SelectedIndex = Array.IndexOf(VideoFrameStyle.PaddingChoices, _frame.Padding);
+        FrameRadiusBox.SelectedIndex = Array.IndexOf(VideoFrameStyle.RadiusChoices, _frame.Radius);
+        FrameShadowBox.IsChecked = _frame.Shadow;
+        FrameOptions.IsEnabled = _frame.Enabled;
+        FrameOptions.Opacity = _frame.Enabled ? 1 : 0.5;
+        _showingFrame = false;
+    }
+
+    private void OnFrameChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || _showingFrame)
+        {
+            return;
+        }
+
+        string background = FrameBackgrounds.Children.OfType<RadioButton>().FirstOrDefault(swatch => swatch.IsChecked == true)?.Tag as string
+            ?? _frame.Background;
+        _frame = new VideoFrameStyle(
+            FrameBox.IsChecked == true,
+            background,
+            VideoFrameStyle.PaddingChoices[Math.Max(0, FramePaddingBox.SelectedIndex)],
+            VideoFrameStyle.RadiusChoices[Math.Max(0, FrameRadiusBox.SelectedIndex)],
+            FrameShadowBox.IsChecked == true);
+        ShowFrameChoices();
+        if (_settings != null)
+        {
+            _settings.Current.VideoFrame = _frame;
+            _settings.Save(); // remembered for the next video
+        }
+        ApplyFrame();
+        ApplyZoomPreview();
+        RefreshState();
+    }
+
+    // Lays out the scene for the frame: the backdrop behind, the recording in its place with its corners rounded. Without a
+    // frame the recording fills the scene.
+    private void ApplyFrame()
+    {
+        double width = Stage.Width, height = Stage.Height;
+        if (double.IsNaN(width) || double.IsNaN(height))
+        {
+            return;
+        }
+
+        Scene.Width = width;
+        Scene.Height = height;
+        if (_frame.Enabled)
+        {
+            _layout = FrameLayout.For(_frame, (int)width, (int)height);
+            Int32Rect content = _layout.Value.Content;
+            // A smaller backdrop is plenty for the preview, and quick to draw again when a choice changes.
+            Backdrop.Source = FrameBackdrop.Picture(_frame, _layout.Value, Math.Min(1, 960 / width));
+            Backdrop.Visibility = Visibility.Visible;
+            ContentHost.Margin = new Thickness(content.X, content.Y, 0, 0);
+            ContentHost.Width = content.Width;
+            ContentHost.Height = content.Height;
+            double radius = _layout.Value.RadiusPixels;
+            ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, content.Width, content.Height), radius, radius) : null;
+        }
+        else
+        {
+            _layout = null;
+            Backdrop.Visibility = Visibility.Collapsed;
+            ContentHost.Margin = new Thickness(0);
+            ContentHost.Width = width;
+            ContentHost.Height = height;
+            ContentHost.Clip = null;
+        }
+        RebuildPreviewCamera();
+    }
+
+    // The camera of the preview: the timeline's zooms, with their points moved into the scene when there is a frame.
+    private void RebuildPreviewCamera()
+    {
+        if (_timeline == null)
+        {
+            return;
+        }
+        IReadOnlyList<ZoomRegion> zooms = _layout is { } layout ? layout.ToScene(_timeline.Zooms) : _timeline.Zooms;
+        _previewCamera = new ZoomCamera(_timeline.Segments, zooms);
     }
 
     private void OnCancel(object sender, RoutedEventArgs e) => Close();

@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Zarpazo.Recording"
         Title="Editar video"
-        Width="1000"
+        Width="1180"
         Height="820"
-        MinWidth="820"
+        MinWidth="980"
         MinHeight="680"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
@@ -27,6 +27,37 @@
                 <Setter Property="Padding" Value="11,4" />
                 <Setter Property="Margin" Value="0,0,6,0" />
             </Style>
+
+            <!-- A background to choose for the frame: a rounded swatch of it, ringed when chosen. -->
+            <Style x:Key="Swatch" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Width" Value="34" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="Margin" Value="0,0,6,6" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Ring" CornerRadius="9" BorderThickness="2" BorderBrush="Transparent" Padding="2">
+                                <Border CornerRadius="6" Background="{TemplateBinding Background}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Ring" Property="Opacity" Value="0.85" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="PanelTitle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Margin" Value="0,12,0,6" />
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -41,22 +72,61 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- The picture is drawn at the video's own size inside the Viewbox, so the zoom can be set in pixels of the video. -->
-        <Border Background="Black" CornerRadius="6" ClipToBounds="True">
-            <Viewbox Stretch="Uniform">
-                <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
-                      MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
-                    <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
-                                  Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
-                    <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
-                    <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
-                        <Path x:Name="FocusShade" Fill="#99000000" />
-                        <Rectangle x:Name="FocusFrame" Stroke="#8E6CEF" />
-                        <Ellipse x:Name="FocusDot" Fill="#8E6CEF" Stroke="White" />
-                    </Canvas>
-                </Grid>
-            </Viewbox>
-        </Border>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- The scene is drawn at the video's own size inside the Viewbox, so the zoom and the frame are worked out in its pixels.
+                 The camera (the zoom) moves the Scene; the frame is its backdrop and the place of the recording in it. -->
+            <Border Background="Black" CornerRadius="6" ClipToBounds="True">
+                <Viewbox Stretch="Uniform">
+                    <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
+                          MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
+                        <Grid x:Name="Scene">
+                            <Image x:Name="Backdrop" Stretch="Fill" Visibility="Collapsed" />
+                            <Grid x:Name="ContentHost" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
+                                              Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+                            </Grid>
+                        </Grid>
+                        <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
+                        <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
+                            <Path x:Name="FocusShade" Fill="#99000000" />
+                            <Rectangle x:Name="FocusFrame" Stroke="#8E6CEF" />
+                            <Ellipse x:Name="FocusDot" Fill="#8E6CEF" Stroke="White" />
+                        </Canvas>
+                    </Grid>
+                </Viewbox>
+            </Border>
+
+            <!-- The frame: a background behind the recording, room around it, rounded corners and a shadow. -->
+            <Border Grid.Column="1" Width="220" Margin="12,0,0,0" Padding="14,10" CornerRadius="8"
+                    Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                <StackPanel>
+                    <CheckBox x:Name="FrameBox" Content="Marco" FontWeight="SemiBold" Focusable="False" Click="OnFrameChanged"
+                              ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
+                    <StackPanel x:Name="FrameOptions">
+                        <TextBlock Text="Fondo" Style="{StaticResource PanelTitle}" />
+                        <WrapPanel x:Name="FrameBackgrounds" />
+                        <TextBlock Text="Margen" Style="{StaticResource PanelTitle}" Margin="0,6,0,6" />
+                        <ComboBox x:Name="FramePaddingBox" Focusable="False" SelectionChanged="OnFrameChanged">
+                            <ComboBoxItem Content="Pequeño" />
+                            <ComboBoxItem Content="Medio" />
+                            <ComboBoxItem Content="Grande" />
+                        </ComboBox>
+                        <TextBlock Text="Esquinas" Style="{StaticResource PanelTitle}" />
+                        <ComboBox x:Name="FrameRadiusBox" Focusable="False" SelectionChanged="OnFrameChanged">
+                            <ComboBoxItem Content="Rectas" />
+                            <ComboBoxItem Content="Suaves" />
+                            <ComboBoxItem Content="Redondas" />
+                        </ComboBox>
+                        <CheckBox x:Name="FrameShadowBox" Content="Sombra" Margin="0,12,0,0" Focusable="False" Click="OnFrameChanged" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <Grid Grid.Row="1" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>

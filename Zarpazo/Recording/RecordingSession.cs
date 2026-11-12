@@ -269,7 +269,7 @@ internal sealed class RecordingSession
             return;
         }
 
-        var window = new VideoEditWindow(_filePath) { Owner = _bar };
+        var window = new VideoEditWindow(_filePath, _settings) { Owner = _bar };
         if (window.ShowDialog() != true || window.EditedPath is not { } trimmed)
         {
             return;

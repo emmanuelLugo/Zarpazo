@@ -129,6 +129,27 @@ internal sealed class AppSettings
     public bool RecordHighlightCursor { get; set; }
     public bool RecordShowKeys { get; set; }
 
+    /// <summary>The frame of edited videos (see <see cref="Recording.VideoFrameStyle"/>); the last one chosen in the editor.</summary>
+    public bool VideoFrameEnabled { get; set; } = Recording.VideoFrameStyle.Default.Enabled;
+    public string VideoFrameBackground { get; set; } = Recording.VideoFrameStyle.Default.Background;
+    public double VideoFramePadding { get; set; } = Recording.VideoFrameStyle.Default.Padding;
+    public double VideoFrameRadius { get; set; } = Recording.VideoFrameStyle.Default.Radius;
+    public bool VideoFrameShadow { get; set; } = Recording.VideoFrameStyle.Default.Shadow;
+
+    [JsonIgnore]
+    public Recording.VideoFrameStyle VideoFrame
+    {
+        get => new Recording.VideoFrameStyle(VideoFrameEnabled, VideoFrameBackground ?? "", VideoFramePadding, VideoFrameRadius, VideoFrameShadow).Tidied();
+        set
+        {
+            VideoFrameEnabled = value.Enabled;
+            VideoFrameBackground = value.Background;
+            VideoFramePadding = value.Padding;
+            VideoFrameRadius = value.Radius;
+            VideoFrameShadow = value.Shadow;
+        }
+    }
+
     /// <summary>How big the pointer is drawn in recordings: 1 (as on screen), 1.5 or 2.</summary>
     public double RecordCursorScale { get; set; } = 1;
 
