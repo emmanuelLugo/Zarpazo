@@ -20,7 +20,7 @@ internal sealed record RecordingQuality(
     /// <summary>The values the settings window offers; whatever is in the settings file snaps to the nearest one.</summary>
     public static readonly int[] GifFramesPerSecondChoices = [8, 12, 15, 20];
     public static readonly int[] GifMaxSecondsChoices = [15, 30, 60];
-    public static readonly int[] VideoFramesPerSecondChoices = [15, 24, 30];
+    public static readonly int[] VideoFramesPerSecondChoices = [15, 24, 30, 60];
     public static readonly int[] VideoMaxMinutesChoices = [5, 10, 30, 60];
 
     public static RecordingQuality Default { get; } = new();

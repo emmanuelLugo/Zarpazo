@@ -60,13 +60,13 @@ public sealed class QualitySettingsTests : IDisposable
     {
         Directory.CreateDirectory(_folder);
         File.WriteAllText(FilePath, """
-            { "GifFramesPerSecond": 100, "GifMaxSeconds": 1, "VideoFramesPerSecond": 60, "VideoMaxMinutes": 1000,
+            { "GifFramesPerSecond": 100, "GifMaxSeconds": 1, "VideoFramesPerSecond": 100, "VideoMaxMinutes": 1000,
               "VideoQuality": "ultra", "JpegQuality": 1 }
             """);
 
         AppSettings settings = new SettingsStore(FilePath).Current;
 
-        Assert.Equal(new RecordingQuality(20, false, 15, 30, VideoQuality.Medium, 60), settings.RecordingQuality);
+        Assert.Equal(new RecordingQuality(20, false, 15, 60, VideoQuality.Medium, 60), settings.RecordingQuality);
         Assert.Equal(60, settings.JpegQuality);
     }
 

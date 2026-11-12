@@ -238,6 +238,7 @@
                             <ComboBoxItem Content="15 (ligero)" />
                             <ComboBoxItem Content="24" />
                             <ComboBoxItem Content="30 (fluido)" />
+                            <ComboBoxItem Content="60 (muy fluido)" />
                         </ComboBox>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
