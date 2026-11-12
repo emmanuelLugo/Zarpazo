@@ -21,7 +21,7 @@ namespace Zarpazo;
 
 public partial class App : Application
 {
-    private const string InstanceMutexName = @"Local\Zarpazo.SingleInstance";
+    private static readonly string InstanceMutexName = TestOverrides.Get("MUTEX") ?? @"Local\Zarpazo.SingleInstance";
     private const int MenuCloseDelayMs = 200;
 
     private Mutex? _instanceMutex;
@@ -32,6 +32,7 @@ public partial class App : Application
     private Rectangle? _lastRecordingRegion; // what the recording shortcut repeats
     private Rectangle? _lastArea; // the last area copied, saved, pinned or recorded, for "Repetir la última zona"
     private bool _delayPending; // a delayed capture is counting down, or about to show its overlay
+    private bool _autoRestartStarted;
     private bool _recordingStarting; // the area was chosen and the recording is about to begin
 
     // Anything a restart would cut short: choosing an area or editing a capture (the overlay), a recording from the countdown until its
@@ -332,7 +333,9 @@ public partial class App : Application
             return;
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(30));
+        // (a test build, from tools\test-update.ps1, can shorten the wait)
+        double firstLookAfter = double.TryParse(TestOverrides.Get("CHECKDELAY"), System.Globalization.CultureInfo.InvariantCulture, out double seconds) ? seconds : 30;
+        await Task.Delay(TimeSpan.FromSeconds(firstLookAfter));
         await CheckForUpdatesQuietlyAsync();
         _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(3) };
         _updateTimer.Tick += async (_, _) => await CheckForUpdatesQuietlyAsync();
@@ -419,6 +422,13 @@ public partial class App : Application
     {
         ReleaseInfo? ready = _updates.Ready;
         _tray!.SetUpdate(_updates.Available?.Version.ToString(), ready != null, _updates.RestartQueued);
+        if (ready != null && TestOverrides.Get("AUTORESTART") == "1" && !_autoRestartStarted)
+        {
+            _autoRestartStarted = true; // test builds only: restart as soon as the update is ready, as if the button had been pressed
+            ApplyUpdateNow();
+            return;
+        }
+
         if (ready == null)
         {
             _updateToast?.Dismiss(); // it was about a version that has been replaced

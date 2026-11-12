@@ -29,8 +29,8 @@ internal sealed class CaptureHistory
 
     private readonly string _folder;
 
-    public static string DefaultFolder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "History");
+    public static string DefaultFolder { get; } = Update.TestOverrides.Data(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "History"), "History");
 
     public CaptureHistory(string folder) => _folder = folder;
 

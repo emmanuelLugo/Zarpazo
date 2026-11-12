@@ -10,7 +10,8 @@ namespace Zarpazo.Update;
 internal static class InstalledCopy
 {
     // The installer's AppId plus "_is1": where Inno Setup records a per-user installation (see installer\Zarpazo.iss).
-    private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{6F0B6A52-3C1D-4E8A-9B47-5D2A0C7E91F4}_is1";
+    private static readonly string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\"
+        + (TestOverrides.Get("APPID") ?? "{6F0B6A52-3C1D-4E8A-9B47-5D2A0C7E91F4}") + "_is1";
 
     public static bool IsThisCopyInstalled() => Matches(Environment.ProcessPath, ReadInstallLocation());
 

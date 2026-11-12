@@ -10,8 +10,8 @@ internal sealed class SettingsStore
 
     private readonly string _path;
 
-    public static string DefaultPath { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Zarpazo", "settings.json");
+    public static string DefaultPath { get; } = Update.TestOverrides.Data(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Zarpazo", "settings.json"), "settings.json");
 
     public SettingsStore(string path)
     {

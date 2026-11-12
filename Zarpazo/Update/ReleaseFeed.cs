@@ -6,10 +6,10 @@ namespace Zarpazo.Update;
 /// <summary>Where releases come from, and a reader for what GitHub's "latest release" call returns.</summary>
 internal static class ReleaseFeed
 {
-    public const string LatestUrl = "https://api.github.com/repos/emmanuelLugo/Zarpazo/releases/latest";
+    public static string LatestUrl { get; } = TestOverrides.Get("FEED") ?? "https://api.github.com/repos/emmanuelLugo/Zarpazo/releases/latest";
 
     /// <summary>The installer is only ever downloaded from here: a link anywhere else in the answer is ignored.</summary>
-    public const string DownloadPrefix = "https://github.com/emmanuelLugo/Zarpazo/releases/download/";
+    public static string DownloadPrefix { get; } = TestOverrides.Get("DOWNLOADS") ?? "https://github.com/emmanuelLugo/Zarpazo/releases/download/";
 
     public const string ReleasesPage = "https://github.com/emmanuelLugo/Zarpazo/releases/latest";
 

@@ -823,6 +823,33 @@ public sealed class UpdateTests : IDisposable
         Assert.Equal("0.5.1", new SettingsStore(path).Current.LastRunVersion);
     }
 
+    // ---- the hooks for tools\test-update.ps1 ----
+
+    [Fact]
+    public void A_normal_build_ignores_the_variables_that_redirect_updates_and_data()
+    {
+        string[] names = ["FEED", "DOWNLOADS", "APPID", "DATA", "MUTEX", "CHECKDELAY", "AUTORESTART"];
+        try
+        {
+            foreach (string name in names)
+            {
+                Environment.SetEnvironmentVariable("ZARPAZO_TEST_" + name, @"C:\somewhere\else");
+            }
+
+            Assert.All(names, name => Assert.Null(TestOverrides.Get(name)));
+            Assert.Equal(@"C:\normal\settings.json", TestOverrides.Data(@"C:\normal\settings.json", "settings.json"));
+        }
+        finally
+        {
+            foreach (string name in names)
+            {
+                Environment.SetEnvironmentVariable("ZARPAZO_TEST_" + name, null);
+            }
+        }
+        Assert.StartsWith("https://api.github.com/repos/emmanuelLugo/Zarpazo/", ReleaseFeed.LatestUrl);
+        Assert.StartsWith("https://github.com/emmanuelLugo/Zarpazo/releases/download/", ReleaseFeed.DownloadPrefix);
+    }
+
     // ---- which copy updates itself ----
 
     [Theory]

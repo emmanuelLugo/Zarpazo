@@ -80,6 +80,7 @@ dotnet run --project Zarpazo        # ejecutar
 dotnet test                         # pruebas (tardan cerca de un minuto)
 pwsh tools\publish.ps1              # Zarpazo.exe y Zarpazo-ligero.exe en publish\
 pwsh tools\build-installer.ps1      # instalador con Inno Setup 6 en publish\
+pwsh tools\test-update.ps1          # prueba la actualización automática de punta a punta, sin tocar tu instalación (unos minutos)
 ```
 
 La estructura, las decisiones técnicas y cómo colaborar están en [CONTRIBUTING.md](CONTRIBUTING.md). El plan de funciones completo, en [PLAN.md](PLAN.md).

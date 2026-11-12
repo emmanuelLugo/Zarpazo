@@ -11,8 +11,8 @@ namespace Zarpazo.Update;
 internal sealed class UpdateDownloader(HttpClient http, string folder)
 {
     // Not the temp folder: the installer can wait here for days, and Windows empties temp folders on its own.
-    public static string DefaultFolder { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "update");
+    public static string DefaultFolder { get; } = TestOverrides.Data(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "update"), "update");
 
     /// <summary>Where the installer of <paramref name="release"/> is kept once downloaded.</summary>
     public string PathFor(ReleaseInfo release) => Path.Combine(folder, $"Zarpazo-Setup-{release.Version}.exe");

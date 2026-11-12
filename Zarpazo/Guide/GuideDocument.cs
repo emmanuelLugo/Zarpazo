@@ -23,8 +23,8 @@ internal sealed class GuideDocument
         Load();
     }
 
-    public static string DefaultFolder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "Guide");
+    public static string DefaultFolder { get; } = Update.TestOverrides.Data(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zarpazo", "Guide"), "Guide");
 
     public IReadOnlyList<GuideStep> Steps => _steps;
 

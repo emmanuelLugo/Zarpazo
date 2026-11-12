@@ -17,6 +17,11 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
+  <!-- Only tools\test-update.ps1 builds with -p:UpdateTest=true: it makes the app read ZARPAZO_TEST_* variables (see Update\TestOverrides.cs). -->
+  <PropertyGroup Condition="'$(UpdateTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);UPDATE_TEST</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Zarpazo.Tests" />
   </ItemGroup>
