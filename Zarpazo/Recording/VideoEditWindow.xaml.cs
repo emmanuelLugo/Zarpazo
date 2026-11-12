@@ -675,7 +675,7 @@ public partial class VideoEditWindow : Window
 
         if (_busy)
         {
-            KeptText.Text = "Guardando el video…";
+            KeptText.Text = _timeline.Zooms.Count > 0 ? "Guardando el video con los zooms… (se vuelve a crear cada cuadro, puede tardar)" : "Guardando el video…";
         }
         else
         {
@@ -716,7 +716,7 @@ public partial class VideoEditWindow : Window
         try
         {
             var progress = new Progress<double>(value => WorkBar.Value = value);
-            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, progress);
+            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, progress);
             EditedPath = target;
             _saved = true;
             _busy = false; // or Closing would refuse

@@ -6,9 +6,51 @@ using Windows.Storage;
 
 namespace Zarpazo.Recording;
 
-/// <summary>Writes an edited video: the pieces of a recording joined in order, with the editing engine that comes with Windows.</summary>
+/// <summary>Writes an edited video: the pieces of a recording joined in order, with the editing engine that comes with Windows, and the zooms.</summary>
 internal static class VideoExporter
 {
+    /// <summary>
+    /// Writes <paramref name="target"/> with the <paramref name="segments"/> of <paramref name="source"/> one after the other,
+    /// and the <paramref name="zooms"/> applied. The pieces are joined first (into a file next to the target, removed after)
+    /// and the zooms drawn on the joined video; with nothing cut, straight from the recording.
+    /// </summary>
+    /// <param name="progress">Reports 0 to 1 while it works.</param>
+    public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
+        double sourceDuration, IProgress<double>? progress = null)
+    {
+        var camera = new ZoomCamera(segments, zooms);
+        if (camera.IsEmpty)
+        {
+            await ExportAsync(source, target, segments, progress);
+            return;
+        }
+
+        bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].Muted;
+        if (whole)
+        {
+            await ZoomRenderer.RenderAsync(source, target, camera, progress);
+            return;
+        }
+
+        // Joining is quick next to drawing every picture again, so it takes the first fifth of the bar.
+        string joined = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(target))!, Path.GetFileNameWithoutExtension(target) + ".partes.mp4");
+        try
+        {
+            await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
+            await ZoomRenderer.RenderAsync(joined, target, camera, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)));
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(joined);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
     /// <summary>Writes <paramref name="target"/> with the <paramref name="segments"/> of <paramref name="source"/> one after the other.</summary>
     /// <param name="progress">Reports 0 to 1 while it works.</param>
     /// <exception cref="ArgumentException">There are no pieces, or one is empty or lies outside the video.</exception>

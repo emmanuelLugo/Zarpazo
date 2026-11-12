@@ -37,7 +37,11 @@ internal sealed class Mp4Writer
 
     /// <param name="width">Both sizes must be even: H.264 stores the picture in blocks of two pixels.</param>
     /// <param name="bitsPerPixelPerFrame">How much data each pixel of each picture gets, which sets the bitrate: more is sharper and bigger.</param>
-    public Mp4Writer(string path, int width, int height, int fps, bool withAudio, double bitsPerPixelPerFrame = 0.12)
+    /// <param name="live">
+    /// True while recording: a picture the encoder has no room for is dropped, so the capture never waits. False when
+    /// re-encoding a file: <see cref="AddVideoAsync"/> and <see cref="AddAudioAsync"/> wait for room instead, and nothing is lost.
+    /// </param>
+    public Mp4Writer(string path, int width, int height, int fps, bool withAudio, double bitsPerPixelPerFrame = 0.12, bool live = true)
     {
         if (width % 2 != 0 || height % 2 != 0)
         {
@@ -65,7 +69,10 @@ internal sealed class Mp4Writer
 
         if (withAudio)
         {
-            _audio = Channel.CreateUnbounded<MediaStreamSample>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+            // From a file the sound can be read far ahead of the encoder, so it waits too; while recording it comes in real time.
+            _audio = live
+                ? Channel.CreateUnbounded<MediaStreamSample>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true })
+                : Channel.CreateBounded<MediaStreamSample>(new BoundedChannelOptions(VideoQueueSize * 8) { SingleReader = true, SingleWriter = true });
             _source.AddStreamDescriptor(new AudioStreamDescriptor(AudioEncodingProperties.CreatePcm(AudioSampleRate, AudioChannels, 16)));
         }
         _source.SampleRequested += OnSampleRequested;
@@ -81,6 +88,9 @@ internal sealed class Mp4Writer
 
     /// <summary>Starts encoding. Pictures and sound added from here on are written as they come.</summary>
     public void Start() => _encoding = EncodeAsync();
+
+    /// <summary>The encoding under way, which ends early only if Windows fails; null before <see cref="Start"/>.</summary>
+    public Task? Encoding => _encoding;
 
     /// <summary>An array for a picture: a recycled one when the encoder has finished with it. Hand it back through <see cref="AddVideo"/>.</summary>
     public byte[] RentPicture() => _spareBuffers.TryTake(out byte[]? spare) ? spare : new byte[_pictureBytes];
@@ -99,6 +109,28 @@ internal sealed class Mp4Writer
         }
         Recycle(bgra);
         return false;
+    }
+
+    /// <summary>Like <see cref="AddVideo"/>, but waits for the encoder to make room instead of dropping the picture.</summary>
+    public async ValueTask AddVideoAsync(byte[] bgra, TimeSpan time, CancellationToken cancel = default)
+    {
+        MediaStreamSample sample = MediaStreamSample.CreateFromBuffer(bgra.AsBuffer(), time);
+        sample.Duration = TimeSpan.FromSeconds(1.0 / _fps);
+        sample.Processed += (_, _) => Recycle(bgra);
+        await _video.Writer.WriteAsync(sample, cancel);
+    }
+
+    /// <summary>Like <see cref="AddAudio"/>, but waits for the encoder to make room.</summary>
+    public async ValueTask AddAudioAsync(byte[] pcm, TimeSpan time, CancellationToken cancel = default)
+    {
+        if (_audio == null)
+        {
+            return;
+        }
+
+        MediaStreamSample sample = MediaStreamSample.CreateFromBuffer(pcm.AsBuffer(), time);
+        sample.Duration = TimeSpan.FromSeconds(pcm.Length / (double)(AudioChannels * 2 * AudioSampleRate));
+        await _audio.Writer.WriteAsync(sample, cancel);
     }
 
     private void Recycle(byte[] picture)
