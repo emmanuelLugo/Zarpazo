@@ -16,10 +16,23 @@ internal static class VideoExporter
     /// </summary>
     /// <param name="progress">Reports 0 to 1 while it works.</param>
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
-        double sourceDuration, IProgress<double>? progress = null)
+        double sourceDuration, IProgress<double>? progress = null) =>
+        await ExportAsync(source, target, segments, zooms, sourceDuration, frame: null, progress);
+
+    /// <param name="frame">The frame to show the recording in; null or switched off for none.</param>
+    public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
+        double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null)
     {
+        bool framed = frame is { Enabled: true };
+        if (framed)
+        {
+            // The zooms look at points of the recording; in a frame the camera moves over the whole scene.
+            MediaEncodingProfile size = await MediaEncodingProfile.CreateFromFileAsync(await StorageFile.GetFileFromPathAsync(source));
+            zooms = FrameLayout.For(frame!, (int)size.Video.Width & ~1, (int)size.Video.Height & ~1).ToScene(zooms);
+        }
+
         var camera = new ZoomCamera(segments, zooms);
-        if (camera.IsEmpty)
+        if (camera.IsEmpty && !framed)
         {
             await ExportAsync(source, target, segments, progress);
             return;
@@ -28,7 +41,7 @@ internal static class VideoExporter
         bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].Muted;
         if (whole)
         {
-            await ZoomRenderer.RenderAsync(source, target, camera, progress);
+            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress);
             return;
         }
 
@@ -37,7 +50,7 @@ internal static class VideoExporter
         try
         {
             await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
-            await ZoomRenderer.RenderAsync(joined, target, camera, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)));
+            await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)));
         }
         finally
         {

@@ -19,7 +19,11 @@ internal static class ZoomRenderer
     /// <param name="camera">What each moment of <paramref name="source"/> shows; its times are the source's.</param>
     /// <param name="progress">Reports 0 to 1 while it works.</param>
     /// <exception cref="InvalidOperationException">Windows could not read or write the video.</exception>
-    public static async Task RenderAsync(string source, string target, ZoomCamera camera, IProgress<double>? progress = null)
+    public static async Task RenderAsync(string source, string target, ZoomCamera camera, IProgress<double>? progress = null) =>
+        await RenderAsync(source, target, camera, frame: null, progress);
+
+    /// <param name="frame">The frame to put the recording in, with its camera's times and points in the scene; null for none.</param>
+    public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null)
     {
         StorageFile file = await StorageFile.GetFileFromPathAsync(source);
         MediaEncodingProfile profile = await MediaEncodingProfile.CreateFromFileAsync(file);
@@ -37,6 +41,13 @@ internal static class ZoomRenderer
         // At least the quality of the original, and never less than about 9 Mbps at 1080p: while the camera moves every pixel
         // changes, and at the 2 Mbps a mostly still screen recording gets, the zoom came out soft and blocky.
         double bitsPerPixel = Math.Clamp(profile.Video.Bitrate / ((double)width * height * fps), MinBitsPerPixel, 0.5);
+
+        FrameCompositor? compositor = null;
+        if (frame is { Enabled: true })
+        {
+            FrameLayout layout = FrameLayout.For(frame, width, height);
+            compositor = new FrameCompositor(layout, FrameBackdrop.Render(frame, layout), width, height);
+        }
 
         var writer = new Mp4Writer(target, width, height, fps, withAudio, bitsPerPixel, live: false);
         writer.Start();
@@ -77,7 +88,14 @@ internal static class ZoomRenderer
                     }
 
                     byte[] picture = writer.RentPicture();
-                    ZoomResampler.Render(current, picture, width, height, camera.ViewAt(t));
+                    if (compositor != null)
+                    {
+                        compositor.Render(current, picture, camera.ViewAt(t));
+                    }
+                    else
+                    {
+                        ZoomResampler.Render(current, picture, width, height, camera.ViewAt(t));
+                    }
                     await writer.AddVideoAsync(picture, TimeSpan.FromSeconds(t), cancel.Token);
                     progress?.Report(Math.Clamp(t / duration, 0, 1));
                 }
