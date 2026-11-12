@@ -23,8 +23,20 @@ jobs:
       - name: Build
         run: dotnet build Zarpazo.sln -c Release
 
+      # A test that never finishes (a media call waiting for a screen or a GPU the runner doesn't have) is stopped after 6 minutes
+      # and named below, instead of holding the job until the 20-minute limit cancels it with no clue about which one it was.
       - name: Test
-        run: dotnet test Zarpazo.sln -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+        run: dotnet test Zarpazo.sln -c Release --no-build --blame-hang-timeout 6m --blame-hang-dump-type none --logger "trx;LogFileName=results.trx" --results-directory TestResults
+
+      - name: Name the test that hung
+        if: failure() || cancelled()
+        shell: pwsh
+        run: |
+          Get-ChildItem TestResults -Recurse -Filter 'Sequence_*.xml' -ErrorAction SilentlyContinue | ForEach-Object {
+            foreach ($test in ([xml](Get-Content $_.FullName)).TestSequence.Test) {
+              if ($test.Completed -ne 'True') { Write-Host "::error title=Test colgado::$($test.Name)" }
+            }
+          }
 
       - name: Upload test results
         if: always()

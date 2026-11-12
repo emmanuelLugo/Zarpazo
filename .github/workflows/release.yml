@@ -28,7 +28,7 @@ jobs:
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Test
-        run: dotnet test Zarpazo.sln -c Release
+        run: dotnet test Zarpazo.sln -c Release --blame-hang-timeout 6m --blame-hang-dump-type none
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
