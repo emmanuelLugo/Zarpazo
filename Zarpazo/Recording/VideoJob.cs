@@ -16,6 +16,8 @@ internal sealed class VideoJob : RecordingJob
     private readonly RecordingClock _clock = new();
     private Mp4Writer? _writer;
     private RegionGrabber? _grabber;
+    private FrameInputState? _input;
+    private CursorRecorder? _cursor;
     private AudioRecorder? _audio;
     private Thread? _thread;
     private volatile bool _stopRequested;
@@ -80,7 +82,10 @@ internal sealed class VideoJob : RecordingJob
         }
 
         _writer = new Mp4Writer(_path, width, height, _quality.VideoFramesPerSecond, withAudio: inputs.Count > 0, _quality.BitsPerPixelPerFrame);
-        _grabber = new RegionGrabber(_region, width, height, RecordingEffects.FromOptions(_options));
+        // The effects and the pointer's record read the mouse together, so neither misses a quick click the other saw.
+        _input = new FrameInputState(new WindowsInputState());
+        _grabber = new RegionGrabber(_region, width, height, RecordingEffects.FromOptions(_options, _input));
+        _cursor = new CursorRecorder(_input, _region, width, height);
         if (inputs.Count > 0)
         {
             _audio = new AudioRecorder(inputs, _writer, _clock, _audioOffsetMs);
@@ -119,6 +124,7 @@ internal sealed class VideoJob : RecordingJob
         }
 
         await _writer.FinishAsync();
+        SaveCursor();
         if (_firstPicture != null)
         {
             Thumbnail = PictureOf(_firstPicture, _width, _height);
@@ -158,6 +164,18 @@ internal sealed class VideoJob : RecordingJob
         });
     }
 
+    // Only the zoom of the editor needs it, so a video without it is still a good video.
+    private void SaveCursor()
+    {
+        try
+        {
+            _cursor?.ToTrack(_clock.ElapsedMilliseconds).Save(_path!);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
     private void StopCapture()
     {
         _stopRequested = true;
@@ -194,7 +212,9 @@ internal sealed class VideoJob : RecordingJob
 
             // The array goes into the encoder's queue and comes back for reuse once it has been encoded.
             byte[] pixels = _writer!.RentPicture();
+            _input!.Refresh();
             grabber.Grab(pixels, now);
+            _cursor!.Update(now);
             _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
             _writer!.AddVideo(pixels, TimeSpan.FromMilliseconds(now)); // dropped, not queued, if the encoder is a second behind
 

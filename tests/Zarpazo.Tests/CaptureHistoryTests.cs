@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Zarpazo.Editor;
 using Zarpazo.History;
+using Zarpazo.Recording;
 using Zarpazo.Settings;
 
 namespace Zarpazo.Tests;
@@ -161,6 +162,20 @@ public sealed class CaptureHistoryTests : IDisposable
         Assert.Equal("pretend gif", File.ReadAllText(entry.MediaPath!));
         Assert.True(File.Exists(gif), "the original file is left where it was: the clipboard may point at it");
         Assert.False(entry.CanEdit);
+    }
+
+    [Fact]
+    public void A_video_keeps_its_pointer_track_in_the_history_and_loses_it_when_deleted()
+    {
+        var history = new CaptureHistory(_folder);
+        string video = MediaFile(".mp4");
+        new CursorTrack(8, 6, [], []).Save(video);
+
+        string path = history.AddRecording(video, Image(8, 6));
+        Assert.True(File.Exists(CursorTrack.PathFor(path)));
+
+        history.Delete(path);
+        Assert.False(File.Exists(CursorTrack.PathFor(path)));
     }
 
     [Fact]

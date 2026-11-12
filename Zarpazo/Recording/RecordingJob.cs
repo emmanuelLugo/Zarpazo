@@ -92,6 +92,7 @@ internal abstract class RecordingJob
                 if (DateTime.Now - File.GetLastWriteTime(old) > TempFileLifetime)
                 {
                     File.Delete(old);
+                    File.Delete(CursorTrack.PathFor(old)); // the pointer that went with a video; nothing happens if there is none
                 }
             }
             catch (IOException)

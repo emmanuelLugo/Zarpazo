@@ -41,6 +41,10 @@ public sealed class VideoJobTests : IDisposable
         Assert.InRange(clip.OriginalDuration.TotalSeconds, 1.5, 3.0);
         Assert.Equal((320u, 180u), (clip.GetVideoEncodingProperties().Width, clip.GetVideoEncodingProperties().Height));
         Assert.Empty(clip.EmbeddedAudioTracks);
+        CursorTrack? cursor = CursorTrack.Load(path);
+        Assert.NotNull(cursor); // where the pointer went, for the zoom of the editor
+        Assert.Equal((320, 180), (cursor.Width, cursor.Height));
+        Assert.NotEmpty(cursor.Moves);
     }
 
     [Fact]

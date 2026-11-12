@@ -38,8 +38,11 @@ internal sealed class RecordingEffects
     }
 
     /// <summary>The effects the options ask for; null when they ask for none, so nothing is done for nothing.</summary>
-    public static RecordingEffects? FromOptions(RecordingOptions options) =>
-        options.HighlightCursor || options.ShowKeys ? new RecordingEffects(new WindowsInputState(), options.HighlightCursor, options.ShowKeys) : null;
+    public static RecordingEffects? FromOptions(RecordingOptions options) => FromOptions(options, new WindowsInputState());
+
+    /// <param name="input">Where the keyboard and mouse are read, when someone else reads them too.</param>
+    public static RecordingEffects? FromOptions(RecordingOptions options, IInputState input) =>
+        options.HighlightCursor || options.ShowKeys ? new RecordingEffects(input, options.HighlightCursor, options.ShowKeys) : null;
 
     /// <summary>Reads the mouse and the keyboard. Call it once per picture, before drawing.</summary>
     public void Update(long timeMs)

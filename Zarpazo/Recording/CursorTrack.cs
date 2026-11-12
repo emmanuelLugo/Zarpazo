@@ -1,0 +1,55 @@
+using System.IO;
+using System.Text.Json;
+
+namespace Zarpazo.Recording;
+
+/// <summary>
+/// Where the pointer went and where it clicked during a video, kept in a small file next to it. The editor uses it to zoom
+/// in on what was clicked. Positions are in pixels of the video, times on the video's clock.
+/// </summary>
+/// <param name="Width">The size of the video the positions refer to.</param>
+/// <param name="Moves">The pointer's position each time it moved, oldest first.</param>
+/// <param name="Clicks">The clicks, oldest first.</param>
+internal sealed record CursorTrack(int Width, int Height, IReadOnlyList<CursorSample> Moves, IReadOnlyList<CursorClick> Clicks)
+{
+    public const string Extension = ".cursor.json";
+
+    private static readonly JsonSerializerOptions JsonOptions = new();
+
+    /// <summary>The file that goes with a video: "Grabación.mp4" keeps its pointer in "Grabación.cursor.json".</summary>
+    public static string PathFor(string video) => Path.ChangeExtension(video, Extension);
+
+    /// <exception cref="IOException">The file could not be written.</exception>
+    /// <exception cref="UnauthorizedAccessException">The folder is not writable.</exception>
+    public void Save(string video) => File.WriteAllText(PathFor(video), JsonSerializer.Serialize(this, JsonOptions));
+
+    /// <summary>The pointer recorded with a video; null when there is none (an older recording, or a GIF) or it cannot be read.</summary>
+    public static CursorTrack? Load(string video)
+    {
+        try
+        {
+            string path = PathFor(video);
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            CursorTrack? track = JsonSerializer.Deserialize<CursorTrack>(File.ReadAllText(path), JsonOptions);
+            return track is { Width: > 0, Height: > 0, Moves: not null, Clicks: not null } ? track : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Copies the pointer of <paramref name="video"/>, if it has one, to go with <paramref name="copy"/>.</summary>
+    public static void CopyAlong(string video, string copy)
+    {
+        string from = PathFor(video);
+        if (File.Exists(from))
+        {
+            File.Copy(from, PathFor(copy), overwrite: true);
+        }
+    }
+}

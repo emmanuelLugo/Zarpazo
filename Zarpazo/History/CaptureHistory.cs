@@ -83,6 +83,7 @@ internal sealed class CaptureHistory
 
         // The recording first: the picture is what makes the entry appear, so a half-made entry never shows.
         File.Copy(mediaFile, Path.ChangeExtension(path, extension));
+        Recording.CursorTrack.CopyAlong(mediaFile, path); // for zooming in on the clicks if it is edited again
         ImageOutput.Write(path, firstFrame);
 
         foreach (HistoryEntry old in List().Where(entry => entry.IsRecording && !entry.Kept).Skip(Math.Max(recordingLimit, 0)))
@@ -159,6 +160,7 @@ internal sealed class CaptureHistory
             Path.ChangeExtension(path, CleanExtension),
             Path.ChangeExtension(path, TextExtension),
             Path.ChangeExtension(path, KeepExtension),
+            Recording.CursorTrack.PathFor(path),
         };
         files.AddRange(RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)));
         foreach (string file in files)
