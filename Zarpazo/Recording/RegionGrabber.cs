@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
@@ -11,7 +10,7 @@ internal sealed class RegionGrabber : IDisposable
 {
     private readonly Rectangle _region;
     private readonly Bitmap _full;
-    private readonly Bitmap? _scaled; // only when the output is not the size of the area
+    private readonly byte[]? _shrunk; // the whole area, to shrink from; only when it is wider than the video's limit
     private readonly RecordingEffects? _effects;
     private readonly DesktopDuplicator? _duplicator; // the fast copy through the graphics card, when the area is on one screen
 
@@ -24,9 +23,9 @@ internal sealed class RegionGrabber : IDisposable
         Width = width;
         Height = height;
         _full = new Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb);
-        if (width != region.Width || height != region.Height)
+        if (width < region.Width - 1 || height < region.Height - 1)
         {
-            _scaled = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            _shrunk = new byte[region.Width * region.Height * 4];
         }
         _duplicator = DesktopDuplicator.TryCreate(region);
     }
@@ -79,28 +78,44 @@ internal sealed class RegionGrabber : IDisposable
             draw = Stopwatch.GetTimestamp();
         }
 
-        Bitmap source = _full;
-        if (_scaled != null)
-        {
-            using Graphics graphics = Graphics.FromImage(_scaled);
-            graphics.InterpolationMode = InterpolationMode.HighQualityBilinear;
-            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            graphics.DrawImage(_full, 0, 0, Width, Height);
-            source = _scaled;
-        }
-
+        // The video can be a pixel narrower or shorter than the area (its sizes must be even): then the extra pixel is left
+        // out rather than the whole picture resampled, which at full HD took longer than a frame lasts. Only an area wider
+        // than the video's limit is really shrunk.
         long scale = Stopwatch.GetTimestamp();
-        BitmapData data = source.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        BitmapData data = _full.LockBits(new Rectangle(0, 0, _region.Width, _region.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         try
         {
-            Marshal.Copy(data.Scan0, into, 0, into.Length); // 32 bits per pixel: the rows have no padding
+            if (_shrunk == null)
+            {
+                int rowBytes = Width * 4;
+                if (Width == _region.Width)
+                {
+                    Marshal.Copy(data.Scan0, into, 0, rowBytes * Height); // the same width: the rows follow each other
+                }
+                else
+                {
+                    for (int row = 0; row < Height; row++)
+                    {
+                        Marshal.Copy(data.Scan0 + row * data.Stride, into, row * rowBytes, rowBytes);
+                    }
+                }
+            }
+            else
+            {
+                Marshal.Copy(data.Scan0, _shrunk, 0, _shrunk.Length);
+            }
         }
         finally
         {
-            source.UnlockBits(data);
+            _full.UnlockBits(data);
+        }
+        long shrink = Stopwatch.GetTimestamp();
+        if (_shrunk != null)
+        {
+            PictureShrinker.Shrink(_shrunk, _region.Width, _region.Height, into, Width, Height);
         }
         long end = Stopwatch.GetTimestamp();
-        LastTimings = new GrabTimings(Ms(start, read), Ms(read, copy), Ms(copy, draw), Ms(draw, scale), Ms(scale, end), copied);
+        LastTimings = new GrabTimings(Ms(start, read), Ms(read, copy), Ms(copy, draw), Ms(shrink, end), Ms(draw, shrink), copied);
     }
 
     /// <summary>How long each step of the last <see cref="Grab"/> took, for the diagnosis file.</summary>
@@ -111,7 +126,6 @@ internal sealed class RegionGrabber : IDisposable
     public void Dispose()
     {
         _full.Dispose();
-        _scaled?.Dispose();
         _duplicator?.Dispose();
     }
 }
