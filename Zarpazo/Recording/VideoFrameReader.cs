@@ -141,6 +141,44 @@ internal sealed class VideoFrameReader : IDisposable
         }
     }
 
+    /// <summary>
+    /// The frame rate the video was recorded at: from the usual gap between its pictures, read without decoding them. Windows
+    /// reports the average instead, which in a recording where some pictures came late is lower (28.75 for a 30 fps one).
+    /// </summary>
+    /// <returns>Null when the video has fewer than two pictures.</returns>
+    public static double? RecordedFrameRate(string path)
+    {
+        MediaFoundationApi.Startup();
+        MediaFoundationInterop.MFCreateSourceReaderFromURL(path, null, out IMFSourceReader reader);
+        try
+        {
+            reader.SetStreamSelection(AllStreams, false);
+            reader.SetStreamSelection(FirstVideoStream, true);
+            var times = new List<long>();
+            while (true)
+            {
+                reader.ReadSample(FirstVideoStream, 0, out _, out MF_SOURCE_READER_FLAG flags, out ulong timestamp, out IMFSample? sample);
+                if (sample != null)
+                {
+                    times.Add((long)timestamp);
+                    Marshal.ReleaseComObject(sample);
+                }
+                if (flags.HasFlag(MF_SOURCE_READER_FLAG.MF_SOURCE_READERF_ENDOFSTREAM))
+                {
+                    break;
+                }
+            }
+
+            times.Sort(); // stored in decoding order, which is not always the order they are shown in
+            List<long> gaps = times.Zip(times.Skip(1), (a, b) => b - a).Where(gap => gap > 0).Order().ToList();
+            return gaps.Count == 0 ? null : TimeSpan.TicksPerSecond / (double)gaps[gaps.Count / 2];
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(reader);
+        }
+    }
+
     private static int? TryGet(IMFMediaType type, Guid key)
     {
         try

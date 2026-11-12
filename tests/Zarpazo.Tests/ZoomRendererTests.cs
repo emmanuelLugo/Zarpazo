@@ -168,6 +168,42 @@ public sealed class ZoomRendererTests : IClassFixture<SampleVideos>, IDisposable
     }
 
     [Fact]
+    public async Task Pictures_recorded_unevenly_come_out_evenly_spaced_so_the_camera_moves_smoothly()
+    {
+        // Like a 1080p recording where copying the screen sometimes takes too long: gaps of 33, 50 and 66 ms.
+        string source = Path.Combine(_folder, "uneven.mp4");
+        var writer = new Mp4Writer(source, Width, Height, fps: 30, withAudio: false, live: false);
+        writer.Start();
+        double at = 0;
+        for (int frame = 0; frame < 60; frame++)
+        {
+            byte[] pixels = writer.RentPicture();
+            Array.Fill(pixels, (byte)(frame * 4));
+            await writer.AddVideoAsync(pixels, TimeSpan.FromSeconds(at));
+            at += frame % 3 == 0 ? 0.050 : frame % 7 == 0 ? 0.066 : 0.0333;
+        }
+        await writer.FinishAsync();
+        string target = Path.Combine(_folder, "even.mp4");
+
+        await ZoomRenderer.RenderAsync(source, target, new ZoomCamera([new VideoSegment(0, at)], [new ZoomRegion(0.5, at - 0.5, 2, 0.5, 0.5)]));
+
+        var times = new List<double>();
+        using (var reader = new VideoFrameReader(target, Width, Height))
+        {
+            var picture = new byte[Width * Height * 4];
+            while (reader.TryRead(picture, out TimeSpan time))
+            {
+                times.Add(time.TotalSeconds);
+            }
+        }
+        Assert.InRange(times[^1] - times[0], at - 0.1, at + 0.05); // as long as the recording
+        for (int i = 1; i < times.Count; i++)
+        {
+            Assert.InRange(times[i] - times[i - 1], 0.030, 0.037);
+        }
+    }
+
+    [Fact]
     public async Task The_sound_is_kept_when_zooming()
     {
         string target = Path.Combine(_folder, "zoomed-sound.mp4");

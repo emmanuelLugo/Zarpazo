@@ -7,10 +7,14 @@ namespace Zarpazo.Recording;
 
 /// <summary>
 /// Writes a video again with the zooms applied: every picture is decoded, the part the camera shows is stretched to the full
-/// size, and the result is encoded with the same size, frame rate, quality and sound as the original.
+/// size, and the result is encoded with the same size, frame rate and sound as the original.
 /// </summary>
 internal static class ZoomRenderer
 {
+    private const double MinBitsPerPixel = 0.15;
+
+    private static readonly int[] StandardRates = [10, 12, 15, 20, 24, 25, 30, 48, 50, 60];
+
     /// <param name="camera">What each moment of <paramref name="source"/> shows; its times are the source's.</param>
     /// <param name="progress">Reports 0 to 1 while it works.</param>
     /// <exception cref="InvalidOperationException">Windows could not read or write the video.</exception>
@@ -21,11 +25,16 @@ internal static class ZoomRenderer
         Windows.Storage.FileProperties.VideoProperties info = await file.Properties.GetVideoPropertiesAsync();
         int width = (int)profile.Video.Width & ~1;
         int height = (int)profile.Video.Height & ~1;
-        int fps = Math.Max(1, (int)Math.Round(profile.Video.FrameRate.Numerator / (double)Math.Max(1u, profile.Video.FrameRate.Denominator)));
+        double recordedRate = VideoFrameReader.RecordedFrameRate(source)
+            ?? profile.Video.FrameRate.Numerator / (double)Math.Max(1u, profile.Video.FrameRate.Denominator);
+        // Recordings stamp their pictures in whole milliseconds (gaps of 33 and 34 ms make 29.4), so the rate is taken as the
+        // nearest usual one.
+        int fps = StandardRates.MinBy(rate => Math.Abs(rate - recordedRate));
         bool withAudio = profile.Audio != null;
         double duration = Math.Max(0.1, info.Duration.TotalSeconds);
-        // The same quality as the original: its bitrate spread over its pixels and pictures.
-        double bitsPerPixel = Math.Clamp(profile.Video.Bitrate / ((double)width * height * fps), 0.05, 0.5);
+        // At least the quality of the original, and never less than about 9 Mbps at 1080p: while the camera moves every pixel
+        // changes, and at the 2 Mbps a mostly still screen recording gets, the zoom came out soft and blocky.
+        double bitsPerPixel = Math.Clamp(profile.Video.Bitrate / ((double)width * height * fps), MinBitsPerPixel, 0.5);
 
         var writer = new Mp4Writer(target, width, height, fps, withAudio, bitsPerPixel, live: false);
         writer.Start();
@@ -38,14 +47,37 @@ internal static class ZoomRenderer
         {
             try
             {
+                // The recording's pictures are not evenly spaced (a 1080p screen takes about as long to copy as there is time
+                // for each picture, so some come late), and a camera moved by their times moved in uneven steps. The result
+                // has a picture exactly every 1/fps seconds instead: the camera where it is at that instant, over the latest
+                // recorded picture.
                 using var reader = new VideoFrameReader(source, width, height);
-                var decoded = new byte[width * height * 4];
-                while (reader.TryRead(decoded, out TimeSpan time))
+                var current = new byte[width * height * 4];
+                var next = new byte[width * height * 4];
+                if (!reader.TryRead(current, out TimeSpan currentTime))
                 {
+                    return;
+                }
+                bool hasNext = reader.TryRead(next, out TimeSpan nextTime);
+                double frame = 1.0 / fps;
+                for (long n = 0; ; n++)
+                {
+                    double t = n * frame;
+                    while (hasNext && nextTime.TotalSeconds <= t + frame / 2)
+                    {
+                        (current, next) = (next, current);
+                        currentTime = nextTime;
+                        hasNext = reader.TryRead(next, out nextTime);
+                    }
+                    if (!hasNext && t >= currentTime.TotalSeconds + frame / 2)
+                    {
+                        break; // the last recorded picture has had its time on screen
+                    }
+
                     byte[] picture = writer.RentPicture();
-                    ZoomResampler.Render(decoded, picture, width, height, camera.ViewAt(time.TotalSeconds));
-                    await writer.AddVideoAsync(picture, time, cancel.Token);
-                    progress?.Report(Math.Clamp(time.TotalSeconds / duration, 0, 1));
+                    ZoomResampler.Render(current, picture, width, height, camera.ViewAt(t));
+                    await writer.AddVideoAsync(picture, TimeSpan.FromSeconds(t), cancel.Token);
+                    progress?.Report(Math.Clamp(t / duration, 0, 1));
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
