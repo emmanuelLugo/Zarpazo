@@ -13,6 +13,7 @@ internal enum RecordingFormat
 /// <param name="SystemSoundId">Which speakers or headphones to take the sound from; empty for the default ones.</param>
 /// <param name="HighlightCursor">Draw a halo around the pointer and a ring at every click.</param>
 /// <param name="ShowKeys">Show the shortcuts pressed (never the letters typed).</param>
+/// <param name="CursorScale">How big the pointer is drawn: 1 as on screen, up to 2.</param>
 internal sealed record RecordingOptions(
     RecordingFormat Format,
     bool Microphone,
@@ -20,7 +21,8 @@ internal sealed record RecordingOptions(
     string MicrophoneId = "",
     string SystemSoundId = "",
     bool HighlightCursor = false,
-    bool ShowKeys = false)
+    bool ShowKeys = false,
+    double CursorScale = 1)
 {
     /// <summary>A GIF has no sound, so the choices only count for a video.</summary>
     public bool HasSound => Format == RecordingFormat.Video && (Microphone || SystemSound);

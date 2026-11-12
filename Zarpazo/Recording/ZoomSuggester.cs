@@ -13,7 +13,7 @@ internal static class ZoomSuggester
     public const double PadSeconds = 0.5;
 
     /// <summary>A zoom for a single click lasts at least this long, so it is not over before it is seen.</summary>
-    public const double MinSeconds = 2.0;
+    public const double MinSeconds = 2.5; // with a gentler zoom in and out, a shorter one never settles
 
     /// <summary>Clicks of one zoom must fit in this share of what the zoom shows, so none is left at the edge.</summary>
     private const double FitShare = 0.8;

@@ -10,11 +10,11 @@ public sealed class ZoomTests
     // ---- Suggestions ----
 
     [Fact]
-    public void A_lone_click_gets_a_zoom_of_two_seconds_centred_on_it_and_looking_at_it()
+    public void A_lone_click_gets_a_short_zoom_centred_on_it_and_looking_at_it()
     {
         ZoomRegion zoom = Assert.Single(ZoomSuggester.Suggest(Clicks((5, 250, 100)), duration: 20));
 
-        Assert.Equal(2.0, zoom.Length, 3);
+        Assert.Equal(ZoomSuggester.MinSeconds, zoom.Length, 3);
         Assert.InRange((zoom.Start + zoom.End) / 2, 4.9, 5.2);
         Assert.Equal((0.25, 0.2), (zoom.FocusX, zoom.FocusY));
         Assert.Equal(ZoomRegion.DefaultScale, zoom.Scale);
@@ -52,7 +52,7 @@ public sealed class ZoomTests
 
         ZoomRegion early = Assert.Single(ZoomSuggester.Suggest(Clicks((0.1, 100, 100)), duration: 20));
         Assert.Equal(0, early.Start);
-        Assert.Equal(2.0, early.Length, 3);
+        Assert.Equal(ZoomSuggester.MinSeconds, early.Length, 3);
     }
 
     // ---- The camera ----
@@ -125,7 +125,8 @@ public sealed class ZoomTests
         }
         Assert.Equal((0.0, 1.0), (ZoomEasing.Out(0), ZoomEasing.Out(1)));
         Assert.Equal(0.5, ZoomEasing.InOut(0.5), 3);
-        Assert.True(ZoomEasing.Out(0.3) > 0.7, "zooming in is quick at first");
+        Assert.True(ZoomEasing.Out(0.02) < 0.015, "it starts from rest, not with a jump");
+        Assert.True(ZoomEasing.Out(0.5) > 0.85, "and is mostly there by the middle");
     }
 
     // ---- The row of zooms ----

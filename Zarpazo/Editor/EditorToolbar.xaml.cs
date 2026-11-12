@@ -322,6 +322,7 @@ public partial class EditorToolbar : UserControl
         RecordSystemSoundBox.IsChecked = _recording.SystemSound;
         RecordHighlightBox.IsChecked = _recording.HighlightCursor;
         RecordKeysBox.IsChecked = _recording.ShowKeys;
+        (_recording.CursorScale >= 1.75 ? RecordCursorHuge : _recording.CursorScale > 1.2 ? RecordCursorLarge : RecordCursorNormal).IsChecked = true;
         // A GIF has no sound, so the boxes only mean something for a video.
         RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = RecordSpeakersList.IsEnabled
             = _recording.Format == RecordingFormat.Video;
@@ -432,6 +433,11 @@ public partial class EditorToolbar : UserControl
 
     private void OnRecordChoice(object sender, RoutedEventArgs e)
     {
+        if (_recordingReady && e.OriginalSource is RadioButton { GroupName: "recordCursor", Tag: string size })
+        {
+            _recording = _recording with { CursorScale = double.Parse(size, System.Globalization.CultureInfo.InvariantCulture) };
+            return;
+        }
         if (!_recordingReady || e.OriginalSource is not RadioButton { GroupName: "recordFormat", Tag: string tag })
         {
             return;

@@ -25,24 +25,32 @@ internal sealed class RecordingEffects
 
     private readonly IInputState _input;
     private readonly bool _highlight;
+    private readonly float _scale; // the halo and the rings grow with the pointer
     private readonly KeyTracker? _keys;
     private readonly bool[] _held = new bool[Buttons.Length];
     private readonly List<(Point Center, long Start, Color Color)> _ripples = [];
     private Point _cursor;
 
-    public RecordingEffects(IInputState input, bool highlightCursor, bool showKeys)
+    public RecordingEffects(IInputState input, bool highlightCursor, bool showKeys, double cursorScale = 1)
     {
         _input = input;
         _highlight = highlightCursor;
+        CursorScale = Math.Clamp(cursorScale, 1, 2);
+        _scale = (float)CursorScale;
         _keys = showKeys ? new KeyTracker(input) : null;
     }
+
+    /// <summary>How big the pointer is drawn: 1 as on screen.</summary>
+    public double CursorScale { get; }
 
     /// <summary>The effects the options ask for; null when they ask for none, so nothing is done for nothing.</summary>
     public static RecordingEffects? FromOptions(RecordingOptions options) => FromOptions(options, new WindowsInputState());
 
     /// <param name="input">Where the keyboard and mouse are read, when someone else reads them too.</param>
     public static RecordingEffects? FromOptions(RecordingOptions options, IInputState input) =>
-        options.HighlightCursor || options.ShowKeys ? new RecordingEffects(input, options.HighlightCursor, options.ShowKeys) : null;
+        options.HighlightCursor || options.ShowKeys || options.CursorScale > 1
+            ? new RecordingEffects(input, options.HighlightCursor, options.ShowKeys, options.CursorScale)
+            : null;
 
     /// <summary>Reads the mouse and the keyboard. Call it once per picture, before drawing.</summary>
     public void Update(long timeMs)
@@ -76,9 +84,11 @@ internal sealed class RecordingEffects
         float x = _cursor.X - origin.X;
         float y = _cursor.Y - origin.Y;
 
+        float haloRadius = HaloRadius * _scale;
+        float heldRadius = HeldRadius * _scale;
         using (var halo = new SolidBrush(Color.FromArgb(0x50, 0xFF, 0xEB, 0x3B)))
         {
-            graphics.FillEllipse(halo, x - HaloRadius, y - HaloRadius, HaloRadius * 2, HaloRadius * 2);
+            graphics.FillEllipse(halo, x - haloRadius, y - haloRadius, haloRadius * 2, haloRadius * 2);
         }
 
         // While a button is held its ring stays.
@@ -88,8 +98,8 @@ internal sealed class RecordingEffects
             {
                 using var fill = new SolidBrush(Color.FromArgb(0x60, Buttons[i].Color));
                 using var edge = new Pen(Color.FromArgb(0xE0, Buttons[i].Color), 3);
-                graphics.FillEllipse(fill, x - HeldRadius, y - HeldRadius, HeldRadius * 2, HeldRadius * 2);
-                graphics.DrawEllipse(edge, x - HeldRadius, y - HeldRadius, HeldRadius * 2, HeldRadius * 2);
+                graphics.FillEllipse(fill, x - heldRadius, y - heldRadius, heldRadius * 2, heldRadius * 2);
+                graphics.DrawEllipse(edge, x - heldRadius, y - heldRadius, heldRadius * 2, heldRadius * 2);
             }
         }
 
@@ -97,7 +107,7 @@ internal sealed class RecordingEffects
         foreach ((Point center, long start, Color color) in _ripples)
         {
             double progress = Math.Clamp((timeMs - start) / (double)RippleMilliseconds, 0, 1);
-            float radius = (float)(RippleStartRadius + RippleGrowth * progress);
+            float radius = (float)(RippleStartRadius + RippleGrowth * progress) * _scale;
             using var pen = new Pen(Color.FromArgb((int)(220 * (1 - progress)), color), 3);
             graphics.DrawEllipse(pen, center.X - origin.X - radius, center.Y - origin.Y - radius, radius * 2, radius * 2);
         }

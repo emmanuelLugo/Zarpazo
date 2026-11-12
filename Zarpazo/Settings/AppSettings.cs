@@ -129,6 +129,9 @@ internal sealed class AppSettings
     public bool RecordHighlightCursor { get; set; }
     public bool RecordShowKeys { get; set; }
 
+    /// <summary>How big the pointer is drawn in recordings: 1 (as on screen), 1.5 or 2.</summary>
+    public double RecordCursorScale { get; set; } = 1;
+
     /// <summary>Seconds counted down before a recording starts: 0, 3 or 5.</summary>
     public int RecordCountdownSeconds { get; set; } = 3;
 
@@ -178,7 +181,7 @@ internal sealed class AppSettings
     public Recording.RecordingOptions RecordingOptions
     {
         get => new(RecordFormat == "video" ? Recording.RecordingFormat.Video : Recording.RecordingFormat.Gif, RecordMicrophone, RecordSystemSound, RecordMicrophoneId ?? "", RecordSystemSoundId ?? "",
-            RecordHighlightCursor, RecordShowKeys);
+            RecordHighlightCursor, RecordShowKeys, Math.Clamp(RecordCursorScale, 1, 2));
         set
         {
             RecordFormat = value.Format == Recording.RecordingFormat.Video ? "video" : "gif";
@@ -188,6 +191,7 @@ internal sealed class AppSettings
             RecordSystemSoundId = value.SystemSoundId;
             RecordHighlightCursor = value.HighlightCursor;
             RecordShowKeys = value.ShowKeys;
+            RecordCursorScale = value.CursorScale;
         }
     }
 

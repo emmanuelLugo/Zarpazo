@@ -56,7 +56,7 @@ internal sealed class RegionGrabber : IDisposable
         {
             graphics.CopyFromScreen(_region.Location, Point.Empty, _region.Size);
             _effects?.DrawUnderPointer(graphics, _region.Location, timeMs);
-            CursorPainter.Draw(graphics, _region.Location);
+            CursorPainter.Draw(graphics, _region.Location, _effects?.CursorScale ?? 1);
             _effects?.DrawKeys(graphics, _region.Size);
         }
 

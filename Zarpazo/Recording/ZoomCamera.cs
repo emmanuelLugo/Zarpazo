@@ -9,16 +9,16 @@ namespace Zarpazo.Recording;
 internal sealed class ZoomCamera
 {
     /// <summary>How long zooming in takes.</summary>
-    public const double ZoomInSeconds = 1.2;
+    public const double ZoomInSeconds = 1.5;
 
     /// <summary>How long zooming back out takes.</summary>
-    public const double ZoomOutSeconds = 1.0;
+    public const double ZoomOutSeconds = 1.2;
 
     /// <summary>Zooms closer than this stay zoomed in and the camera glides between them.</summary>
     public const double JoinGapSeconds = 1.5;
 
     /// <summary>The glide from one zoom to the next starts this long before the first ends and finishes this long after the next starts.</summary>
-    private const double GlideHalfSeconds = 0.5;
+    private const double GlideHalfSeconds = 0.6;
 
     /// <summary>Bits of a zoom left shorter than this by a cut are dropped: they would only flicker.</summary>
     private const double MinSpanSeconds = 0.25;

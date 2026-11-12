@@ -9,7 +9,7 @@ namespace Zarpazo.Recording;
 /// <param name="FocusY">From 0 (top) to 1 (bottom).</param>
 internal readonly record struct ZoomRegion(double Start, double End, double Scale, double FocusX, double FocusY)
 {
-    public const double DefaultScale = 1.8;
+    public const double DefaultScale = 1.5; // Recordly's choice too: closer than this felt like too much
     public const double MinScale = 1.1;
     public const double MaxScale = 4;
 

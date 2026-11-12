@@ -40,6 +40,7 @@ public partial class VideoEditWindow : Window
     private ZoomView _shownView = ZoomView.Full; // what the player shows now, to turn a click on it into a point of the picture
     private bool _aiming; // dragging on the picture to move where a zoom looks
     private bool _showingDepth;
+    private long _playheadStamp; // when the playhead was last read from the player, to move the zoom smoothly in between
 
     internal VideoEditWindow(string source)
     {
@@ -48,9 +49,11 @@ public partial class VideoEditWindow : Window
         _ready = true;
         _source = source;
         _timer.Tick += (_, _) => FollowPlayback();
+        CompositionTarget.Rendering += OnRendering;
         Closed += (_, _) =>
         {
             _closed = true;
+            CompositionTarget.Rendering -= OnRendering;
             _timer.Stop();
             Player.Close(); // lets go of the file
         };
@@ -323,6 +326,7 @@ public partial class VideoEditWindow : Window
         _tailSince = null;
         _settleUntil = Environment.TickCount64 + 80;
         Player.Play();
+        _playheadStamp = Stopwatch.GetTimestamp();
         _playing = true;
         PlayButton.Content = "⏸ Pausa";
         _timer.Start();
@@ -404,9 +408,9 @@ public partial class VideoEditWindow : Window
         }
 
         _playhead = _timeline.ToTimeline(_playIndex, position);
+        _playheadStamp = Stopwatch.GetTimestamp();
         View.Playhead = Lane.Playhead = _playhead;
         UpdatePositionText();
-        ApplyZoomPreview();
         EnsurePlayheadVisible();
     }
 
@@ -763,7 +767,20 @@ public partial class VideoEditWindow : Window
 
     // The player shows what the edited video will show at the playhead: zoomed in, or the whole picture. While a zoom is
     // chosen (and not playing) it shows the whole picture with the zoomed part marked, so where it looks can be changed.
-    private void ApplyZoomPreview()
+    // The player's position is read every 20 ms or so, which moved the zoom in small jumps; at every picture the screen
+    // draws, the playhead is carried on from the last reading by the time that has passed.
+    private void OnRendering(object? sender, EventArgs e)
+    {
+        if (_playing && Lane.Camera is { IsEmpty: false })
+        {
+            double since = Math.Min(0.1, Stopwatch.GetElapsedTime(_playheadStamp).TotalSeconds);
+            ApplyZoomPreview(_playhead + since);
+        }
+    }
+
+    private void ApplyZoomPreview() => ApplyZoomPreview(_playhead);
+
+    private void ApplyZoomPreview(double time)
     {
         ZoomCamera? camera = Lane.Camera;
         double width = Stage.Width, height = Stage.Height;
@@ -774,7 +791,7 @@ public partial class VideoEditWindow : Window
 
         int chosen = Lane.SelectedZoom;
         bool picking = chosen >= 0 && !_playing && _timeline != null && chosen < _timeline.Zooms.Count;
-        ZoomView view = picking ? ZoomView.Full : camera.ViewAt(_playhead);
+        ZoomView view = picking ? ZoomView.Full : camera.ViewAt(time);
         _shownView = view;
         Player.RenderTransform = view.IsFull
             ? Transform.Identity
@@ -837,7 +854,7 @@ public partial class VideoEditWindow : Window
         (double X, double Y) focus = _track?.PositionAt((long)(at * 1000)) is { } pointer
             ? (Math.Clamp(pointer.X, 0, 1), Math.Clamp(pointer.Y, 0, 1))
             : (0.5, 0.5);
-        int index = _timeline.AddZoom(new ZoomRegion(at - 1, at + 1, ZoomRegion.DefaultScale, focus.X, focus.Y));
+        int index = _timeline.AddZoom(new ZoomRegion(at - 1.25, at + 1.25, ZoomRegion.DefaultScale, focus.X, focus.Y));
         if (index < 0)
         {
             KeptText.Text = "Ahí ya hay un zoom o no queda sitio para otro. Elige otro momento.";
