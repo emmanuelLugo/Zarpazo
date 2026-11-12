@@ -28,7 +28,27 @@ jobs:
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Test
-        run: dotnet test Zarpazo.sln -c Release --blame-hang-timeout 6m --blame-hang-dump-type none
+        run: dotnet test Zarpazo.sln -c Release --blame-hang-timeout 6m --blame-hang-dump-type none --logger "trx;LogFileName=results.trx" --results-directory TestResults
+
+      # The log of a run can't be read without signing in, so what failed is also written as annotations, which anyone can see.
+      - name: Name the tests that failed or hung
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem TestResults -Recurse -Filter 'Sequence_*.xml' -ErrorAction SilentlyContinue | ForEach-Object {
+            foreach ($test in ([xml](Get-Content $_.FullName)).TestSequence.Test) {
+              if ($test.Completed -ne 'True') { Write-Host "::error title=Test colgado::$($test.Name)" }
+            }
+          }
+          Get-ChildItem TestResults -Recurse -Filter '*.trx' -ErrorAction SilentlyContinue | ForEach-Object {
+            foreach ($r in ([xml](Get-Content $_.FullName)).TestRun.Results.UnitTestResult) {
+              if ($r.outcome -eq 'Failed') {
+                $message = ($r.Output.ErrorInfo.Message -replace '\s+', ' ')
+                if ($message.Length -gt 400) { $message = $message.Substring(0, 400) }
+                Write-Host "::error title=Test fallido::$($r.testName): $message"
+              }
+            }
+          }
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
