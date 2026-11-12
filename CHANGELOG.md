@@ -13,6 +13,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - La vista previa del editor muestra el zoom al reproducir y al moverte por el video, y «Guardar video» lo aplica al video nuevo, con el mismo tamaño, calidad y sonido (un video de 10 s en 1080p tarda unos 8 s en guardarse). El video con zoom sale con un cuadro exacto cada 1/30 s aunque la grabación tenga cuadros que llegaron tarde, así que la cámara se mueve pareja, y con más calidad (al acercar cambian todos los píxeles y a la calidad de una grabación de pantalla se veía en bloques).
 
 ### Cambiado
+- Grabaciones más fluidas: la pantalla se copia con la tarjeta de video (DXGI), unos 8 ms por cuadro en 1080p en lugar de 33, así que el video ya no tiene cuadros que llegan tarde ni se ve a tirones. Si la zona ocupa dos monitores, o Windows no deja copiar la pantalla en ese momento, se usa el método de antes. Vale para GIF y video.
 - El control que acerca la línea de tiempo del editor de video se llama ahora «Acercar línea», para no confundirlo con el zoom del video.
 - Al cerrar el editor de video solo pregunta si hay cambios tuyos sin guardar; los zooms automáticos por sí solos no cuentan.
 

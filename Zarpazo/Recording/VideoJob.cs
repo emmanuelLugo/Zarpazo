@@ -8,6 +8,7 @@ namespace Zarpazo.Recording;
 internal sealed class VideoJob : RecordingJob
 {
     public const int MaxSide = 1920;  // a larger area is shrunk to this
+    private const int OnTimeMilliseconds = 8;
 
     private readonly Rectangle _region;
     private readonly RecordingOptions _options;
@@ -210,13 +211,20 @@ internal sealed class VideoJob : RecordingJob
                 continue;
             }
 
+            // A picture taken a moment after its turn (waking up from Sleep is only good to a millisecond or two) is stamped
+            // with its turn, so the pictures come out exactly evenly spaced and motion plays smoothly; one that is really
+            // late keeps its own time.
+            TimeSpan stamp = now - due <= OnTimeMilliseconds
+                ? TimeSpan.FromTicks(frame * TimeSpan.TicksPerSecond / _quality.VideoFramesPerSecond)
+                : TimeSpan.FromMilliseconds(now);
+
             // The array goes into the encoder's queue and comes back for reuse once it has been encoded.
             byte[] pixels = _writer!.RentPicture();
             _input!.Refresh();
             grabber.Grab(pixels, now);
-            _cursor!.Update(now);
+            _cursor!.Update((long)stamp.TotalMilliseconds);
             _firstPicture ??= (byte[])pixels.Clone(); // the history shows the recording by this picture
-            _writer!.AddVideo(pixels, TimeSpan.FromMilliseconds(now)); // dropped, not queued, if the encoder is a second behind
+            _writer!.AddVideo(pixels, stamp); // dropped, not queued, if the encoder is a second behind
 
             // After a slow picture the next ones are not rushed: the schedule restarts from where the clock is.
             frame = Math.Max(frame + 1, now * _quality.VideoFramesPerSecond / 1000 + 1);

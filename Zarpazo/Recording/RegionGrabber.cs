@@ -12,6 +12,7 @@ internal sealed class RegionGrabber : IDisposable
     private readonly Bitmap _full;
     private readonly Bitmap? _scaled; // only when the output is not the size of the area
     private readonly RecordingEffects? _effects;
+    private readonly DesktopDuplicator? _duplicator; // the fast copy through the graphics card, when the area is on one screen
 
     /// <param name="region">The part of the screen, in physical pixels.</param>
     /// <param name="effects">What to draw over the pictures (a halo around the pointer, the shortcuts pressed); none for plain pictures.</param>
@@ -26,7 +27,11 @@ internal sealed class RegionGrabber : IDisposable
         {
             _scaled = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         }
+        _duplicator = DesktopDuplicator.TryCreate(region);
     }
+
+    /// <summary>Whether the screen is copied through the graphics card (fast) rather than with CopyFromScreen.</summary>
+    public bool UsesGraphicsCard => _duplicator != null;
 
     public int Width { get; }
 
@@ -52,9 +57,13 @@ internal sealed class RegionGrabber : IDisposable
     public void Grab(byte[] into, long timeMs = 0)
     {
         _effects?.Update(timeMs);
+        bool copied = _duplicator?.TryCopy(_full) == true;
         using (Graphics graphics = Graphics.FromImage(_full))
         {
-            graphics.CopyFromScreen(_region.Location, Point.Empty, _region.Size);
+            if (!copied)
+            {
+                graphics.CopyFromScreen(_region.Location, Point.Empty, _region.Size); // two screens, or the card said no this time
+            }
             _effects?.DrawUnderPointer(graphics, _region.Location, timeMs);
             CursorPainter.Draw(graphics, _region.Location, _effects?.CursorScale ?? 1);
             _effects?.DrawKeys(graphics, _region.Size);
@@ -85,5 +94,6 @@ internal sealed class RegionGrabber : IDisposable
     {
         _full.Dispose();
         _scaled?.Dispose();
+        _duplicator?.Dispose();
     }
 }
