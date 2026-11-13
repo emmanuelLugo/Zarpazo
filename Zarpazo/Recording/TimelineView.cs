@@ -25,6 +25,7 @@ internal sealed class TimelineView : FrameworkElement
     private const double ReorderThreshold = 4;
 
     private EditTimeline? _timeline;
+    private IReadOnlyList<VideoSegment>? _drawnSegments; // the pieces last drawn, to skip changes that leave them alone
     private double _pixelsPerSecond = 20;
     private double _playhead;
     private int _selected;
@@ -145,6 +146,13 @@ internal sealed class TimelineView : FrameworkElement
 
     private void OnTimelineChanged(object? sender, EventArgs e)
     {
+        // A new crop or look leaves the pieces as they were (the same list): nothing here to draw again, which matters
+        // while a slider sends a change for every pixel it moves.
+        if (ReferenceEquals(_timeline?.Segments, _drawnSegments))
+        {
+            return;
+        }
+        _drawnSegments = _timeline?.Segments;
         InvalidateMeasure();
         InvalidateVisual();
     }

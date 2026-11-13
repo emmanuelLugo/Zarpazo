@@ -40,6 +40,8 @@ internal sealed class ZoomLaneView : FrameworkElement
     }
 
     private EditTimeline? _timeline;
+    private IReadOnlyList<VideoSegment>? _seenSegments; // what the lane was last worked out for
+    private IReadOnlyList<ZoomRegion>? _seenZooms;
     private ZoomCamera? _camera;
     private double _pixelsPerSecond = 20;
     private double _playhead;
@@ -172,10 +174,20 @@ internal sealed class ZoomLaneView : FrameworkElement
     protected override Size MeasureOverride(Size availableSize) =>
         new(_timeline == null ? 0 : TimelineLayout.Width(_timeline, _pixelsPerSecond), LaneHeight);
 
-    private void OnTimelineChanged(object? sender, EventArgs e) => Refresh();
+    // A new crop or look leaves the pieces and the zooms as they were (the same lists): nothing to work out or draw again.
+    private void OnTimelineChanged(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(_timeline?.Segments, _seenSegments) && ReferenceEquals(_timeline?.Zooms, _seenZooms))
+        {
+            return;
+        }
+        Refresh();
+    }
 
     private void Refresh()
     {
+        _seenSegments = _timeline?.Segments;
+        _seenZooms = _timeline?.Zooms;
         _camera = _timeline == null ? null : new ZoomCamera(_timeline.Segments, _timeline.Zooms);
         if (_timeline != null && _selected >= _timeline.Zooms.Count)
         {

@@ -264,26 +264,28 @@ public partial class VideoEditWindow : Window
 
     private void OnTimelineChanged(object? sender, EventArgs e)
     {
-        // A new look (from a panel, a preset, undo or redo) is shown; when nothing else changed, that is all there is to do,
-        // and a slider moved while the video plays does not stop it.
-        bool lookOnly = ReferenceEquals(_timeline!.Segments, _seenSegments) && ReferenceEquals(_timeline.Zooms, _seenZooms) && _timeline.Crop == _shownCrop;
+        // A slider or a drag on the picture sends a change for every pixel it moves, so each kind of change does only its own
+        // work. A new look (from a panel, a preset, undo or redo) and a new crop are laid out once per frame drawn; when the
+        // pieces and the zooms are the same lists as before, that is all, and the video playing is not stopped.
+        bool piecesChanged = !ReferenceEquals(_timeline!.Segments, _seenSegments);
+        bool zoomsChanged = !ReferenceEquals(_timeline.Zooms, _seenZooms);
         _seenSegments = _timeline.Segments;
         _seenZooms = _timeline.Zooms;
         if (_timeline.Look != Look)
         {
             TakeLook(_timeline.Look, _lookFromControls);
         }
-        if (lookOnly)
+        if (_timeline.Crop != _shownCrop)
+        {
+            ShowCropChoices(); // an undone crop puts its rows back
+            ScheduleScene();
+        }
+        if (!piecesChanged && !zoomsChanged)
         {
             RefreshState();
             return;
         }
 
-        ShowCropChoices(); // an undone crop puts its rows back
-        if (_timeline!.Crop != _shownCrop)
-        {
-            ScheduleScene();
-        }
         RebuildPreviewCamera();
         StopPlayback();
         View.SelectedIndex = Math.Clamp(View.SelectedIndex, 0, _timeline!.Segments.Count - 1);
@@ -292,7 +294,10 @@ public partial class VideoEditWindow : Window
         if (!View.IsDragging && !Lane.IsDragging)
         {
             UpdateScale();
-            ShowFrame();
+            if (piecesChanged)
+            {
+                ShowFrame(); // the picture at the playhead is another only when the pieces changed: a seek costs a decode
+            }
         }
         ApplyZoomPreview();
         RefreshState();
@@ -1667,7 +1672,10 @@ public partial class VideoEditWindow : Window
         {
             ScheduleScene();
         }
-        BuildPresetRows(); // the preset that matches is marked
+        if (PresetsPopup.IsOpen)
+        {
+            BuildPresetRows(); // the preset that matches is marked; a closed list is built when it opens
+        }
     }
 
     private void ShowZoomStyle()
