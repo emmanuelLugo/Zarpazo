@@ -106,7 +106,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
-    [Fact]
+    [NeedsGpuFact]
     public void The_speed_button_shows_the_speed_of_the_chosen_piece()
     {
         Sta.Run(() =>

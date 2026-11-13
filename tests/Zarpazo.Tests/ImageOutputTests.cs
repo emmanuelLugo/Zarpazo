@@ -19,13 +19,6 @@ public sealed class ImageOutputTests : IDisposable
         {
             Directory.Delete(_folder, recursive: true);
         }
-        try
-        {
-            Directory.Delete(Path.GetDirectoryName(_folder)!); // the shared parent, once no other test is using it
-        }
-        catch (IOException)
-        {
-        }
     }
 
     [Fact]
