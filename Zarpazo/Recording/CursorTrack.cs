@@ -10,7 +10,12 @@ namespace Zarpazo.Recording;
 /// <param name="Width">The size of the video the positions refer to.</param>
 /// <param name="Moves">The pointer's position each time it moved, oldest first.</param>
 /// <param name="Clicks">The clicks, oldest first.</param>
-internal sealed record CursorTrack(int Width, int Height, IReadOnlyList<CursorSample> Moves, IReadOnlyList<CursorClick> Clicks)
+/// <param name="PointerInPicture">The pointer was painted into the pictures as they were recorded, so the editor must not
+/// draw another. Recordings made before the editor drew its own have it, and files of theirs lack the field: hence true.</param>
+/// <param name="PointerScale">How many pixels of the video the pointer on screen measured per pixel of its picture: the
+/// video's size over the area's, times the screen's scaling (a 150 % screen has a pointer 1.5 times as big).</param>
+internal sealed record CursorTrack(int Width, int Height, IReadOnlyList<CursorSample> Moves, IReadOnlyList<CursorClick> Clicks,
+    bool PointerInPicture = true, double PointerScale = 1)
 {
     public const string Extension = ".cursor.json";
 
