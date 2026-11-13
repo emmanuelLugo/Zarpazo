@@ -15,6 +15,7 @@ internal sealed class EditTimeline
     private VideoSegment[] _segments;
     private ZoomRegion[] _zooms = [];
     private VideoCrop _crop = VideoCrop.None;
+    private VideoLook _look = VideoLook.Default;
     private ZoomRegion[] _startZooms = []; // the zooms the edit opened with, to tell whether anything changed
     private bool _inGesture;
     private bool _gestureSaved;
@@ -39,6 +40,12 @@ internal sealed class EditTimeline
 
     /// <summary>How much of each side of the picture is cut away; <see cref="VideoCrop.None"/> keeps it whole.</summary>
     public VideoCrop Crop => _crop;
+
+    /// <summary>
+    /// The frame, pointer and zoom style chosen. Changing it can be undone like the rest, so applying a preset is one step
+    /// back; but it is a style, remembered for the next video, so it never counts as a change to discard on closing.
+    /// </summary>
+    public VideoLook Look => _look;
 
     /// <summary>The length of the edited video: the pieces added up.</summary>
     public double Duration => _segments.Sum(segment => segment.Length);
@@ -247,9 +254,11 @@ internal sealed class EditTimeline
 
     private void Apply(List<VideoSegment> list) => Apply(list.ToArray(), _zooms);
 
-    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms) => Apply(segments, zooms, _crop);
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms) => Apply(segments, zooms, _crop, _look);
 
-    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop)
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop) => Apply(segments, zooms, crop, _look);
+
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop, VideoLook look)
     {
         if (!_inGesture || !_gestureSaved)
         {
@@ -260,12 +269,42 @@ internal sealed class EditTimeline
         _segments = segments;
         _zooms = zooms;
         _crop = crop;
+        _look = look;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private Snapshot Current => new(_segments, _zooms, _crop);
+    private Snapshot Current => new(_segments, _zooms, _crop, _look);
 
-    private void Restore(Snapshot snapshot) => (_segments, _zooms, _crop) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop);
+    private void Restore(Snapshot snapshot) =>
+        (_segments, _zooms, _crop, _look) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop, snapshot.Look);
+
+    // ---- Look ----
+
+    /// <summary>The look the edit opens with (the one remembered from the last video): not a change, nothing to undo.</summary>
+    public void StartWithLook(VideoLook look)
+    {
+        _look = look.Tidied();
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Changes the look, as one step to undo (or part of a gesture's). A new zoom depth is given to every zoom of the video,
+    /// so the zooms look as the style says. Returns false when nothing changed.
+    /// </summary>
+    public bool SetLook(VideoLook look)
+    {
+        look = look.Tidied();
+        if (look == _look)
+        {
+            return false;
+        }
+
+        ZoomRegion[] zooms = look.Zoom.Depth == _look.Zoom.Depth
+            ? _zooms
+            : _zooms.Select(zoom => (zoom with { Scale = look.Zoom.Depth }).Clamped()).ToArray();
+        Apply(_segments, zooms, _crop, look);
+        return true;
+    }
 
     // ---- Crop ----
 
@@ -440,5 +479,5 @@ internal sealed class EditTimeline
     }
 
     /// <summary>Everything that can be undone, as it was at one moment.</summary>
-    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop);
+    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop, VideoLook Look);
 }

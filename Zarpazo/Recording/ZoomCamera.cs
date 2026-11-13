@@ -3,34 +3,25 @@ namespace Zarpazo.Recording;
 /// <summary>
 /// Where the camera looks at each moment of the edited video. The zooms, kept on the original's clock, are laid on the
 /// pieces in their order; each one zooms in at its start and back out at its end, and zooms close to each other are joined:
-/// the camera glides from one point to the next instead of zooming out and in again. The same rules serve the preview and
-/// the saved video, so both look alike.
+/// the camera glides from one point to the next instead of zooming out and in again. How fast it moves is the
+/// <see cref="ZoomMotion"/> chosen (see <see cref="ZoomTiming"/>). The same rules serve the preview and the saved video, so
+/// both look alike.
 /// </summary>
 internal sealed class ZoomCamera
 {
-    /// <summary>How long zooming in takes.</summary>
-    public const double ZoomInSeconds = 1.5;
-
-    /// <summary>How long zooming back out takes.</summary>
-    public const double ZoomOutSeconds = 1.2;
-
-    /// <summary>Zooms closer than this stay zoomed in and the camera glides between them.</summary>
-    public const double JoinGapSeconds = 1.5;
-
-    /// <summary>The glide from one zoom to the next starts this long before the first ends and finishes this long after the next starts.</summary>
-    private const double GlideHalfSeconds = 0.6;
-
     /// <summary>Bits of a zoom left shorter than this by a cut are dropped: they would only flicker.</summary>
     private const double MinSpanSeconds = 0.25;
 
     private readonly List<List<ZoomSpan>> _chains = [];
+    private readonly ZoomTiming _timing;
 
-    public ZoomCamera(IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms)
+    public ZoomCamera(IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms, ZoomMotion motion = ZoomMotion.Smooth)
     {
+        _timing = ZoomTiming.For(motion);
         Spans = Place(segments, zooms);
         foreach (ZoomSpan span in Spans)
         {
-            if (_chains.Count > 0 && span.Start - _chains[^1][^1].End <= JoinGapSeconds)
+            if (_chains.Count > 0 && span.Start - _chains[^1][^1].End <= _timing.JoinGapSeconds)
             {
                 _chains[^1].Add(span);
             }
@@ -58,8 +49,8 @@ internal sealed class ZoomCamera
                 continue;
             }
 
-            double zoomIn = ZoomEasing.Out((time - start) / ZoomInSeconds);
-            double zoomOut = ZoomEasing.Out((time - (end - ZoomOutSeconds)) / ZoomOutSeconds);
+            double zoomIn = ZoomEasing.Out((time - start) / _timing.InSeconds);
+            double zoomOut = ZoomEasing.Out((time - (end - _timing.OutSeconds)) / _timing.OutSeconds);
             double strength = zoomIn * (1 - zoomOut);
             (double scale, double focusX, double focusY) = TargetAt(chain, time);
 
@@ -74,14 +65,14 @@ internal sealed class ZoomCamera
     }
 
     // Inside a chain: the zoom being shown, or a blend of two while gliding from one to the next.
-    private static (double Scale, double X, double Y) TargetAt(List<ZoomSpan> chain, double time)
+    private (double Scale, double X, double Y) TargetAt(List<ZoomSpan> chain, double time)
     {
         for (int i = 0; i < chain.Count - 1; i++)
         {
             ZoomSpan from = chain[i];
             ZoomSpan to = chain[i + 1];
-            double glideStart = Math.Max(from.Start + (from.End - from.Start) / 2, from.End - GlideHalfSeconds);
-            double glideEnd = Math.Min(to.Start + (to.End - to.Start) / 2, to.Start + GlideHalfSeconds);
+            double glideStart = Math.Max(from.Start + (from.End - from.Start) / 2, from.End - _timing.GlideHalfSeconds);
+            double glideEnd = Math.Min(to.Start + (to.End - to.Start) / 2, to.Start + _timing.GlideHalfSeconds);
             if (time < glideStart)
             {
                 return (from.Scale, from.FocusX, from.FocusY);

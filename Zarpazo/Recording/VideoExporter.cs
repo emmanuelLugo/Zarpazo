@@ -23,9 +23,10 @@ internal static class VideoExporter
     /// <param name="track">The pointer recorded with the video, drawn in <paramref name="cursor"/>'s style; nothing is drawn
     /// without either, or when the recording already has the pointer in its pictures.</param>
     /// <param name="crop">The part of the picture kept; the video takes its size.</param>
+    /// <param name="motion">How fast the camera moves into and out of the zooms.</param>
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
         double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null,
-        VideoCrop crop = default)
+        VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth)
     {
         bool framed = frame is { Enabled: true };
         CropArea? area = null;
@@ -42,7 +43,7 @@ internal static class VideoExporter
             }
         }
 
-        var camera = new ZoomCamera(segments, zooms);
+        var camera = new ZoomCamera(segments, zooms, motion);
         CursorLayer? pointer = CursorLayer.For(track, cursor, segments, area);
         bool cropped = area is { IsWhole: false };
         if (camera.IsEmpty && !framed && pointer == null && !cropped)

@@ -182,6 +182,48 @@ internal sealed class AppSettings
         }
     }
 
+    /// <summary>The zooms' style on videos (see <see cref="Recording.ZoomStyle"/>); the last one chosen in the editor.</summary>
+    public double VideoZoomDepth { get; set; } = Recording.ZoomStyle.Default.Depth;
+
+    /// <summary>"Smooth" (Suave) or "Focused" (Enfocado).</summary>
+    public string VideoZoomMotion { get; set; } = Recording.ZoomStyle.Default.Motion.ToString();
+
+    [JsonIgnore]
+    public Recording.ZoomStyle VideoZoom
+    {
+        get => new Recording.ZoomStyle(
+            VideoZoomDepth,
+            Enum.TryParse(VideoZoomMotion, out Recording.ZoomMotion motion) ? motion : Recording.ZoomStyle.Default.Motion).Tidied();
+        set
+        {
+            VideoZoomDepth = value.Depth;
+            VideoZoomMotion = value.Motion.ToString();
+        }
+    }
+
+    /// <summary>The frame, pointer and zoom style chosen last, together.</summary>
+    [JsonIgnore]
+    public Recording.VideoLook VideoLook
+    {
+        get => new(VideoFrame, VideoCursor, VideoZoom);
+        set
+        {
+            VideoFrame = value.Frame;
+            VideoCursor = value.Cursor;
+            VideoZoom = value.Zoom;
+        }
+    }
+
+    /// <summary>The looks saved with a name in the video editor ("Presets"), in the order they were made.</summary>
+    public List<Recording.VideoPreset?>? VideoPresets { get; set; } = [];
+
+    [JsonIgnore]
+    public IReadOnlyList<Recording.VideoPreset> Presets
+    {
+        get => Recording.VideoPresetList.Tidy(VideoPresets);
+        set => VideoPresets = [.. value];
+    }
+
     /// <summary>How big the pointer is painted into GIF recordings: 1 (as on screen), 1.5 or 2.</summary>
     public double RecordCursorScale { get; set; } = 1;
 
@@ -346,6 +388,7 @@ internal sealed class AppSettings
             VideoMaxMinutes = Recording.RecordingQuality.Nearest(VideoMaxMinutes, Recording.RecordingQuality.VideoMaxMinutesChoices),
         };
         RecordFormat = RecordFormat?.ToLowerInvariant() == "video" ? "video" : "gif";
+        VideoPresets = [.. Recording.VideoPresetList.Tidy(VideoPresets)]; // edited by hand: empty entries, repeated names, odd values
         RecordCountdownSeconds = CountdownChoices.MinBy(choice => Math.Abs(choice - RecordCountdownSeconds));
         RecordAudioOffsetMs = AudioOffsetChoices.MinBy(choice => Math.Abs(choice - RecordAudioOffsetMs));
         BeautifyStyle = new Output.BeautifyStyle(
