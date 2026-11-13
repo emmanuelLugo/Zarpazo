@@ -52,7 +52,12 @@ public partial class RecordingBar : Window
     {
         InitializeComponent();
         IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
-        HwndSource.FromHwnd(hwnd).AddHook(IgnoreDpiChange);
+        HwndSource source = HwndSource.FromHwnd(hwnd);
+        source.AddHook(IgnoreDpiChange);
+        // See-through around the pill (its round corners and soft shadow) without making it a layered window: Windows
+        // refuses to keep a layered window out of screen copies, and in a full-screen recording the bar is over the picture.
+        source.CompositionTarget.BackgroundColor = Colors.Transparent;
+        WindowNative.SeeThroughBackground(hwnd);
         // Only matters when the bar has to sit over the recorded area (a full-screen recording); otherwise it is outside it.
         WindowNative.ExcludeFromScreenCapture(hwnd);
     }

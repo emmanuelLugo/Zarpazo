@@ -36,6 +36,22 @@ internal static class WindowNative
         }
     }
 
+    /// <summary>
+    /// Lets the desktop show through where the window draws nothing, with soft edges, as a layered window would, but the
+    /// window stays an ordinary one (which can be kept out of screen copies): the composited frame is stretched over all of it.
+    /// </summary>
+    public static void SeeThroughBackground(IntPtr hwnd)
+    {
+        var margins = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        try
+        {
+            DwmExtendFrameIntoClientArea(hwnd, ref margins);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+        }
+    }
+
     /// <summary>Places a window in physical pixels, which WPF's own Left/Top can't do across monitors with different scaling.</summary>
     public static void Place(IntPtr hwnd, Rectangle bounds) =>
         SetWindowPos(hwnd, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, SwpNoZOrder | SwpNoActivate);
@@ -48,6 +64,15 @@ internal static class WindowNative
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowDisplayAffinity(IntPtr hwnd, uint affinity);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Margins
+    {
+        public int Left, Right, Top, Bottom;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref Margins margins);
 
     private const uint MonitorDefaultToNearest = 2;
     private const int EffectiveDpi = 0;
