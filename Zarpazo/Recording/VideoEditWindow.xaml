@@ -249,7 +249,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Thumb">
-                            <Border Width="10" Background="Transparent" Cursor="SizeWE">
+                            <Border Width="10" Background="Transparent">
                                 <Border Width="2" Height="18" CornerRadius="1" Background="{DynamicResource TextPrimary}" />
                             </Border>
                         </ControlTemplate>
@@ -258,8 +258,8 @@
             </Style>
             <Style x:Key="RowSlider" TargetType="Slider">
                 <Setter Property="Focusable" Value="False" />
-                <Setter Property="IsMoveToPointEnabled" Value="True" />
-                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="local:SliderDrag.Anywhere" Value="True" />
+                <Setter Property="Cursor" Value="SizeWE" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
