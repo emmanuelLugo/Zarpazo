@@ -107,6 +107,34 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
     }
 
     [Fact]
+    public void The_speed_button_shows_the_speed_of_the_chosen_piece()
+    {
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.Silent);
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                EditTimeline timeline = window.Timeline!;
+                Pump(() => window.SpeedButton.IsEnabled, 2000);
+                Assert.Equal("1×", window.SpeedText.Text);
+
+                timeline.SetSpeed(0, 2);
+                Pump(() => false, 100);
+
+                Assert.Equal("2×", window.SpeedText.Text);
+                Assert.True(window.NeedsRendering, "a faster piece is made again when saved");
+                Assert.InRange(timeline.Duration, 1.25, 1.75);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void An_edited_video_is_saved_where_asked_without_touching_the_recording()
     {
         string copy = Path.Combine(_folder, "recording.mp4");

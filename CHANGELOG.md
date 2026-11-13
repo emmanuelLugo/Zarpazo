@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Velocidad por parte en el editor de video: el botón «1×» junto a Silenciar (o «Velocidad» en el menú del clic derecho sobre la línea de tiempo) acelera la parte elegida hasta 4× o la ralentiza hasta 0,5×. Sirve para pasar rápido lo aburrido (una carga, un formulario largo) sin cortarlo. La parte se ve más angosta en la línea de tiempo y su título dice la velocidad; la vista previa la reproduce así, y el zoom y el puntero la acompañan. A otra velocidad la parte va sin sonido.
+
 ## [0.7.0] - 2026-11-13
 
 ### Añadido

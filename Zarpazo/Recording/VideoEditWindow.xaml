@@ -769,6 +769,10 @@
                                 ToolTip="Silenciar la parte seleccionada (M)">
                             <Path x:Name="MuteIcon" Style="{StaticResource Glyph}" Data="{StaticResource SoundGlyph}" />
                         </Button>
+                        <Button x:Name="SpeedButton" Style="{StaticResource IconButton}" Click="OnSpeedButton" IsEnabled="False"
+                                ToolTip="Velocidad de la parte seleccionada: más rápida para lo que es largo, más lenta para lo que pasa rápido">
+                            <TextBlock x:Name="SpeedText" Text="1×" FontSize="11" FontWeight="SemiBold" />
+                        </Button>
                         <Button x:Name="MoveLeftButton" Style="{StaticResource IconButton}" Click="OnMoveLeft" IsEnabled="False"
                                 ToolTip="Pasar la parte seleccionada antes de la anterior (Alt+←). También se arrastra por su título">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveLeftGlyph}" />
@@ -819,6 +823,7 @@
                                 <MenuItem Header="Dividir aquí" InputGestureText="S" Click="OnSplit" />
                                 <MenuItem Header="Duplicar" InputGestureText="Ctrl+D" Click="OnDuplicate" />
                                 <MenuItem x:Name="MuteMenuItem" Header="Silenciar" InputGestureText="M" Click="OnMute" />
+                                <MenuItem x:Name="SpeedMenuItem" Header="Velocidad" />
                                 <Separator />
                                 <MenuItem Header="Eliminar" InputGestureText="Supr" Click="OnDelete" />
                             </ContextMenu>

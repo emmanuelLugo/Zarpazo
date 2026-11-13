@@ -446,7 +446,7 @@ public partial class VideoEditWindow : Window
 
         (int index, double at) = _timeline.Locate(_playhead);
         _playIndex = index;
-        Player.IsMuted = _timeline.Segments[index].Muted;
+        ApplyPieceSound(_timeline.Segments[index]);
         Player.Position = TimeSpan.FromSeconds(at);
         _tailSince = null;
         _settleUntil = Environment.TickCount64 + 80;
@@ -477,6 +477,7 @@ public partial class VideoEditWindow : Window
         }
         _timer.Stop();
         Player.IsMuted = false;
+        Player.SpeedRatio = 1;
         PlayIcon.Data = (Geometry)FindResource("PlayGlyph");
         PlayButton.ToolTip = "Reproducir lo que quedará (Espacio)";
     }
@@ -502,7 +503,8 @@ public partial class VideoEditWindow : Window
         }
 
         _tailSince ??= Stopwatch.GetTimestamp();
-        return Math.Min(_timeline!.SourceDuration, whole + Stopwatch.GetElapsedTime(_tailSince.Value).TotalSeconds);
+        double rate = _playing && _playIndex < _timeline!.Segments.Count ? _timeline.Segments[_playIndex].Rate : 1;
+        return Math.Min(_timeline!.SourceDuration, whole + Stopwatch.GetElapsedTime(_tailSince.Value).TotalSeconds * rate);
     }
 
     // Plays the pieces one after the other: when one ends the player jumps to where the next begins in the original.
@@ -527,7 +529,7 @@ public partial class VideoEditWindow : Window
 
             _playIndex++;
             VideoSegment next = pieces[_playIndex];
-            Player.IsMuted = next.Muted;
+            ApplyPieceSound(next);
             if (pieceEnded || Math.Abs(next.Start - piece.End) > 0.04)
             {
                 Player.Position = TimeSpan.FromSeconds(next.Start);
@@ -548,6 +550,13 @@ public partial class VideoEditWindow : Window
         View.Playhead = Lane.Playhead = _playhead;
         UpdatePositionText();
         EnsurePlayheadVisible();
+    }
+
+    // A piece plays at its speed, and without sound when muted or played faster or slower (as in the saved video).
+    private void ApplyPieceSound(VideoSegment piece)
+    {
+        Player.IsMuted = piece.IsSilent;
+        Player.SpeedRatio = piece.Rate;
     }
 
     private void OnStepBack(object sender, RoutedEventArgs e) => Step(-FrameSeconds);
@@ -637,6 +646,43 @@ public partial class VideoEditWindow : Window
         if (CanEdit && index >= 0 && index < _timeline!.Segments.Count)
         {
             _timeline.SetMuted(index, !_timeline.Segments[index].Muted);
+        }
+    }
+
+    private void OnSpeedButton(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = SpeedButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
+        FillSpeedMenu(menu.Items);
+        menu.IsOpen = true;
+    }
+
+    // The speeds offered, the selected piece's checked. Faster or slower pieces play without sound, as in the saved video.
+    private void FillSpeedMenu(ItemCollection items)
+    {
+        items.Clear();
+        int index = View.SelectedIndex;
+        double current = _timeline != null && index >= 0 && index < _timeline.Segments.Count ? _timeline.Segments[index].Rate : 1;
+        foreach (double speed in VideoSegment.Speeds)
+        {
+            var item = new MenuItem
+            {
+                Header = speed == 1 ? "1× (normal)" : TimeText.Speed(speed),
+                IsCheckable = true,
+                IsChecked = speed == current,
+            };
+            item.Click += (_, _) => SetSelectedSpeed(speed);
+            items.Add(item);
+        }
+        items.Add(new Separator());
+        items.Add(new MenuItem { Header = "A otra velocidad, la parte va sin sonido", IsEnabled = false });
+    }
+
+    private void SetSelectedSpeed(double speed)
+    {
+        int index = View.SelectedIndex;
+        if (CanEdit && index >= 0 && index < _timeline!.Segments.Count && _timeline.SetSpeed(index, speed) && _playing && index == _playIndex)
+        {
+            ApplyPieceSound(_timeline.Segments[index]); // the piece playing now changes pace at once
         }
     }
 
@@ -786,6 +832,7 @@ public partial class VideoEditWindow : Window
         DeleteButton.IsEnabled = hasSelection && count > 1;
         DuplicateButton.IsEnabled = hasSelection;
         MuteButton.IsEnabled = hasSelection;
+        SpeedButton.IsEnabled = SpeedMenuItem.IsEnabled = hasSelection;
         MoveLeftButton.IsEnabled = hasSelection && selected > 0;
         MoveRightButton.IsEnabled = hasSelection && selected < count - 1;
         UndoButton.IsEnabled = free && _timeline.CanUndo;
@@ -813,6 +860,14 @@ public partial class VideoEditWindow : Window
         MuteIcon.Data = (Geometry)FindResource(muted ? "MutedGlyph" : "SoundGlyph");
         MuteButton.ToolTip = $"{muteText} la parte seleccionada (M)";
         MuteMenuItem.Header = muteText;
+        double speed = hasSelection ? _timeline.Segments[selected].Rate : 1;
+        SpeedText.Text = TimeText.Speed(speed);
+        SpeedText.ClearValue(TextBlock.ForegroundProperty);
+        if (speed != 1)
+        {
+            SpeedText.SetResourceReference(TextBlock.ForegroundProperty, "Accent");
+        }
+        FillSpeedMenu(SpeedMenuItem.Items);
         UpdatePositionText();
 
         if (_busy)
