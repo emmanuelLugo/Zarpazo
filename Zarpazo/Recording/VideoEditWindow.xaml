@@ -3,13 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Zarpazo.Recording"
         Title="Editar video"
-        Width="1180"
-        Height="820"
-        MinWidth="980"
-        MinHeight="680"
+        Width="1320"
+        Height="880"
+        MinWidth="1040"
+        MinHeight="700"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Background="{DynamicResource WindowBackground}"
+        UseLayoutRounding="True"
         Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI"
         FontSize="13"
@@ -20,13 +21,6 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- The tool buttons never take the keyboard focus: Space and the letters go to the editor, not to a button. -->
-            <Style x:Key="Tool" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Padding" Value="11,4" />
-                <Setter Property="Margin" Value="0,0,6,0" />
-            </Style>
 
             <!-- A background to choose for the frame: a rounded swatch of it, ringed when chosen. -->
             <Style x:Key="Swatch" TargetType="RadioButton">
@@ -78,34 +72,6 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            <!-- The tabs over the side panels: the chosen one underlined. -->
-            <Style x:Key="PanelTab" TargetType="RadioButton">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border Background="Transparent" Padding="0,6,0,0">
-                                <StackPanel>
-                                    <ContentPresenter HorizontalAlignment="Center" />
-                                    <Border x:Name="Line" Height="2" Margin="0,6,0,0" CornerRadius="1" Background="{DynamicResource Border}" />
-                                </StackPanel>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Line" Property="Background" Value="{DynamicResource Accent}" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <Trigger Property="IsChecked" Value="True">
-                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
             <Style x:Key="SliderValue" TargetType="TextBlock">
                 <Setter Property="HorizontalAlignment" Value="Right" />
                 <Setter Property="FontWeight" Value="SemiBold" />
@@ -116,275 +82,488 @@
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="Margin" Value="0,12,0,6" />
             </Style>
+            <!-- icons: drawn on a 24 x 24 grid, shown at 18 px, in the colour of the button they are on -->
+            <Style x:Key="Glyph" TargetType="Path">
+                <Setter Property="Width" Value="24" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}" />
+                <Setter Property="StrokeThickness" Value="1.8" />
+                <Setter Property="StrokeStartLineCap" Value="Round" />
+                <Setter Property="StrokeEndLineCap" Value="Round" />
+                <Setter Property="StrokeLineJoin" Value="Round" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="FilledGlyph" TargetType="Path" BasedOn="{StaticResource Glyph}">
+                <Setter Property="Fill" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}" />
+                <Setter Property="StrokeThickness" Value="0" />
+            </Style>
+            <Geometry x:Key="UndoGlyph">M9,14 L4,9 L9,4 M4,9 H15 A5,5 0 0 1 15,19 H11</Geometry>
+            <Geometry x:Key="RedoGlyph">M15,14 L20,9 L15,4 M20,9 H9 A5,5 0 0 0 9,19 H13</Geometry>
+            <Geometry x:Key="ResetGlyph">M3.5,12 A8.5,8.5 0 1 0 6,6 M3.5,3.5 V8.5 H8.5</Geometry>
+            <Geometry x:Key="FrameGlyph">M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z M8,8 H16 V16 H8 Z</Geometry>
+            <Geometry x:Key="PointerGlyphIcon">M5,3 L11,20 L13.5,13.5 L20,11 Z</Geometry>
+            <Geometry x:Key="ZoomGlyph">M10.5,3.5 A7,7 0 1 0 10.5,17.5 A7,7 0 1 0 10.5,3.5 Z M20.5,20.5 L15.5,15.5 M10.5,7.5 V13.5 M7.5,10.5 H13.5</Geometry>
+            <Geometry x:Key="SplitGlyph">M6,3 A3,3 0 1 0 6,9 A3,3 0 1 0 6,3 Z M6,15 A3,3 0 1 0 6,21 A3,3 0 1 0 6,15 Z M20,4 L8.1,15.9 M14.5,14.5 L20,20 M8.1,8.1 L12,12</Geometry>
+            <Geometry x:Key="TrashGlyph">M4,7 H20 M10,11 V17 M14,11 V17 M6,7 L7,20 H17 L18,7 M9,7 V4 H15 V7</Geometry>
+            <Geometry x:Key="DuplicateGlyph">M10,8 H18 A2,2 0 0 1 20,10 V18 A2,2 0 0 1 18,20 H10 A2,2 0 0 1 8,18 V10 A2,2 0 0 1 10,8 Z M4,16 V6 A2,2 0 0 1 6,4 H16</Geometry>
+            <Geometry x:Key="SoundGlyph">M11,5 L6,9 H3 V15 H6 L11,19 Z M15.5,8.5 A5,5 0 0 1 15.5,15.5 M18.5,5.5 A9,9 0 0 1 18.5,18.5</Geometry>
+            <Geometry x:Key="MutedGlyph">M11,5 L6,9 H3 V15 H6 L11,19 Z M22,9 L16,15 M16,9 L22,15</Geometry>
+            <Geometry x:Key="MoveLeftGlyph">M19,12 H6 M11,17 L6,12 L11,7 M3,5 V19</Geometry>
+            <Geometry x:Key="MoveRightGlyph">M5,12 H18 M13,17 L18,12 L13,7 M21,5 V19</Geometry>
+            <Geometry x:Key="StepBackGlyph">M17,18 L11,12 L17,6 M7,6 V18</Geometry>
+            <Geometry x:Key="StepForwardGlyph">M7,18 L13,12 L7,6 M17,6 V18</Geometry>
+            <Geometry x:Key="PlayGlyph">M8,5.5 A1,1 0 0 1 9.5,4.6 L19,11.1 A1,1 0 0 1 19,12.9 L9.5,19.4 A1,1 0 0 1 8,18.5 Z</Geometry>
+            <Geometry x:Key="PauseGlyph">M7,4.5 H10 A1,1 0 0 1 11,5.5 V18.5 A1,1 0 0 1 10,19.5 H7 A1,1 0 0 1 6,18.5 V5.5 A1,1 0 0 1 7,4.5 Z M14,4.5 H17 A1,1 0 0 1 18,5.5 V18.5 A1,1 0 0 1 17,19.5 H14 A1,1 0 0 1 13,18.5 V5.5 A1,1 0 0 1 14,4.5 Z</Geometry>
+            <Geometry x:Key="CopyGlyph">M10,8 H18 A2,2 0 0 1 20,10 V18 A2,2 0 0 1 18,20 H10 A2,2 0 0 1 8,18 V10 A2,2 0 0 1 10,8 Z M4,16 V6 A2,2 0 0 1 6,4 H16</Geometry>
+            <Geometry x:Key="SaveGlyph">M12,3 V15 M7,10 L12,15 L17,10 M5,20 H19</Geometry>
+            <Geometry x:Key="FolderGlyph">M3,7 A2,2 0 0 1 5,5 H9 L11,7 H19 A2,2 0 0 1 21,9 V17 A2,2 0 0 1 19,19 H5 A2,2 0 0 1 3,17 Z</Geometry>
+            <Geometry x:Key="SparkleGlyph">M12,3 L13.8,9.2 L20,11 L13.8,12.8 L12,19 L10.2,12.8 L4,11 L10.2,9.2 Z</Geometry>
+            <Geometry x:Key="PlusGlyph">M12,5 V19 M5,12 H19</Geometry>
+            <Geometry x:Key="TimelineZoomGlyph">M10.5,3.5 A7,7 0 1 0 10.5,17.5 A7,7 0 1 0 10.5,3.5 Z M20.5,20.5 L15.5,15.5</Geometry>
+
+            <!-- A square button with only an icon: quiet until the pointer is on it. -->
+            <Style x:Key="IconButton" TargetType="Button">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Box" Width="34" Height="34" CornerRadius="8" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Pressed}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextDisabled}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- The big round play button in the middle of the controls. -->
+            <Style x:Key="PlayButtonStyle" TargetType="Button">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Foreground" Value="{DynamicResource WindowBackground}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Box" Width="40" Height="40" CornerRadius="20" Background="{DynamicResource TextPrimary}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Opacity" Value="0.88" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Box" Property="Opacity" Value="0.75" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Box" Property="Opacity" Value="0.35" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- The icons down the left that choose the panel: the chosen one lit up in the accent colour. -->
+            <Style x:Key="RailButton" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Box" Width="40" Height="40" CornerRadius="10" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+                    </Trigger>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- The title of a side panel, small and in capitals, like a section of settings. -->
+            <Style x:Key="PanelHeader" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Margin" Value="0,0,0,12" />
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Margin="16">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" MinHeight="180" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="240" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid>
+        <!-- top bar: undo and redo, the video's name and how it went, and handing the video out -->
+        <Grid Height="56" Background="{DynamicResource InputBackground}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                <Button x:Name="UndoButton" Style="{StaticResource IconButton}" Click="OnUndo" IsEnabled="False" ToolTip="Deshacer (Ctrl+Z)">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource UndoGlyph}" />
+                </Button>
+                <Button x:Name="RedoButton" Style="{StaticResource IconButton}" Click="OnRedo" IsEnabled="False" ToolTip="Rehacer (Ctrl+Y)">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource RedoGlyph}" />
+                </Button>
+                <Button x:Name="ResetButton" Style="{StaticResource IconButton}" Click="OnReset" IsEnabled="False" Margin="4,0,0,0"
+                        ToolTip="Restablecer: vuelve al video completo, tal como se grabó">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource ResetGlyph}" />
+                </Button>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="560">
+                <TextBlock x:Name="TitleText" FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <TextBlock x:Name="DeliveryText" Foreground="{DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <Button x:Name="ShowInFolderButton" Style="{StaticResource IconButton}" Visibility="Collapsed" Click="OnShowInFolder"
+                            Margin="4,-8,0,-8" ToolTip="Mostrar en la carpeta">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource FolderGlyph}" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0">
+                <Button x:Name="CopyButton" Margin="0,0,8,0" Padding="12,6" Focusable="False" IsEnabled="False" Click="OnCopy"
+                        ToolTip="Copia el video terminado para pegarlo en un chat o un documento">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource CopyGlyph}" Margin="0,0,6,0" />
+                        <TextBlock Text="Copiar" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="SaveButton" Padding="14,6" Focusable="False" IsDefault="True" IsEnabled="False" Click="OnSave"
+                        ToolTip="Guarda el video terminado como archivo; la grabación original no se toca">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource SaveGlyph}" Margin="0,0,6,0" />
+                        <TextBlock Text="Guardar…" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- While the finished video is being made: a thin line along the bottom of the bar. -->
+            <ProgressBar x:Name="WorkBar" Grid.ColumnSpan="3" Height="2" VerticalAlignment="Bottom" Minimum="0" Maximum="1"
+                         BorderThickness="0" Background="Transparent" Foreground="{DynamicResource Accent}" Visibility="Collapsed" />
+        </Grid>
+
+        <!-- the icons, the chosen panel, and the video -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="60" />
+                <ColumnDefinition Width="292" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- The scene is drawn at the video's own size inside the Viewbox, so the zoom and the frame are worked out in its pixels.
-                 The camera (the zoom) moves the Scene; the frame is its backdrop and the place of the recording in it. -->
-            <Border Background="Black" CornerRadius="6" ClipToBounds="True">
-                <Viewbox Stretch="Uniform">
-                    <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
-                          MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
-                        <Grid x:Name="Scene">
-                            <Image x:Name="Backdrop" Stretch="Fill" Visibility="Collapsed" />
-                            <Grid x:Name="ContentHost" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
-                                              Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
-                            </Grid>
-                        </Grid>
-                        <!-- The pointer the saved video will have, drawn over the scene where the camera shows it (not zoomed with
-                             the picture, so it stays sharp), with the effects of the clicks under it. -->
-                        <Canvas x:Name="PointerLayer" IsHitTestVisible="False" Visibility="Collapsed">
-                            <Canvas x:Name="ClickMarks" />
-                            <Canvas x:Name="PointerGlyph">
-                                <Canvas.Effect>
-                                    <DropShadowEffect ShadowDepth="1.6" Direction="270" BlurRadius="4" Opacity="0.4" />
-                                </Canvas.Effect>
-                                <Path x:Name="PointerEdge" StrokeLineJoin="Round" />
-                                <Path x:Name="PointerFill" />
-                            </Canvas>
-                        </Canvas>
-                        <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
-                        <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
-                            <Path x:Name="FocusShade" Fill="#99000000" />
-                            <Rectangle x:Name="FocusFrame" Stroke="#8E6CEF" />
-                            <Ellipse x:Name="FocusDot" Fill="#8E6CEF" Stroke="White" />
-                        </Canvas>
+            <StackPanel Margin="10,14,0,0">
+                <RadioButton x:Name="FrameTab" Style="{StaticResource RailButton}" GroupName="sidePanel" IsChecked="True" Checked="OnPanelTab" ToolTip="Marco y fondo">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource FrameGlyph}" />
+                </RadioButton>
+                <RadioButton x:Name="CursorTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Cursor">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource PointerGlyphIcon}" />
+                </RadioButton>
+                <RadioButton x:Name="ZoomTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Zoom">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource ZoomGlyph}" />
+                </RadioButton>
+            </StackPanel>
+
+            <Border Grid.Column="1" Margin="4,14,0,12" CornerRadius="12" Background="{DynamicResource InputBackground}"
+                    BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="16,14">
+                    <Grid>
+                        <!-- The frame: a background behind the recording, room around it, rounded corners and a shadow. -->
+                        <StackPanel x:Name="FramePanel">
+                            <TextBlock Text="MARCO" Style="{StaticResource PanelHeader}" />
+                            <CheckBox x:Name="FrameBox" Content="Poner marco" Focusable="False" Click="OnFrameChanged"
+                                      ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
+                            <StackPanel x:Name="FrameOptions">
+                                <TextBlock Text="Fondo" Style="{StaticResource PanelTitle}" />
+                                <WrapPanel x:Name="FrameBackgrounds" />
+                                <TextBlock Text="Margen" Style="{StaticResource PanelTitle}" Margin="0,6,0,6" />
+                                <ComboBox x:Name="FramePaddingBox" Focusable="False" SelectionChanged="OnFrameChanged">
+                                    <ComboBoxItem Content="Pequeño" />
+                                    <ComboBoxItem Content="Medio" />
+                                    <ComboBoxItem Content="Grande" />
+                                </ComboBox>
+                                <TextBlock Text="Esquinas" Style="{StaticResource PanelTitle}" />
+                                <ComboBox x:Name="FrameRadiusBox" Focusable="False" SelectionChanged="OnFrameChanged">
+                                    <ComboBoxItem Content="Rectas" />
+                                    <ComboBoxItem Content="Suaves" />
+                                    <ComboBoxItem Content="Redondas" />
+                                </ComboBox>
+                                <CheckBox x:Name="FrameShadowBox" Content="Sombra" Margin="0,12,0,0" Focusable="False" Click="OnFrameChanged" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- The pointer: the video is recorded without it, and the one drawn here goes into the saved video. -->
+                        <StackPanel x:Name="CursorPanel" Visibility="Collapsed">
+                            <TextBlock Text="CURSOR" Style="{StaticResource PanelHeader}" />
+                            <CheckBox x:Name="CursorBox" Content="Mostrar cursor" Focusable="False" Click="OnCursorChanged"
+                                      ToolTip="Dibuja el puntero en el video: más grande, con movimiento suave y un efecto en cada clic" />
+                            <TextBlock x:Name="CursorNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
+                                       Margin="0,8,0,0" Visibility="Collapsed" />
+                            <StackPanel x:Name="CursorOptions">
+                                <TextBlock Text="Estilo" Style="{StaticResource PanelTitle}" />
+                                <StackPanel x:Name="CursorShapes" Orientation="Horizontal" />
+
+                                <Grid Margin="0,12,0,0">
+                                    <TextBlock Text="Tamaño" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
+                                    <TextBlock x:Name="CursorSizeText" Style="{StaticResource SliderValue}" />
+                                </Grid>
+                                <Slider x:Name="CursorSizeSlider" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5" Focusable="False"
+                                        ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
+
+                                <Grid Margin="0,8,0,0">
+                                    <TextBlock Text="Suavizado" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
+                                    <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource SliderValue}" />
+                                </Grid>
+                                <Slider x:Name="CursorSmoothingSlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
+                                        ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
+
+                                <Grid Margin="0,8,0,0">
+                                    <TextBlock Text="Balanceo" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
+                                    <TextBlock x:Name="CursorSwayText" Style="{StaticResource SliderValue}" />
+                                </Grid>
+                                <Slider x:Name="CursorSwaySlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
+                                        ValueChanged="OnCursorSlider" ToolTip="Cuánto se inclina la flecha al moverse de lado" />
+
+                                <TextBlock Text="Efecto de clic" Style="{StaticResource PanelTitle}" />
+                                <ComboBox x:Name="CursorClickBox" Focusable="False" SelectionChanged="OnCursorChanged">
+                                    <ComboBoxItem Content="Ninguno" />
+                                    <ComboBoxItem Content="Onda" />
+                                    <ComboBoxItem Content="Pulso" />
+                                </ComboBox>
+                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Margin="0,12,0,0" Focusable="False" Click="OnCursorChanged"
+                                          ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- The zooms: suggested from the clicks or added by hand; the chosen one can be changed here. -->
+                        <StackPanel x:Name="ZoomPanel" Visibility="Collapsed">
+                            <TextBlock Text="ZOOM" Style="{StaticResource PanelHeader}" />
+                            <Button x:Name="AutoZoomButton" Focusable="False" IsEnabled="False" Click="OnAutoZoom" HorizontalContentAlignment="Left" Padding="10,7">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource Glyph}" Data="{StaticResource SparkleGlyph}" Margin="0,0,8,0" />
+                                    <TextBlock Text="Zoom automático" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="AddZoomButton" Focusable="False" IsEnabled="False" Click="OnAddZoom" HorizontalContentAlignment="Left" Padding="10,7" Margin="0,8,0,0"
+                                    ToolTip="Añade un zoom donde está la línea roja (Z). También con doble clic en la fila de zooms">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource Glyph}" Data="{StaticResource PlusGlyph}" Margin="0,0,8,0" />
+                                    <TextBlock Text="Añadir zoom aquí" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0"
+                                       Text="Los zooms están en la fila de abajo de la línea de tiempo: arrástralos para moverlos o estira sus bordes para alargarlos." />
+                            <StackPanel x:Name="ZoomDetails" Visibility="Collapsed" Margin="0,8,0,0">
+                                <TextBlock Text="Zoom elegido" Style="{StaticResource PanelTitle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Acercar" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <ComboBox x:Name="ZoomDepthBox" Grid.Column="1" Focusable="False" SelectionChanged="OnZoomDepthChanged" ToolTip="Cuánto se acerca este zoom">
+                                        <ComboBoxItem Content="1,25×" Tag="1.25" />
+                                        <ComboBoxItem Content="1,5×" Tag="1.5" />
+                                        <ComboBoxItem Content="1,8×" Tag="1.8" />
+                                        <ComboBoxItem Content="2×" Tag="2" />
+                                        <ComboBoxItem Content="2,5×" Tag="2.5" />
+                                        <ComboBoxItem Content="3×" Tag="3" />
+                                    </ComboBox>
+                                </Grid>
+                                <TextBlock Text="Haz clic o arrastra en el video para elegir adónde mira." Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                                           TextWrapping="Wrap" Margin="0,10,0,0" />
+                                <Button x:Name="DeleteZoomButton" Focusable="False" Click="OnDeleteZoom" HorizontalContentAlignment="Left" Padding="10,7" Margin="0,10,0,0"
+                                        ToolTip="Quita el zoom elegido (Supr)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Style="{StaticResource Glyph}" Data="{StaticResource TrashGlyph}" Margin="0,0,8,0" />
+                                        <TextBlock Text="Quitar zoom" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
                     </Grid>
-                </Viewbox>
+                </ScrollViewer>
             </Border>
 
-            <ScrollViewer Grid.Column="1" Margin="12,0,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-            <StackPanel Width="220">
-            <Grid Margin="0,0,0,10">
+            <Grid Grid.Column="2" Margin="16,14,16,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- The scene is drawn at the video's own size inside the Viewbox, so the zoom and the frame are worked out in its pixels.
+                     The camera (the zoom) moves the Scene; the frame is its backdrop and the place of the recording in it. -->
+                <Border Background="Black" CornerRadius="10" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Viewbox Stretch="Uniform">
+                        <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
+                              MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
+                            <Grid x:Name="Scene">
+                                <Image x:Name="Backdrop" Stretch="Fill" Visibility="Collapsed" />
+                                <Grid x:Name="ContentHost" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                    <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
+                                                  Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+                                </Grid>
+                            </Grid>
+                            <!-- The pointer the saved video will have, drawn over the scene where the camera shows it (not zoomed with
+                                 the picture, so it stays sharp), with the effects of the clicks under it. -->
+                            <Canvas x:Name="PointerLayer" IsHitTestVisible="False" Visibility="Collapsed">
+                                <Canvas x:Name="ClickMarks" />
+                                <Canvas x:Name="PointerGlyph">
+                                    <Canvas.Effect>
+                                        <DropShadowEffect ShadowDepth="1.6" Direction="270" BlurRadius="4" Opacity="0.4" />
+                                    </Canvas.Effect>
+                                    <Path x:Name="PointerEdge" StrokeLineJoin="Round" />
+                                    <Path x:Name="PointerFill" />
+                                </Canvas>
+                            </Canvas>
+                            <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
+                            <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
+                                <Path x:Name="FocusShade" Fill="#99000000" />
+                                <Rectangle x:Name="FocusFrame" Stroke="#8E6CEF" />
+                                <Ellipse x:Name="FocusDot" Fill="#8E6CEF" Stroke="White" />
+                            </Canvas>
+                        </Grid>
+                    </Viewbox>
+                </Border>
+
+                <!-- The controls under the video: tools for the chosen piece on the left, playing in the middle, the timeline's zoom on the right. -->
+                <Grid Grid.Row="1" Height="56">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="SplitButton" Style="{StaticResource IconButton}" Click="OnSplit" IsEnabled="False"
+                                ToolTip="Dividir: corta la parte donde está la línea roja (S)">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource SplitGlyph}" />
+                        </Button>
+                        <Button x:Name="DeleteButton" Style="{StaticResource IconButton}" Click="OnDelete" IsEnabled="False"
+                                ToolTip="Eliminar la parte seleccionada; las siguientes se juntan (Supr)">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource TrashGlyph}" />
+                        </Button>
+                        <Button x:Name="DuplicateButton" Style="{StaticResource IconButton}" Click="OnDuplicate" IsEnabled="False"
+                                ToolTip="Duplicar la parte seleccionada justo después (Ctrl+D)">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource DuplicateGlyph}" />
+                        </Button>
+                        <Button x:Name="MuteButton" Style="{StaticResource IconButton}" Click="OnMute" IsEnabled="False"
+                                ToolTip="Silenciar la parte seleccionada (M)">
+                            <Path x:Name="MuteIcon" Style="{StaticResource Glyph}" Data="{StaticResource SoundGlyph}" />
+                        </Button>
+                        <Button x:Name="MoveLeftButton" Style="{StaticResource IconButton}" Click="OnMoveLeft" IsEnabled="False"
+                                ToolTip="Pasar la parte seleccionada antes de la anterior (Alt+←). También se arrastra por su título">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveLeftGlyph}" />
+                        </Button>
+                        <Button x:Name="MoveRightButton" Style="{StaticResource IconButton}" Click="OnMoveRight" IsEnabled="False"
+                                ToolTip="Pasar la parte seleccionada después de la siguiente (Alt+→)">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveRightGlyph}" />
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="PositionText" Width="132" TextAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                                   Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource TextSecondary}" />
+                        <Button x:Name="BackButton" Style="{StaticResource IconButton}" Click="OnStepBack" IsEnabled="False"
+                                ToolTip="Un cuadro atrás (←). Con Mayús, un segundo">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource StepBackGlyph}" />
+                        </Button>
+                        <Button x:Name="PlayButton" Style="{StaticResource PlayButtonStyle}" Margin="6,0" Click="OnPlay" IsEnabled="False"
+                                ToolTip="Reproducir lo que quedará (Espacio)">
+                            <Path x:Name="PlayIcon" Style="{StaticResource FilledGlyph}" Data="{StaticResource PlayGlyph}" />
+                        </Button>
+                        <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Click="OnStepForward" IsEnabled="False"
+                                ToolTip="Un cuadro adelante (→). Con Mayús, un segundo">
+                            <Path Style="{StaticResource Glyph}" Data="{StaticResource StepForwardGlyph}" />
+                        </Button>
+                        <Border Width="142" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource TimelineZoomGlyph}" Stroke="{DynamicResource TextSecondary}" Margin="0,0,8,0" />
+                        <Slider x:Name="ZoomSlider" Width="130" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
+                                VerticalAlignment="Center" Focusable="False" ToolTip="Acerca la línea de tiempo (Ctrl + rueda del ratón)" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- the timeline, the whole width, and a line about the edit -->
+        <StackPanel Grid.Row="2" Margin="16,0,16,12">
+            <Border Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="10" Padding="0,0,0,2">
+                <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="OnTimelineWheel" SizeChanged="OnScrollerSizeChanged">
+                    <StackPanel>
+                    <local:TimelineView x:Name="View" SelectionChanged="OnSelectionChanged" Scrubbed="OnTimelineScrubbed" Previewed="OnPreviewed"
+                                        GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
+                        <local:TimelineView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Dividir aquí" InputGestureText="S" Click="OnSplit" />
+                                <MenuItem Header="Duplicar" InputGestureText="Ctrl+D" Click="OnDuplicate" />
+                                <MenuItem x:Name="MuteMenuItem" Header="Silenciar" InputGestureText="M" Click="OnMute" />
+                                <Separator />
+                                <MenuItem Header="Eliminar" InputGestureText="Supr" Click="OnDelete" />
+                            </ContextMenu>
+                        </local:TimelineView.ContextMenu>
+                    </local:TimelineView>
+                    <local:ZoomLaneView x:Name="Lane" Margin="0,0,0,4" SelectionChanged="OnZoomSelectionChanged" Scrubbed="OnScrubbed"
+                                        AddRequested="OnZoomAddRequested" GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
+                        <local:ZoomLaneView.ContextMenu>
+                            <ContextMenu x:Name="ZoomMenu">
+                                <MenuItem Header="Quitar zoom" InputGestureText="Supr" Click="OnDeleteZoom" />
+                            </ContextMenu>
+                        </local:ZoomLaneView.ContextMenu>
+                    </local:ZoomLaneView>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+            <Grid Margin="2,8,2,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <RadioButton x:Name="FrameTab" Style="{StaticResource PanelTab}" GroupName="sidePanel" IsChecked="True" Checked="OnPanelTab">
-                    <TextBlock Text="Marco" FontWeight="SemiBold" />
-                </RadioButton>
-                <RadioButton x:Name="CursorTab" Grid.Column="1" Style="{StaticResource PanelTab}" GroupName="sidePanel" Checked="OnPanelTab">
-                    <TextBlock Text="Cursor" FontWeight="SemiBold" />
-                </RadioButton>
+                <TextBlock x:Name="KeptText" Foreground="{DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="SelectionText" Grid.Column="1" Foreground="{DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center" />
             </Grid>
-            <!-- The frame: a background behind the recording, room around it, rounded corners and a shadow. -->
-            <Border x:Name="FramePanel" Padding="14,10" CornerRadius="8"
-                    Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
-                <StackPanel>
-                    <CheckBox x:Name="FrameBox" Content="Poner marco" FontWeight="SemiBold" Focusable="False" Click="OnFrameChanged"
-                              ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
-                    <StackPanel x:Name="FrameOptions">
-                        <TextBlock Text="Fondo" Style="{StaticResource PanelTitle}" />
-                        <WrapPanel x:Name="FrameBackgrounds" />
-                        <TextBlock Text="Margen" Style="{StaticResource PanelTitle}" Margin="0,6,0,6" />
-                        <ComboBox x:Name="FramePaddingBox" Focusable="False" SelectionChanged="OnFrameChanged">
-                            <ComboBoxItem Content="Pequeño" />
-                            <ComboBoxItem Content="Medio" />
-                            <ComboBoxItem Content="Grande" />
-                        </ComboBox>
-                        <TextBlock Text="Esquinas" Style="{StaticResource PanelTitle}" />
-                        <ComboBox x:Name="FrameRadiusBox" Focusable="False" SelectionChanged="OnFrameChanged">
-                            <ComboBoxItem Content="Rectas" />
-                            <ComboBoxItem Content="Suaves" />
-                            <ComboBoxItem Content="Redondas" />
-                        </ComboBox>
-                        <CheckBox x:Name="FrameShadowBox" Content="Sombra" Margin="0,12,0,0" Focusable="False" Click="OnFrameChanged" />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- The pointer: the video is recorded without it, and the one drawn here goes into the saved video. -->
-            <Border x:Name="CursorPanel" Padding="14,10" CornerRadius="8" Visibility="Collapsed"
-                    Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
-                <StackPanel>
-                    <CheckBox x:Name="CursorBox" Content="Mostrar cursor" FontWeight="SemiBold" Focusable="False" Click="OnCursorChanged"
-                              ToolTip="Dibuja el puntero en el video: más grande, con movimiento suave y un efecto en cada clic" />
-                    <TextBlock x:Name="CursorNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
-                               Margin="0,8,0,0" Visibility="Collapsed" />
-                    <StackPanel x:Name="CursorOptions">
-                        <TextBlock Text="Estilo" Style="{StaticResource PanelTitle}" />
-                        <StackPanel x:Name="CursorShapes" Orientation="Horizontal" />
-
-                        <Grid Margin="0,12,0,0">
-                            <TextBlock Text="Tamaño" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
-                            <TextBlock x:Name="CursorSizeText" Style="{StaticResource SliderValue}" />
-                        </Grid>
-                        <Slider x:Name="CursorSizeSlider" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5" Focusable="False"
-                                ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
-
-                        <Grid Margin="0,8,0,0">
-                            <TextBlock Text="Suavizado" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
-                            <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource SliderValue}" />
-                        </Grid>
-                        <Slider x:Name="CursorSmoothingSlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
-                                ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
-
-                        <Grid Margin="0,8,0,0">
-                            <TextBlock Text="Balanceo" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
-                            <TextBlock x:Name="CursorSwayText" Style="{StaticResource SliderValue}" />
-                        </Grid>
-                        <Slider x:Name="CursorSwaySlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
-                                ValueChanged="OnCursorSlider" ToolTip="Cuánto se inclina la flecha al moverse de lado" />
-
-                        <TextBlock Text="Efecto de clic" Style="{StaticResource PanelTitle}" />
-                        <ComboBox x:Name="CursorClickBox" Focusable="False" SelectionChanged="OnCursorChanged">
-                            <ComboBoxItem Content="Ninguno" />
-                            <ComboBoxItem Content="Onda" />
-                            <ComboBoxItem Content="Pulso" />
-                        </ComboBox>
-                        <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Margin="0,12,0,0" Focusable="False" Click="OnCursorChanged"
-                                  ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-            </StackPanel>
-            </ScrollViewer>
-        </Grid>
-
-        <Grid Grid.Row="1" Margin="0,12,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="150" />
-            </Grid.ColumnDefinitions>
-            <Button x:Name="PlayButton" Style="{StaticResource Tool}" Width="112" Content="▶ Reproducir" Click="OnPlay" IsEnabled="False"
-                    ToolTip="Reproducir lo que quedará (Espacio)" />
-            <Button x:Name="BackButton" Grid.Column="1" Style="{StaticResource Tool}" Content="◀" Click="OnStepBack" IsEnabled="False"
-                    ToolTip="Un cuadro atrás (←). Con Mayús, un segundo" />
-            <Button x:Name="ForwardButton" Grid.Column="2" Style="{StaticResource Tool}" Content="▶" Click="OnStepForward" IsEnabled="False"
-                    ToolTip="Un cuadro adelante (→). Con Mayús, un segundo" />
-            <TextBlock x:Name="PositionText" Grid.Column="3" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0" />
-            <TextBlock Grid.Column="5" Text="Acercar línea" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
-            <Slider x:Name="ZoomSlider" Grid.Column="6" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
-                    VerticalAlignment="Center" ToolTip="Acerca la línea de tiempo (Ctrl + rueda del ratón)" />
-        </Grid>
-
-        <WrapPanel Grid.Row="2" Margin="0,12,0,0">
-            <Button x:Name="SplitButton" Style="{StaticResource Tool}" Content="✂ Dividir" Click="OnSplit" IsEnabled="False"
-                    ToolTip="Corta la parte en el punto donde está la línea roja (S)" />
-            <Button x:Name="DeleteButton" Style="{StaticResource Tool}" Content="Eliminar" Click="OnDelete" IsEnabled="False"
-                    ToolTip="Quita la parte seleccionada; las siguientes se juntan (Supr)" />
-            <Button x:Name="DuplicateButton" Style="{StaticResource Tool}" Content="Duplicar" Click="OnDuplicate" IsEnabled="False"
-                    ToolTip="Repite la parte seleccionada justo después (Ctrl+D)" />
-            <Button x:Name="MuteButton" Style="{StaticResource Tool}" Content="Silenciar" Click="OnMute" IsEnabled="False"
-                    ToolTip="Quita el sonido de la parte seleccionada (M)" />
-            <Button x:Name="MoveLeftButton" Style="{StaticResource Tool}" Content="◀ Mover" Click="OnMoveLeft" IsEnabled="False"
-                    ToolTip="Pasa la parte seleccionada antes de la anterior (Alt+←). También se arrastra por su título" />
-            <Button x:Name="MoveRightButton" Style="{StaticResource Tool}" Content="Mover ▶" Click="OnMoveRight" IsEnabled="False"
-                    ToolTip="Pasa la parte seleccionada después de la siguiente (Alt+→)" />
-            <Button x:Name="UndoButton" Style="{StaticResource Tool}" Content="↶ Deshacer" Click="OnUndo" IsEnabled="False" Margin="12,0,6,0"
-                    ToolTip="Deshacer (Ctrl+Z)" />
-            <Button x:Name="RedoButton" Style="{StaticResource Tool}" Content="↷ Rehacer" Click="OnRedo" IsEnabled="False"
-                    ToolTip="Rehacer (Ctrl+Y)" />
-            <Button x:Name="ResetButton" Style="{StaticResource Tool}" Content="Restablecer" Click="OnReset" IsEnabled="False"
-                    ToolTip="Vuelve al video completo, tal como se grabó" />
-        </WrapPanel>
-
-        <Border Grid.Row="3" Margin="0,10,0,0" Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}"
-                BorderThickness="1" CornerRadius="8" Padding="0,0,0,2">
-            <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                          PreviewMouseWheel="OnTimelineWheel" SizeChanged="OnScrollerSizeChanged">
-                <StackPanel>
-                <local:TimelineView x:Name="View" SelectionChanged="OnSelectionChanged" Scrubbed="OnTimelineScrubbed" Previewed="OnPreviewed"
-                                    GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
-                    <local:TimelineView.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem Header="Dividir aquí" InputGestureText="S" Click="OnSplit" />
-                            <MenuItem Header="Duplicar" InputGestureText="Ctrl+D" Click="OnDuplicate" />
-                            <MenuItem x:Name="MuteMenuItem" Header="Silenciar" InputGestureText="M" Click="OnMute" />
-                            <Separator />
-                            <MenuItem Header="Eliminar" InputGestureText="Supr" Click="OnDelete" />
-                        </ContextMenu>
-                    </local:TimelineView.ContextMenu>
-                </local:TimelineView>
-                <local:ZoomLaneView x:Name="Lane" Margin="0,0,0,4" SelectionChanged="OnZoomSelectionChanged" Scrubbed="OnScrubbed"
-                                    AddRequested="OnZoomAddRequested" GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
-                    <local:ZoomLaneView.ContextMenu>
-                        <ContextMenu x:Name="ZoomMenu">
-                            <MenuItem Header="Quitar zoom" InputGestureText="Supr" Click="OnDeleteZoom" />
-                        </ContextMenu>
-                    </local:ZoomLaneView.ContextMenu>
-                </local:ZoomLaneView>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
-
-        <WrapPanel Grid.Row="4" Margin="0,10,0,0">
-            <Button x:Name="AutoZoomButton" Style="{StaticResource Tool}" Content="✨ Zoom automático" Click="OnAutoZoom" IsEnabled="False" />
-            <Button x:Name="AddZoomButton" Style="{StaticResource Tool}" Content="+ Añadir zoom" Click="OnAddZoom" IsEnabled="False"
-                    ToolTip="Añade un zoom donde está la línea roja (Z). También con doble clic en la fila de zooms" />
-            <StackPanel x:Name="ZoomDetails" Orientation="Horizontal" Visibility="Collapsed" Margin="12,0,0,0">
-                <TextBlock Text="Acercar" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <ComboBox x:Name="ZoomDepthBox" Width="86" Focusable="False" SelectionChanged="OnZoomDepthChanged" Margin="0,0,6,0"
-                          ToolTip="Cuánto se acerca este zoom">
-                    <ComboBoxItem Content="1,25×" Tag="1.25" />
-                    <ComboBoxItem Content="1,5×" Tag="1.5" />
-                    <ComboBoxItem Content="1,8×" Tag="1.8" />
-                    <ComboBoxItem Content="2×" Tag="2" />
-                    <ComboBoxItem Content="2,5×" Tag="2.5" />
-                    <ComboBoxItem Content="3×" Tag="3" />
-                </ComboBox>
-                <Button x:Name="DeleteZoomButton" Style="{StaticResource Tool}" Content="Quitar zoom" Click="OnDeleteZoom"
-                        ToolTip="Quita el zoom elegido (Supr)" />
-                <TextBlock Text="Haz clic o arrastra en el video para elegir adónde mira" Foreground="{DynamicResource TextSecondary}"
-                           VerticalAlignment="Center" Margin="6,0,0,0" />
-            </StackPanel>
-        </WrapPanel>
-
-        <Grid Grid.Row="5" Margin="0,10,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock x:Name="KeptText" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="SelectionText" Grid.Column="1" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
-        </Grid>
-
-        <Grid Grid.Row="6" Margin="0,12,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <!-- What happened with the last copy or save, and the progress while the video is being made. -->
-            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="DeliveryText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Button x:Name="ShowInFolderButton" Content="Mostrar en la carpeta" Margin="10,0,0,0" Padding="8,2" Focusable="False"
-                            Visibility="Collapsed" Click="OnShowInFolder" ToolTip="Abre la carpeta con el video guardado marcado" />
-                </StackPanel>
-                <ProgressBar x:Name="WorkBar" Height="4" Margin="0,6,0,0" Minimum="0" Maximum="1" Visibility="Collapsed" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button x:Name="CopyButton" Margin="0,0,8,0" IsEnabled="False" Click="OnCopy"
-                        ToolTip="Copia el video terminado para pegarlo en un chat o un documento">
-                    <TextBlock Text="Copiar" />
-                </Button>
-                <Button x:Name="SaveButton" Content="Guardar…" Margin="0,0,8,0" IsDefault="True" IsEnabled="False" Click="OnSave"
-                        ToolTip="Guarda el video terminado como archivo; la grabación original no se toca" />
-                <Button x:Name="CloseButton" Content="Cerrar" IsCancel="True" Click="OnCancel" />
-            </StackPanel>
-        </Grid>
+        </StackPanel>
     </Grid>
 </Window>

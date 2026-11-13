@@ -232,7 +232,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
             window.Show();
             try
             {
-                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
                 Assert.False(window.NeedsRendering,
                     $"edited {window.Timeline!.IsEdited}, zooms {window.Timeline.Zooms.Count}, frame {window.FrameBox.IsChecked}, track {window.Track != null}");
                 Assert.Equal(8, window.FrameBackgrounds.Children.Count);

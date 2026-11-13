@@ -23,6 +23,7 @@ namespace Zarpazo.Recording;
 public partial class VideoEditWindow : Window
 {
     private const double FrameSeconds = 1.0 / 30;
+    private const int MaxOpenAttempts = 3;
 
     private readonly string _source;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(20) };
@@ -35,6 +36,7 @@ public partial class VideoEditWindow : Window
     private long _settleUntil; // right after a jump the player still reports the old position for a moment
     private long? _tailSince; // see PlayerPosition
     private bool _opening;
+    private int _openAttempts;
     private bool _busy;
     private readonly VideoDelivery _delivery;
     private string? _lastSaved; // where the video was last saved, for "Mostrar en la carpeta"
@@ -72,6 +74,8 @@ public partial class VideoEditWindow : Window
         _source = source;
         _delivery = delivery ?? new VideoDelivery(source, NewFileName(), settings);
         DeliveryText.Text = notice ?? "";
+        TitleText.Text = Path.GetFileName(_delivery.ReadyPath);
+        FitToScreen();
         _timer.Tick += (_, _) => FollowPlayback();
         CompositionTarget.Rendering += OnRendering;
         Closed += (_, _) =>
@@ -88,6 +92,18 @@ public partial class VideoEditWindow : Window
         };
         Player.Source = new Uri(source);
         Player.Play(); // a first picture only shows once it has started; it is paused as soon as it opens
+    }
+
+    // As big as it was designed, but never bigger than the screen it opens on (a laptop at 125 % has 1536 x 824 to give).
+    private void FitToScreen()
+    {
+        Rect work = SystemParameters.WorkArea;
+        Width = Math.Max(MinWidth, Math.Min(Width, work.Width * 0.94));
+        Height = Math.Max(MinHeight, Math.Min(Height, work.Height * 0.94));
+        if (work.Width < MinWidth + 40 || work.Height < MinHeight + 40)
+        {
+            WindowState = WindowState.Maximized;
+        }
     }
 
     /// <summary>Where the finished video is made, for copying and saving.</summary>
@@ -154,13 +170,27 @@ public partial class VideoEditWindow : Window
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            KeptText.Text = "No se pudo abrir el video para editarlo.";
+            KeptText.Text = $"No se pudo abrir el video para editarlo: {ex.Message}";
         }
     }
 
-    private void OnFailed(object sender, ExceptionRoutedEventArgs e)
+    // Windows' player now and then gives up opening a video with sound (E_UNEXPECTED, right after reading its size); a
+    // second try opens it. Only when that fails too is the person told.
+    private async void OnFailed(object sender, ExceptionRoutedEventArgs e)
     {
-        KeptText.Text = "No se pudo abrir el video para editarlo.";
+        if (_timeline == null && _openAttempts < MaxOpenAttempts && !_closed)
+        {
+            _openAttempts++;
+            Player.Close();
+            await Task.Delay(250);
+            if (!_closed)
+            {
+                Player.Source = new Uri(_source);
+                Player.Play();
+            }
+            return;
+        }
+        KeptText.Text = $"No se pudo abrir el video para editarlo: {e.ErrorException?.Message}";
     }
 
     // Pictures for the blocks, evenly over the video. They arrive one by one and the blocks fill in as they do.
@@ -364,7 +394,8 @@ public partial class VideoEditWindow : Window
         Player.Play();
         _playheadStamp = Stopwatch.GetTimestamp();
         _playing = true;
-        PlayButton.Content = "⏸ Pausa";
+        PlayIcon.Data = (Geometry)FindResource("PauseGlyph");
+        PlayButton.ToolTip = "Pausar (Espacio)";
         _timer.Start();
         ApplyZoomPreview(); // a chosen zoom stops showing the whole picture: it plays as it will look
     }
@@ -378,7 +409,8 @@ public partial class VideoEditWindow : Window
         }
         _timer.Stop();
         Player.IsMuted = false;
-        PlayButton.Content = "▶ Reproducir";
+        PlayIcon.Data = (Geometry)FindResource("PlayGlyph");
+        PlayButton.ToolTip = "Reproducir lo que quedará (Espacio)";
     }
 
     private void OnMediaEnded(object sender, RoutedEventArgs e)
@@ -692,7 +724,6 @@ public partial class VideoEditWindow : Window
         RedoButton.IsEnabled = free && _timeline.CanRedo;
         ResetButton.IsEnabled = free && _timeline.IsEdited;
         CopyButton.IsEnabled = SaveButton.IsEnabled = free;
-        CloseButton.IsEnabled = free;
 
         int zooms = _timeline.Zooms.Count;
         int chosenZoom = Lane.SelectedZoom;
@@ -708,8 +739,10 @@ public partial class VideoEditWindow : Window
         }
         string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "");
 
-        string muteText = hasSelection && _timeline.Segments[selected].Muted ? "Activar sonido" : "Silenciar";
-        MuteButton.Content = muteText;
+        bool muted = hasSelection && _timeline.Segments[selected].Muted;
+        string muteText = muted ? "Activar sonido" : "Silenciar";
+        MuteIcon.Data = (Geometry)FindResource(muted ? "MutedGlyph" : "SoundGlyph");
+        MuteButton.ToolTip = $"{muteText} la parte seleccionada (M)";
         MuteMenuItem.Header = muteText;
         UpdatePositionText();
 
@@ -970,6 +1003,7 @@ public partial class VideoEditWindow : Window
         if (Lane.SelectedZoom >= 0)
         {
             StopPlayback(); // choosing a zoom shows the whole picture to pick where it looks
+            ZoomTab.IsChecked = true; // and its panel, to change how close it goes
         }
         ApplyZoomPreview();
         RefreshState();
@@ -1243,12 +1277,13 @@ public partial class VideoEditWindow : Window
     // The side column shows one panel at a time, the frame's or the pointer's.
     private void OnPanelTab(object sender, RoutedEventArgs e)
     {
-        if (FramePanel == null || CursorPanel == null)
+        if (FramePanel == null || CursorPanel == null || ZoomPanel == null)
         {
             return; // the first tab is checked while the XAML loads
         }
         FramePanel.Visibility = FrameTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         CursorPanel.Visibility = CursorTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        ZoomPanel.Visibility = ZoomTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>The pointer drawn on the video, as chosen now.</summary>
