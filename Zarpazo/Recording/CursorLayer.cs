@@ -16,13 +16,15 @@ internal sealed class CursorLayer
     private readonly CursorStyle _style;
     private readonly double _pointerScale;
     private readonly IReadOnlyList<VideoSegment> _segments;
+    private readonly CropArea? _crop;
 
-    private CursorLayer(CursorMotion motion, CursorStyle style, double pointerScale, IReadOnlyList<VideoSegment> segments)
+    private CursorLayer(CursorMotion motion, CursorStyle style, double pointerScale, IReadOnlyList<VideoSegment> segments, CropArea? crop)
     {
         _motion = motion;
         _style = style;
         _pointerScale = pointerScale;
         _segments = segments;
+        _crop = crop is { IsWhole: false } ? crop : null;
     }
 
     /// <summary>
@@ -30,10 +32,25 @@ internal sealed class CursorLayer
     /// pictures already, or the pointer switched off.
     /// </summary>
     /// <param name="segments">The pieces of the original the video is made of, in order: the track is on the original's clock.</param>
-    public static CursorLayer? For(CursorTrack? track, CursorStyle? style, IReadOnlyList<VideoSegment> segments) =>
+    /// <param name="crop">The part of the recording the video keeps: the pointer and the clicks outside it are not drawn.</param>
+    public static CursorLayer? For(CursorTrack? track, CursorStyle? style, IReadOnlyList<VideoSegment> segments, CropArea? crop = null) =>
         track is { PointerInPicture: false } && style is { Visible: true } && segments.Count > 0
-            ? new CursorLayer(new CursorMotion(track, style), style, track.PointerScale > 0 ? track.PointerScale : 1, segments)
+            ? new CursorLayer(new CursorMotion(track, style), style, track.PointerScale > 0 ? track.PointerScale : 1, segments, crop)
             : null;
+
+    /// <summary>
+    /// A point of the recording (shares of it) as shares of the picture the video shows (the crop); null when it was cut away,
+    /// so it is not drawn.
+    /// </summary>
+    public static (double X, double Y)? Shown(double x, double y, CropArea? crop)
+    {
+        if (crop is not { IsWhole: false } area)
+        {
+            return (x, y);
+        }
+        (double cx, double cy) = area.ToCrop(x, y);
+        return CropArea.Shows(cx, cy) ? (cx, cy) : null;
+    }
 
     /// <summary>The moment of the original shown at <paramref name="seconds"/> of the edited video.</summary>
     public static double ToOriginal(IReadOnlyList<VideoSegment> segments, double seconds)
@@ -57,7 +74,7 @@ internal sealed class CursorLayer
     public static double Unit(CursorStyle style, double pointerScale, ZoomView view, FrameLayout? layout) =>
         style.Size * pointerScale * view.Scale * (layout is { } frame ? frame.Content.Width / (double)frame.Width : 1);
 
-    /// <summary>Where a point of the recording (shares of it) shows in a picture of <paramref name="width"/> by <paramref name="height"/>.</summary>
+    /// <summary>Where a point of the recording (shares of it, or of its crop) shows in a picture of <paramref name="width"/> by <paramref name="height"/>.</summary>
     public static (double X, double Y) ToPicture(double x, double y, ZoomView view, FrameLayout? layout, double width, double height)
     {
         (double sx, double sy) = layout is { } frame ? frame.ToScene(x, y) : (x, y);
@@ -80,9 +97,13 @@ internal sealed class CursorLayer
         }
 
         double unit = Unit(_style, _pointerScale, view, layout);
-        PointF At(double x, double y)
+        PointF? At(double x, double y)
         {
-            (double px, double py) = ToPicture(x, y, view, layout, width, height);
+            if (Shown(x, y, _crop) is not { } shown)
+            {
+                return null;
+            }
+            (double px, double py) = ToPicture(shown.X, shown.Y, view, layout, width, height);
             return new PointF((float)px, (float)py);
         }
 
@@ -96,11 +117,14 @@ internal sealed class CursorLayer
 
             foreach (ClickMark click in clicks)
             {
-                DrawClick(graphics, At(click.X, click.Y), click.Progress, unit);
+                if (At(click.X, click.Y) is { } at)
+                {
+                    DrawClick(graphics, at, click.Progress, unit);
+                }
             }
-            if (pose is { } p)
+            if (pose is { } p && At(p.X, p.Y) is { } tip)
             {
-                DrawPointer(graphics, At(p.X, p.Y), p, unit);
+                DrawPointer(graphics, tip, p, unit);
             }
         }
         finally

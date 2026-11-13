@@ -773,14 +773,16 @@ public partial class VideoEditWindow : Window
             : "";
     }
 
-    // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, or a pointer to draw.
-    // Otherwise the finished video is the recording itself.
+    // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, a pointer to draw,
+    // or a crop. Otherwise the finished video is the recording itself.
     internal bool NeedsRendering => _timeline != null
-        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled || CursorLayer.For(_track, _cursor, _timeline.Segments) != null);
+        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone
+            || CursorLayer.For(_track, _cursor, _timeline.Segments) != null);
 
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
-        string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "");
+        string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
+        _timeline.Crop);
 
     private void SetBusy(bool busy)
     {
@@ -815,7 +817,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor);
+                        _track, _cursor, _timeline.Crop);
                 }
                 else
                 {

@@ -1,3 +1,5 @@
+using System.Windows;
+
 namespace Zarpazo.Recording;
 
 /// <summary>
@@ -10,16 +12,17 @@ internal sealed class FrameCompositor
     private readonly FrameLayout _layout;
     private readonly byte[] _backdrop;
     private readonly int _sourceWidth;
-    private readonly int _sourceHeight;
+    private readonly Int32Rect _area;
 
     /// <param name="backdrop">From <see cref="FrameBackdrop.Render"/>, the scene's size.</param>
     /// <param name="sourceWidth">The size of the recorded pictures.</param>
-    public FrameCompositor(FrameLayout layout, byte[] backdrop, int sourceWidth, int sourceHeight)
+    /// <param name="area">The rectangle of them that is kept (the crop), which fills the recording's place; null for all of it.</param>
+    public FrameCompositor(FrameLayout layout, byte[] backdrop, int sourceWidth, int sourceHeight, Int32Rect? area = null)
     {
         _layout = layout;
         _backdrop = backdrop;
         _sourceWidth = sourceWidth;
-        _sourceHeight = sourceHeight;
+        _area = area ?? new Int32Rect(0, 0, sourceWidth, sourceHeight);
     }
 
     public int Width => _layout.Width;
@@ -42,8 +45,10 @@ internal sealed class FrameCompositor
         double centerY = top + contentHeight / 2;
         double halfInnerX = contentWidth / 2 - radius;
         double halfInnerY = contentHeight / 2 - radius;
-        double toSourceX = _sourceWidth / contentWidth;
-        double toSourceY = _sourceHeight / contentHeight;
+        double toSourceX = _area.Width / contentWidth;
+        double toSourceY = _area.Height / contentHeight;
+        Int32Rect area = _area;
+        var whole = new Int32Rect(0, 0, width, height);
         double pixel = view.Width; // how much of the scene one pixel of the result covers, for the soft edge
 
         Parallel.For(0, height, y =>
@@ -63,18 +68,20 @@ internal sealed class FrameCompositor
                     + Math.Min(Math.Max(qx, qy), 0) - radius;
                 double cover = Math.Clamp(0.5 - outside / pixel, 0, 1);
 
+                double sourceX = area.X + (sceneX - left) * toSourceX - 0.5;
+                double sourceY = area.Y + (sceneY - top) * toSourceY - 0.5;
                 if (cover >= 1)
                 {
-                    Sample(source, _sourceWidth, _sourceHeight, (sceneX - left) * toSourceX - 0.5, (sceneY - top) * toSourceY - 0.5, target, o);
+                    Sample(source, _sourceWidth, area, sourceX, sourceY, target.AsSpan(o, 4));
                 }
                 else if (cover <= 0)
                 {
-                    Sample(_backdrop, width, height, sceneX - 0.5, sceneY - 0.5, target, o);
+                    Sample(_backdrop, width, whole, sceneX - 0.5, sceneY - 0.5, target.AsSpan(o, 4));
                 }
                 else
                 {
-                    Sample(source, _sourceWidth, _sourceHeight, (sceneX - left) * toSourceX - 0.5, (sceneY - top) * toSourceY - 0.5, inside);
-                    Sample(_backdrop, width, height, sceneX - 0.5, sceneY - 0.5, behind);
+                    Sample(source, _sourceWidth, area, sourceX, sourceY, inside);
+                    Sample(_backdrop, width, whole, sceneX - 0.5, sceneY - 0.5, behind);
                     for (int c = 0; c < 3; c++)
                     {
                         target[o + c] = (byte)(inside[c] * cover + behind[c] * (1 - cover) + 0.5);
@@ -85,16 +92,15 @@ internal sealed class FrameCompositor
         });
     }
 
-    private static void Sample(byte[] picture, int width, int height, double x, double y, byte[] target, int at) =>
-        Sample(picture, width, height, x, y, target.AsSpan(at, 4));
-
-    // Bilinear: the four pixels around the point, weighted by how close it is to each.
-    private static void Sample(byte[] picture, int width, int height, double x, double y, Span<byte> into)
+    // Bilinear: the four pixels around the point, weighted by how close it is to each, never from outside the rectangle given
+    // (so a crop's edge does not bleed in what was cut away).
+    private static void Sample(byte[] picture, int width, Int32Rect inside, double x, double y, Span<byte> into)
     {
-        x = Math.Clamp(x, 0, width - 1);
-        y = Math.Clamp(y, 0, height - 1);
+        int maxX = inside.X + inside.Width - 1, maxY = inside.Y + inside.Height - 1;
+        x = Math.Clamp(x, inside.X, maxX);
+        y = Math.Clamp(y, inside.Y, maxY);
         int x0 = (int)x, y0 = (int)y;
-        int x1 = Math.Min(x0 + 1, width - 1), y1 = Math.Min(y0 + 1, height - 1);
+        int x1 = Math.Min(x0 + 1, maxX), y1 = Math.Min(y0 + 1, maxY);
         int wx = (int)((x - x0) * 256), wy = (int)((y - y0) * 256);
         int r0 = y0 * width * 4, r1 = y1 * width * 4;
         int a = x0 * 4, b = x1 * 4;

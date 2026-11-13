@@ -109,6 +109,24 @@ public sealed class CursorLayerTests
     }
 
     [Fact]
+    public void With_a_crop_the_pointer_lands_where_it_shows_in_the_crop_and_outside_it_is_not_drawn()
+    {
+        // The left quarter and the bottom half cut away: 300 x 100 of the 400 x 200 recording are kept.
+        CropArea area = CropArea.For(new VideoCrop(0.25, 0, 0, 0.5), Width, Height);
+        byte[] inside = Grey();
+        byte[] outside = Grey();
+
+        // (250, 50) of the recording is the middle of the crop: in a picture of any size, its middle.
+        CursorLayer.For(StillAt(250, 50), Plain, [new VideoSegment(0, 5)], area)!.Draw(inside, Width, Height, 0.5, ZoomView.Full, layout: null);
+        CursorLayer.For(StillAt(50, 150), Plain, [new VideoSegment(0, 5)], area)!.Draw(outside, Width, Height, 1.1, ZoomView.Full, layout: null);
+
+        Int32Rect box = Drawn(inside);
+        Assert.InRange(box.X, 195, 200);
+        Assert.InRange(box.Y, 95, 100);
+        Assert.Equal(Int32Rect.Empty, Drawn(outside)); // neither the pointer nor its click
+    }
+
+    [Fact]
     public void A_moment_of_the_edited_video_is_found_in_the_original_through_its_pieces()
     {
         VideoSegment[] pieces = [new(4, 6), new(1, 2)];

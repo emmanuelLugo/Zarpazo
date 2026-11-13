@@ -231,6 +231,67 @@ public sealed class ZoomRendererTests : IClassFixture<SampleVideos>, IDisposable
     }
 
     [Fact]
+    public void Resampling_a_crop_copies_its_rectangle_and_never_samples_outside_it()
+    {
+        // 4x2: the left half white, the right half black; keeping the right half gives a black picture of 2x2.
+        byte[] source = new byte[4 * 2 * 4];
+        for (int y = 0; y < 2; y++)
+        {
+            Array.Fill(source, (byte)255, y * 16, 8);
+        }
+        var target = new byte[2 * 2 * 4];
+
+        ZoomResampler.Render(source, 4, 2, new System.Windows.Int32Rect(2, 0, 2, 2), target, 2, 2, ZoomView.Full);
+        Assert.All(target.Where((_, i) => i % 4 != 3), value => Assert.Equal(0, value));
+
+        ZoomResampler.Render(source, 4, 2, new System.Windows.Int32Rect(2, 0, 2, 2), target, 2, 2, new ZoomView(0, 0, 0.5, 0.5));
+        Assert.All(target.Where((_, i) => i % 4 != 3), value => Assert.Equal(0, value)); // zoomed on its left edge: still no white
+    }
+
+    [Fact]
+    public async Task A_cropped_video_takes_the_crop_s_size_and_shows_only_what_was_kept()
+    {
+        string source = await QuarterVideoAsync();
+        string target = Path.Combine(_folder, "cropped.mp4");
+
+        // Only the white top-left quarter is kept.
+        await VideoExporter.ExportAsync(source, target, [new VideoSegment(0, 3)], [], sourceDuration: 3, frame: null, crop: new VideoCrop(0, 0, 0.5, 0.5));
+
+        MediaClip clip = await OpenAsync(target);
+        Assert.Equal((160u, 90u), (clip.GetVideoEncodingProperties().Width, clip.GetVideoEncodingProperties().Height));
+        Assert.InRange(clip.OriginalDuration.TotalSeconds, 2.8, 3.2);
+        var picture = new byte[160 * 90 * 4];
+        using (var reader = new VideoFrameReader(target, 160, 90))
+        {
+            Assert.True(reader.TryRead(picture, out _));
+        }
+        foreach ((int x, int y) in new[] { (4, 4), (80, 45), (155, 85) })
+        {
+            Assert.True(picture[(y * 160 + x) * 4 + 1] > 215, $"({x}, {y}) should be white: {picture[(y * 160 + x) * 4 + 1]}");
+        }
+    }
+
+    [Fact]
+    public async Task A_crop_goes_with_cuts_zooms_a_frame_and_sound()
+    {
+        string target = Path.Combine(_folder, "everything.mp4");
+        VideoSegment[] pieces = [new VideoSegment(0, 1), new VideoSegment(2, 3)];
+        VideoFrameStyle frame = VideoFrameStyle.Default with { Enabled = true };
+        var crop = new VideoCrop(0.1, 0.05, 0.2, 0.1);
+
+        await VideoExporter.ExportAsync(_samples.WithSound, target, pieces, [new ZoomRegion(2, 3, 2, 0.5, 0.5)], sourceDuration: 3, frame, crop: crop);
+
+        MediaClip clip = await OpenAsync(target);
+        Windows.Media.MediaProperties.VideoEncodingProperties video = clip.GetVideoEncodingProperties();
+        CropArea area = CropArea.For(crop, 320, 180);
+        Assert.Equal(((uint)area.Width, (uint)area.Height), (video.Width, video.Height));
+        Assert.Equal(0u, video.Width % 2);
+        Assert.Equal(0u, video.Height % 2);
+        Assert.Single(clip.EmbeddedAudioTracks);
+        Assert.InRange(clip.OriginalDuration.TotalSeconds, 1.7, 2.3);
+    }
+
+    [Fact]
     public async Task A_video_recorded_without_the_pointer_is_saved_with_the_one_the_editor_draws()
     {
         string source = await QuarterVideoAsync();
