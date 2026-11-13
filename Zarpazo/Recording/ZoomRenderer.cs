@@ -26,8 +26,11 @@ internal static class ZoomRenderer
     /// <param name="cursor">The pointer to draw over every picture; null for none.</param>
     /// <param name="crop">The part of each picture that is kept; the video takes its size. The camera's views and the
     /// frame are then in shares of the cropped picture (see <see cref="CropArea"/>).</param>
+    /// <param name="clock">When pieces of <paramref name="source"/> play faster or slower: which moment of it each moment of the
+    /// result shows. The camera and the pointer are then on the result's clock, and those pieces lose their sound. Null plays
+    /// the source as it is.</param>
     public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null,
-        CursorLayer? cursor = null, VideoCrop crop = default)
+        CursorLayer? cursor = null, VideoCrop crop = default, PlayClock? clock = null)
     {
         StorageFile file = await StorageFile.GetFileFromPathAsync(source);
         MediaEncodingProfile profile = await MediaEncodingProfile.CreateFromFileAsync(file);
@@ -44,7 +47,7 @@ internal static class ZoomRenderer
         // Never fewer than 30: the camera moves every picture, so even over a recording with few pictures it glides.
         int fps = Math.Max(MinFramesPerSecond, StandardRates.MinBy(rate => Math.Abs(rate - recordedRate)));
         bool withAudio = profile.Audio != null;
-        double duration = Math.Max(0.1, info.Duration.TotalSeconds);
+        double duration = Math.Max(0.1, clock?.Duration ?? info.Duration.TotalSeconds);
         // At least the quality of the original, and never less than about 9 Mbps at 1080p: while the camera moves every pixel
         // changes, and at the 2 Mbps a mostly still screen recording gets, the zoom came out soft and blocky.
         double bitsPerPixel = Math.Clamp(profile.Video.Bitrate / ((double)sourceWidth * sourceHeight * fps), MinBitsPerPixel, 0.5);
@@ -84,13 +87,18 @@ internal static class ZoomRenderer
                 for (long n = 0; ; n++)
                 {
                     double t = n * frame;
-                    while (hasNext && nextTime.TotalSeconds <= t + frame / 2)
+                    if (clock != null && t >= clock.Duration)
+                    {
+                        break;
+                    }
+                    double at = clock?.ToInput(t) ?? t; // the moment of the source to show
+                    while (hasNext && nextTime.TotalSeconds <= at + frame / 2)
                     {
                         (current, next) = (next, current);
                         currentTime = nextTime;
                         hasNext = reader.TryRead(next, out nextTime);
                     }
-                    if (!hasNext && t >= currentTime.TotalSeconds + frame / 2)
+                    if (!hasNext && at >= currentTime.TotalSeconds + frame / 2)
                     {
                         break; // the last recorded picture has had its time on screen
                     }
@@ -122,9 +130,27 @@ internal static class ZoomRenderer
             try
             {
                 using var reader = new AudioChunkReader(source);
+                double written = 0; // where the sound written so far ends, on the result's clock
                 while (reader.Read(out TimeSpan time) is { } pcm)
                 {
-                    await writer.AddAudioAsync(pcm, time < TimeSpan.Zero ? TimeSpan.Zero : time, cancel.Token);
+                    double at = Math.Max(0, time.TotalSeconds);
+                    if (clock == null)
+                    {
+                        await writer.AddAudioAsync(pcm, TimeSpan.FromSeconds(at), cancel.Token);
+                        continue;
+                    }
+                    if (clock.IsRetimedAt(at))
+                    {
+                        continue; // a faster or slower piece plays in silence, filled in below
+                    }
+                    double play = clock.ToPlay(at);
+                    written = await AddSilenceAsync(writer, written, play, cancel.Token);
+                    await writer.AddAudioAsync(pcm, TimeSpan.FromSeconds(play), cancel.Token);
+                    written = Math.Max(written, play + SecondsOf(pcm.Length));
+                }
+                if (clock != null)
+                {
+                    await AddSilenceAsync(writer, written, clock.Duration, cancel.Token);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -157,6 +183,29 @@ internal static class ZoomRenderer
             throw new InvalidOperationException($"Windows no pudo aplicar el zoom al video ({reason}).", failure);
         }
         progress?.Report(1);
+    }
+
+    private static double SecondsOf(int bytes) => bytes / (double)(Mp4Writer.AudioChannels * 2 * Mp4Writer.AudioSampleRate);
+
+    /// <summary>
+    /// Fills the sound from <paramref name="from"/> to <paramref name="to"/> with silence, so a piece without sound is quiet
+    /// for as long as it plays. Returns where the sound now ends.
+    /// </summary>
+    private static async Task<double> AddSilenceAsync(Mp4Writer writer, double from, double to, CancellationToken cancel)
+    {
+        const double Chunk = 0.02;
+        const int BytesPerFrame = Mp4Writer.AudioChannels * 2;
+        while (to - from > 0.001)
+        {
+            int frames = (int)Math.Round(Math.Min(Chunk, to - from) * Mp4Writer.AudioSampleRate);
+            if (frames <= 0)
+            {
+                break;
+            }
+            await writer.AddAudioAsync(new byte[frames * BytesPerFrame], TimeSpan.FromSeconds(from), cancel);
+            from += frames / (double)Mp4Writer.AudioSampleRate;
+        }
+        return Math.Max(from, to);
     }
 
     private static void TryDelete(string path)

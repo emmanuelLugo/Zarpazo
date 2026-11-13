@@ -114,6 +114,22 @@ public sealed class SegmentSpeedTests
         Assert.Equal(20, right - left, 6);
     }
 
+    [Fact]
+    public void The_render_clock_maps_the_finished_video_onto_the_joined_pieces()
+    {
+        // Joined file: 0-2 s is the first piece, 2-6 s the second; the second plays at 2x, so the video lasts 4 s.
+        var clock = new PlayClock([new VideoSegment(0, 2), new VideoSegment(10, 14, Speed: 2)]);
+
+        Assert.Equal(4, clock.Duration);
+        Assert.Equal(6, clock.InputDuration);
+        Assert.Equal(1, clock.ToInput(1));
+        Assert.Equal(4, clock.ToInput(3));  // 1 s into the fast piece is 2 s into it
+        Assert.Equal(6, clock.ToInput(99)); // never past the end
+        Assert.Equal(3, clock.ToPlay(4));
+        Assert.False(clock.IsRetimedAt(1));
+        Assert.True(clock.IsRetimedAt(3));
+    }
+
     [Theory]
     [InlineData(2, "2×")]
     [InlineData(0.5, "0,5×")]

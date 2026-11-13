@@ -46,13 +46,15 @@ internal static class VideoExporter
         var camera = new ZoomCamera(segments, zooms, motion);
         CursorLayer? pointer = CursorLayer.For(track, cursor, segments, area);
         bool cropped = area is { IsWhole: false };
-        if (camera.IsEmpty && !framed && pointer == null && !cropped)
+        // Windows' editing engine cannot change speed: retimed pieces are joined as recorded and the renderer plays them faster or slower.
+        bool retimed = segments.Any(segment => segment.IsRetimed);
+        if (camera.IsEmpty && !framed && pointer == null && !cropped && !retimed)
         {
             await ExportAsync(source, target, segments, progress);
             return;
         }
 
-        bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].Muted;
+        bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].IsSilent;
         if (whole)
         {
             await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop);
@@ -64,7 +66,8 @@ internal static class VideoExporter
         try
         {
             await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
-            await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)), pointer, crop);
+            await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)), pointer, crop,
+                retimed ? new PlayClock(segments) : null);
         }
         finally
         {
@@ -105,7 +108,7 @@ internal static class VideoExporter
 
             clip.TrimTimeFromStart = start;
             clip.TrimTimeFromEnd = length - end;
-            clip.Volume = segment.Muted ? 0 : 1;
+            clip.Volume = segment.IsSilent ? 0 : 1;
             composition.Clips.Add(clip);
         }
 

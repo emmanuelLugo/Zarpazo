@@ -85,6 +85,30 @@ public sealed class VideoExporterTests : IClassFixture<SampleVideos>, IDisposabl
     }
 
     [Fact]
+    public async Task A_part_played_twice_as_fast_takes_half_the_time_and_the_sound_track_stays()
+    {
+        string target = Path.Combine(_folder, "fast.mp4");
+
+        // 1 s as recorded, then 2 s at 2x: about 2 s in all.
+        await VideoExporter.ExportAsync(_samples.WithSound, target, new[] { Part(0, 1), new VideoSegment(1, 3, Speed: 2) }, [], 3, frame: null);
+
+        MediaClip clip = await OpenAsync(target);
+        Assert.InRange(clip.OriginalDuration.TotalSeconds, 1.7, 2.3);
+        Assert.Single(clip.EmbeddedAudioTracks);
+    }
+
+    [Fact]
+    public async Task A_slowed_down_part_lasts_longer_and_shows_the_same_pictures()
+    {
+        string target = Path.Combine(_folder, "slow.mp4");
+
+        await VideoExporter.ExportAsync(_samples.Silent, target, new[] { new VideoSegment(2, 3, Speed: 0.5) }, [], 3, frame: null);
+
+        Assert.InRange((await OpenAsync(target)).OriginalDuration.TotalSeconds, 1.7, 2.3);
+        Assert.InRange(await FirstPictureBrightnessAsync(target), 100, 255); // still starts at the bright last second
+    }
+
+    [Fact]
     public async Task The_parts_play_in_the_order_given()
     {
         string inOrder = Path.Combine(_folder, "in-order.mp4");
