@@ -68,7 +68,6 @@ public partial class RecordingBar : Window
     internal event EventHandler? PauseRequested;
     internal event EventHandler? StopRequested;
     internal event EventHandler? CancelRequested;
-    internal event EventHandler? EditRequested;
     internal event EventHandler? CopyRequested;
     internal event EventHandler? SaveRequested;
     internal event EventHandler? CloseRequested;
@@ -216,10 +215,8 @@ public partial class RecordingBar : Window
         ShowPanel(EncodingPanel);
     }
 
-    /// <param name="canEdit">Offers to open the video editor (videos only).</param>
-    internal void ShowDone(string message, bool canEdit = false)
+    internal void ShowDone(string message)
     {
-        EditButton.Visibility = canEdit ? Visibility.Visible : Visibility.Collapsed;
         DoneText.Text = message;
         ShowPanel(DonePanel);
     }
@@ -301,8 +298,6 @@ public partial class RecordingBar : Window
     private void OnStop(object sender, RoutedEventArgs e) => StopRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnCancel(object sender, RoutedEventArgs e) => CancelRequested?.Invoke(this, EventArgs.Empty);
-
-    private void OnEdit(object sender, RoutedEventArgs e) => EditRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnCopy(object sender, RoutedEventArgs e) => CopyRequested?.Invoke(this, EventArgs.Empty);
 

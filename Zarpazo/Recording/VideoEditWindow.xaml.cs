@@ -36,7 +36,8 @@ public partial class VideoEditWindow : Window
     private long? _tailSince; // see PlayerPosition
     private bool _opening;
     private bool _busy;
-    private bool _saved;
+    private readonly VideoDelivery _delivery;
+    private string? _lastSaved; // where the video was last saved, for "Mostrar en la carpeta"
     private bool _closed;
     private CursorTrack? _track;
     private ZoomView _shownView = ZoomView.Full; // what the player shows now, to turn a click on it into a point of the picture
@@ -46,7 +47,6 @@ public partial class VideoEditWindow : Window
     private readonly Settings.SettingsStore? _settings;
     private VideoFrameStyle _frame;
     private CursorStyle _cursor;
-    private readonly CursorStyle _openedCursor; // the style the video was opened with: another one makes a different video
     private CursorMotion? _motion; // the drawn pointer's path; null when this video has none to draw
     private bool _showingCursor;
     private readonly DispatcherTimer _cursorSave = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -56,25 +56,29 @@ public partial class VideoEditWindow : Window
     private bool _showingFrame;
 
     /// <param name="settings">Where the frame chosen is remembered; none in tests.</param>
-    internal VideoEditWindow(string source, Settings.SettingsStore? settings = null)
+    /// <param name="delivery">Where the finished video goes when it is copied or saved; by default "name_editado.mp4" next to the source.</param>
+    /// <param name="notice">A first line for the status, such as why the recording stopped.</param>
+    internal VideoEditWindow(string source, Settings.SettingsStore? settings = null, VideoDelivery? delivery = null, string? notice = null)
     {
         InitializeComponent();
         Theme.TitleBarTheme.Follow(this);
         _settings = settings;
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
         _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
-        _openedCursor = _cursor;
         _cursorSave.Tick += (_, _) => SaveCursorChoice();
         BuildFrameChoices();
         BuildCursorChoices();
         _ready = true;
         _source = source;
+        _delivery = delivery ?? new VideoDelivery(source, NewFileName(), settings);
+        DeliveryText.Text = notice ?? "";
         _timer.Tick += (_, _) => FollowPlayback();
         CompositionTarget.Rendering += OnRendering;
         Closed += (_, _) =>
         {
             _closed = true;
             CompositionTarget.Rendering -= OnRendering;
+            _delivery.Finish();
             if (_cursorSave.IsEnabled)
             {
                 SaveCursorChoice(); // a slider let go just before closing
@@ -86,8 +90,11 @@ public partial class VideoEditWindow : Window
         Player.Play(); // a first picture only shows once it has started; it is paused as soon as it opens
     }
 
-    /// <summary>The new video, once saved; null if the window was closed without saving.</summary>
-    internal string? EditedPath { get; private set; }
+    /// <summary>Where the finished video is made, for copying and saving.</summary>
+    internal VideoDelivery Delivery => _delivery;
+
+    /// <summary>Asks where to save; the tests answer it themselves. Null means the person changed their mind.</summary>
+    internal Func<string?>? AskSavePath { get; set; }
 
     /// <summary>The edit, once the video has opened.</summary>
     internal EditTimeline? Timeline => _timeline;
@@ -684,8 +691,8 @@ public partial class VideoEditWindow : Window
         UndoButton.IsEnabled = free && _timeline.CanUndo;
         RedoButton.IsEnabled = free && _timeline.CanRedo;
         ResetButton.IsEnabled = free && _timeline.IsEdited;
-        SaveButton.IsEnabled = free && HasResult;
-        CancelButton.IsEnabled = free;
+        CopyButton.IsEnabled = SaveButton.IsEnabled = free;
+        CloseButton.IsEnabled = free;
 
         int zooms = _timeline.Zooms.Count;
         int chosenZoom = Lane.SelectedZoom;
@@ -708,9 +715,7 @@ public partial class VideoEditWindow : Window
 
         if (_busy)
         {
-            KeptText.Text = _timeline.Zooms.Count > 0 || _frame.Enabled
-                ? "Guardando el video… (se vuelve a crear cada cuadro con el zoom y el marco, puede tardar)"
-                : "Guardando el video…";
+            KeptText.Text = "Preparando el video… se vuelve a crear cada cuadro con el cursor, el zoom y el marco: tarda más o menos lo que dura.";
         }
         else
         {
@@ -726,11 +731,14 @@ public partial class VideoEditWindow : Window
             : "";
     }
 
-    // There is something to save: pieces cut or moved, or zooms (the automatic ones count: the video comes out different), a
-    // frame, or another pointer than the one the video was made with.
-    private bool HasResult => _timeline != null && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled || CursorChanged);
+    // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, or a pointer to draw.
+    // Otherwise the finished video is the recording itself.
+    internal bool NeedsRendering => _timeline != null
+        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled || CursorLayer.For(_track, _cursor, _timeline.Segments) != null);
 
-    private bool CursorChanged => _track is { PointerInPicture: false } && _cursor != _openedCursor;
+    // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
+    private string Recipe => _timeline == null ? "" : string.Join("|",
+        string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "");
 
     private void SetBusy(bool busy)
     {
@@ -741,40 +749,135 @@ public partial class VideoEditWindow : Window
         RefreshState();
     }
 
-    private async void OnSave(object sender, RoutedEventArgs e)
+    // Makes the finished video, or takes the one already made with the same choices; null if it failed (the person is told).
+    private async Task<string?> PrepareAsync()
     {
-        if (_timeline == null || _busy || !HasResult)
+        if (_timeline == null || _busy)
+        {
+            return null;
+        }
+
+        StopPlayback();
+        bool reused = _delivery.IsCurrent(Recipe);
+        if (!reused)
+        {
+            SetBusy(true);
+            DeliveryText.Text = NeedsRendering ? "Preparando el video…" : "";
+            ShowInFolderButton.Visibility = Visibility.Collapsed;
+        }
+        try
+        {
+            var progress = new Progress<double>(value => WorkBar.Value = value);
+            return await _delivery.PrepareAsync(Recipe, async target =>
+            {
+                if (NeedsRendering)
+                {
+                    await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
+                        _track, _cursor);
+                }
+                else
+                {
+                    File.Copy(_source, target, overwrite: true); // nothing to change: the recording as it is
+                }
+            });
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Called from async void handlers: anything uncaught here would end the whole app.
+            DeliveryText.Text = $"No se pudo preparar el video: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            if (!reused)
+            {
+                SetBusy(false);
+            }
+        }
+    }
+
+    private async void OnCopy(object sender, RoutedEventArgs e)
+    {
+        if (await PrepareAsync() is not { } path)
         {
             return;
         }
 
-        StopPlayback();
-        SetBusy(true);
-        string target = NewFileName();
+        DeliveryText.Text = VideoDelivery.CopyToClipboard(path)
+            ? $"Copiado · {SizeText(path)}. Pégalo en un chat o un documento."
+            : "No se pudo copiar: otro programa usa el portapapeles. Prueba otra vez.";
+    }
+
+    private async void OnSave(object sender, RoutedEventArgs e)
+    {
+        if (_timeline == null || _busy || AskWhereToSave() is not { } chosen)
+        {
+            return;
+        }
+        if (await PrepareAsync() is not { } path)
+        {
+            return;
+        }
+
         try
         {
-            var progress = new Progress<double>(value => WorkBar.Value = value);
-            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                _track, _cursor);
-            EditedPath = target;
-            _saved = true;
-            _busy = false; // or Closing would refuse
-            DialogResult = true;
+            if (!string.Equals(Path.GetFullPath(chosen), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(path, chosen, overwrite: true);
+            }
+            _lastSaved = chosen;
+            DeliveryText.Text = $"Guardado · {SizeText(chosen)} · {Path.GetFileName(chosen)}";
+            ShowInFolderButton.Visibility = Visibility.Visible;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // An async void handler: anything uncaught here would end the whole app.
-            TryDelete(target);
-            SetBusy(false);
-            MessageBox.Show(this, $"No se pudo guardar el video: {ex.Message}", "Zarpazo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            DeliveryText.Text = $"No se pudo guardar: {ex.Message}";
         }
+    }
+
+    private string? AskWhereToSave()
+    {
+        if (AskSavePath != null)
+        {
+            return AskSavePath();
+        }
+
+        Settings.AppSettings? current = _settings?.Current;
+        string folder = current != null && Directory.Exists(current.SaveFolder) ? current.SaveFolder
+            : Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Guardar video",
+            FileName = current != null
+                ? Output.FileNameTemplate.Expand(current.FileNameTemplate, DateTime.Now, current.AutoSaveCounter + 1)
+                : Path.GetFileNameWithoutExtension(_delivery.ReadyPath),
+            Filter = "Video MP4 (*.mp4)|*.mp4",
+            AddExtension = true,
+            DefaultExt = ".mp4",
+            InitialDirectory = folder,
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+    }
+
+    private void OnShowInFolder(object sender, RoutedEventArgs e)
+    {
+        if (_lastSaved != null && File.Exists(_lastSaved))
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{_lastSaved}\"") { UseShellExecute = true });
+        }
+    }
+
+    private static string SizeText(string path)
+    {
+        long bytes = new FileInfo(path).Length;
+        return bytes < 1024 * 1024 ? $"{Math.Max(1, bytes / 1024)} KB" : $"{bytes / (1024.0 * 1024.0):0.0} MB";
     }
 
     // Next to the recording, never over another file: name_editado.mp4, then name_editado_2.mp4...
     private string NewFileName()
     {
         string folder = Path.GetDirectoryName(_source)!;
-        string name = CursorBake.WithoutOriginalSuffix(Path.GetFileNameWithoutExtension(_source));
+        string name = RecordingFiles.WithoutOriginalSuffix(Path.GetFileNameWithoutExtension(_source));
         string path = Path.Combine(folder, name + "_editado.mp4");
         for (int n = 2; File.Exists(path); n++)
         {
@@ -1364,10 +1467,12 @@ public partial class VideoEditWindow : Window
             return;
         }
 
-        // Only what the person changed asks first: the automatic zooms alone are not worth a question.
-        if (!_saved && _timeline?.HasChanges == true)
+        // Only what the person changed asks first (the automatic zooms alone are not worth a question), and not once the
+        // video with those changes was copied or saved.
+        if (_timeline?.HasChanges == true && !_delivery.IsCurrent(Recipe))
         {
-            MessageBoxResult answer = MessageBox.Show(this, "Hay cambios sin guardar. ¿Quieres descartarlos?", "Zarpazo", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            MessageBoxResult answer = MessageBox.Show(this, "Hay cambios que no copiaste ni guardaste. ¿Quieres cerrar igual?", "Zarpazo",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
             e.Cancel = answer != MessageBoxResult.Yes;
         }
     }

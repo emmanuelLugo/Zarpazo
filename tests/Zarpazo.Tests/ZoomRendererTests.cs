@@ -257,31 +257,4 @@ public sealed class ZoomRendererTests : IClassFixture<SampleVideos>, IDisposable
         Assert.True(bright > 40, $"only {bright} light pixels where the pointer should be");
         Assert.Equal(0, picture[(170 * Width + 100) * 4 + 1] > 180 ? 1 : 0); // and none far from it
     }
-
-    [Fact]
-    public async Task A_finished_recording_gets_its_pointer_drawn_and_keeps_the_clean_one_beside_for_the_editor()
-    {
-        string video = await QuarterVideoAsync();
-        new CursorTrack(Width, Height, [new CursorSample(0, 240, 120)], [], PointerInPicture: false).Save(video);
-
-        string? original = await CursorBake.ApplyAsync(video, CursorStyle.Default);
-
-        Assert.Equal(Path.Combine(_folder, "quarter.original.mp4"), original);
-        Assert.True(File.Exists(video), "the video keeps its name, now with the pointer");
-        Assert.True(File.Exists(CursorTrack.PathFor(original!)), "the track goes with the clean recording");
-        Assert.False(File.Exists(CursorTrack.PathFor(video)));
-        Assert.InRange(await PixelAsync(original!, 1, 252 / (double)Width, 140 / (double)Height), 0, 40);  // clean: black there
-        Assert.Equal("quarter", CursorBake.WithoutOriginalSuffix("quarter.original"));
-    }
-
-    [Fact]
-    public async Task A_recording_with_the_pointer_already_in_it_is_left_alone()
-    {
-        string video = await QuarterVideoAsync();
-        new CursorTrack(Width, Height, [new CursorSample(0, 240, 120)], []).Save(video); // an older recording: PointerInPicture
-
-        Assert.Null(await CursorBake.ApplyAsync(video, CursorStyle.Default));
-        Assert.Null(await CursorBake.ApplyAsync(video, CursorStyle.Default with { Visible = false }));
-        Assert.False(File.Exists(CursorBake.OriginalFor(video)));
-    }
 }

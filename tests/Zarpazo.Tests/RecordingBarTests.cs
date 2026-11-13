@@ -168,7 +168,7 @@ public sealed class RecordingBarTests
             Shot(bar, folder, "bar-paused.png");
             bar.ShowEncoding("Creando el video…");
             Shot(bar, folder, "bar-encoding.png");
-            bar.ShowDone("Video listo · 2,4 MB", canEdit: true);
+            bar.ShowDone("GIF listo · 2,4 MB");
             Shot(bar, folder, "bar-done.png");
             bar.ShowFailure("La grabación fue demasiado corta.");
             Shot(bar, folder, "bar-failure.png");

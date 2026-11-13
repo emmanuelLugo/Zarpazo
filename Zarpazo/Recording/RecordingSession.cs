@@ -25,7 +25,6 @@ internal sealed class RecordingSession
     private DispatcherTimer? _clock;
     private DispatcherTimer? _countdownTimer;
     private string? _filePath;
-    private string? _editSource; // the recording without the pointer, for the editor to draw it again; null to edit _filePath
     private string? _historyPath; // this recording's entry in the history, replaced if it is trimmed
     private bool _closedAlready;
 
@@ -55,6 +54,12 @@ internal sealed class RecordingSession
     /// <summary>Raised when it starts or stops counting down, recording or pausing, so the tray icon can follow.</summary>
     public event Action? StateChanged;
 
+    /// <summary>
+    /// Raised when a finished video opens in the editor, which takes it from there (copy, save, close) and outlives the
+    /// session: the session closes as the editor opens.
+    /// </summary>
+    public event Action<VideoEditWindow>? EditorOpened;
+
     /// <summary>Raised when the recording could not start after a countdown; the message says why.</summary>
     public event Action<string>? Failed;
 
@@ -71,7 +76,6 @@ internal sealed class RecordingSession
         _bar.GainChanged += (source, gain) => _job.SetSourceGain(source, gain);
         _bar.StopRequested += (_, _) => Stop();
         _bar.CancelRequested += (_, _) => Close();
-        _bar.EditRequested += (_, _) => Edit();
         _bar.CopyRequested += (_, _) => Copy();
         _bar.SaveRequested += (_, _) => Save();
         _bar.CloseRequested += (_, _) => Close();
@@ -205,21 +209,17 @@ internal sealed class RecordingSession
                 _bar.ShowFailure("La grabación fue demasiado corta.");
                 return;
             }
-            string drawn = "";
             if (_job.CanEdit)
             {
-                drawn = await DrawPointerAsync(path);
-                if (_closedAlready)
-                {
-                    return;
-                }
+                OpenEditor(path, reason);
+                return;
             }
             _filePath = path;
             _historyPath = AddToHistory(path);
             _job.ReleaseThumbnail();
             MemoryTrim.Release();
             string saved = AutoSave(path);
-            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{drawn}{saved}", _job.CanEdit);
+            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{saved}");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -231,27 +231,40 @@ internal sealed class RecordingSession
         }
     }
 
-    // A video is recorded without the pointer; it is drawn in now, in the style last chosen in the editor, so a video copied
-    // or saved straight away has it. What is added to the bar's message says if that failed.
-    private async Task<string> DrawPointerAsync(string path)
+    // Like Recordly, a finished video opens in the editor, which copies and saves it: the bar goes. The clean recording
+    // becomes "name.original.mp4" for the editor to work on, and the finished video takes the name people see when they
+    // paste it. Should the files not move, the editor works on the recording where it is.
+    private void OpenEditor(string path, RecordingEnd reason)
     {
-        _bar!.ShowEncoding("Dibujando el cursor…", 0);
+        string original = path;
         try
         {
-            var progress = new Progress<double>(value =>
+            original = RecordingFiles.OriginalFor(path);
+            File.Move(path, original, overwrite: true);
+            if (File.Exists(CursorTrack.PathFor(path)))
             {
-                if (!_closedAlready)
-                {
-                    _bar.ShowEncoding("Dibujando el cursor…", value);
-                }
-            });
-            _editSource = await CursorBake.ApplyAsync(path, _settings.Current.VideoCursor, progress);
-            return "";
+                File.Move(CursorTrack.PathFor(path), CursorTrack.PathFor(original), overwrite: true);
+            }
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return " · sin cursor"; // the recording is back in its place, only without the pointer
+            original = File.Exists(path) ? path : original;
         }
+
+        string ready = original == path ? Path.Combine(Path.GetDirectoryName(path)!, Path.GetFileNameWithoutExtension(path) + "_listo.mp4") : path;
+        var delivery = new VideoDelivery(original, ready, _settings, _history, _job.Thumbnail);
+        string notice = reason switch
+        {
+            RecordingEnd.TimeLimit => $"La grabación se detuvo al llegar al límite de {LimitText(_job.MaxDuration)}.",
+            RecordingEnd.MemoryLimit => "La grabación se detuvo por el límite de memoria.",
+            _ => "",
+        };
+        var editor = new VideoEditWindow(original, _settings, delivery, notice);
+        _job.ReleaseThumbnail();
+        editor.Show();
+        editor.Activate();
+        EditorOpened?.Invoke(editor);
+        Close();
     }
 
     // The recording is already made, so a full disk or a locked folder must not turn that into an error.
@@ -292,36 +305,6 @@ internal sealed class RecordingSession
         {
             return " · no se pudo guardar solo";
         }
-    }
-
-    // Opens the video editor. The edited video replaces the recording, in the history too.
-    private void Edit()
-    {
-        if (_filePath == null || _bar == null || !_job.CanEdit)
-        {
-            return;
-        }
-
-        var window = new VideoEditWindow(_editSource ?? _filePath, _settings) { Owner = _bar };
-        if (window.ShowDialog() != true || window.EditedPath is not { } trimmed)
-        {
-            return;
-        }
-
-        _filePath = trimmed;
-        _editSource = null; // editing again starts from this result, as before
-        if (_historyPath != null)
-        {
-            try
-            {
-                _history.Delete(_historyPath);
-            }
-            catch (IOException)
-            {
-            }
-        }
-        _historyPath = AddToHistory(trimmed);
-        _bar.ShowDone($"Video editado · {SizeText(new FileInfo(trimmed).Length)}", canEdit: true);
     }
 
     private string Describe(RecordingEnd reason) => reason switch

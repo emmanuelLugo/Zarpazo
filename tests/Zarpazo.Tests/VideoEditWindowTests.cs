@@ -49,6 +49,10 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         return until();
     }
 
+    // Clicks a button from the window's own message loop, as a person would: its awaits then come back to the window's thread.
+    private static void ClickLater(System.Windows.Controls.Button button) =>
+        button.Dispatcher.BeginInvoke(() => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)));
+
     [Fact]
     public void The_window_can_be_created_without_failing_while_its_controls_load()
     {
@@ -57,7 +61,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
             var window = new VideoEditWindow(Path.Combine(_folder, "not-there.mp4")); // opening the file fails later, asynchronously
 
             Assert.False(window.SaveButton.IsEnabled); // nothing can be saved before the video has opened
-            Assert.Null(window.EditedPath);
+            Assert.False(window.CopyButton.IsEnabled);
             window.Close();
         });
     }
@@ -74,12 +78,13 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.True(Pump(() => window.Timeline != null), "the video should open");
                 EditTimeline timeline = window.Timeline!;
                 Assert.InRange(timeline.SourceDuration, 2.5, 3.5);
-                Assert.False(window.SaveButton.IsEnabled, "nothing to save before an edit");
+                Assert.True(window.SaveButton.IsEnabled, "the recording can be saved as it is");
+                Assert.False(window.NeedsRendering, "nothing to make again before an edit");
 
                 timeline.Split(1);
                 timeline.Split(2);
                 Pump(() => false, 100);
-                Assert.True(window.SaveButton.IsEnabled);
+                Assert.True(window.NeedsRendering);
                 Assert.True(window.UndoButton.IsEnabled);
                 Assert.True(window.ResetButton.IsEnabled);
 
@@ -92,7 +97,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
 
                 timeline.Reset();
                 Pump(() => false, 100);
-                Assert.False(window.SaveButton.IsEnabled, "back to the whole video, nothing to save");
+                Assert.False(window.NeedsRendering, "back to the whole video, nothing to make again");
             }
             finally
             {
@@ -102,39 +107,55 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
     }
 
     [Fact]
-    public void An_edited_video_is_saved_next_to_the_recording_without_touching_it()
+    public void An_edited_video_is_saved_where_asked_without_touching_the_recording()
     {
         string copy = Path.Combine(_folder, "recording.mp4");
+        string chosen = Path.Combine(_folder, "elegido.mp4");
         File.Copy(_samples.Silent, copy);
 
         Sta.Run(() =>
         {
-            var window = new VideoEditWindow(copy);
-            // The dialog blocks, so a timer does the editing once the video has opened, and another gives up if nothing happens.
-            var driver = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-            driver.Tick += (_, _) =>
+            var window = new VideoEditWindow(copy) { AskSavePath = () => chosen };
+            window.Show();
+            try
             {
-                if (window.Timeline == null)
-                {
-                    return;
-                }
-                driver.Stop();
-                window.Timeline.Split(1);
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                window.Timeline!.Split(1);
                 window.Timeline.Delete(0);
-                window.SaveButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            };
-            var giveUp = new DispatcherTimer { Interval = TimeSpan.FromSeconds(40) };
-            giveUp.Tick += (_, _) =>
+                ClickLater(window.SaveButton);
+
+                Assert.True(Pump(() => File.Exists(chosen) && window.SaveButton.IsEnabled, 40000), "the video should be saved");
+                Assert.True(File.Exists(copy), "the recording is left as it was");
+                Assert.Equal(Path.Combine(_folder, "recording_editado.mp4"), window.Delivery.ReadyPath);
+                Assert.Equal(Visibility.Visible, window.ShowInFolderButton.Visibility);
+                Assert.Contains("Guardado", window.DeliveryText.Text);
+            }
+            finally
             {
-                giveUp.Stop();
+                window.Close(); // saved, so closing asks nothing
+            }
+        });
+    }
+
+    [Fact]
+    public void Copying_a_recording_with_nothing_to_change_hands_it_out_as_it_is()
+    {
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.Silent, delivery: new VideoDelivery(_samples.Silent, Path.Combine(_folder, "listo.mp4")));
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                ClickLater(window.CopyButton);
+
+                Assert.True(Pump(() => window.Delivery.Delivered, 10000), "the video should be ready");
+                Assert.Equal(new FileInfo(_samples.Silent).Length, new FileInfo(Path.Combine(_folder, "listo.mp4")).Length);
+            }
+            finally
+            {
                 window.Close();
-            };
-            driver.Start();
-            giveUp.Start();
-            Assert.True(window.ShowDialog());
-            Assert.Equal(Path.Combine(_folder, "recording_editado.mp4"), window.EditedPath);
-            Assert.True(File.Exists(window.EditedPath));
-            Assert.True(File.Exists(copy));
+            }
         });
     }
 
@@ -155,7 +176,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 ZoomRegion zoom = Assert.Single(window.Timeline!.Zooms);
                 Assert.Equal((0.25, 0.25), (zoom.FocusX, zoom.FocusY));
                 Pump(() => false, 100);
-                Assert.True(window.SaveButton.IsEnabled, "the zooms alone make a different video");
+                Assert.True(window.NeedsRendering, "the zooms alone make a different video");
                 Assert.False(window.UndoButton.IsEnabled, "the automatic zooms are where the edit starts");
                 Assert.True(window.AutoZoomButton.IsEnabled);
 
@@ -212,7 +233,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
             try
             {
                 Assert.True(Pump(() => window.Timeline != null), "the video should open");
-                Assert.False(window.SaveButton.IsEnabled,
+                Assert.False(window.NeedsRendering,
                     $"edited {window.Timeline!.IsEdited}, zooms {window.Timeline.Zooms.Count}, frame {window.FrameBox.IsChecked}, track {window.Track != null}");
                 Assert.Equal(8, window.FrameBackgrounds.Children.Count);
 
@@ -222,7 +243,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
 
                 Assert.Equal(Visibility.Visible, window.Backdrop.Visibility);
                 Assert.True(window.ContentHost.Width < window.Stage.Width, "the recording is smaller, inside its frame");
-                Assert.True(window.SaveButton.IsEnabled, "a framed video is a different video");
+                Assert.True(window.NeedsRendering, "a framed video is a different video");
                 Assert.False(window.Timeline!.HasChanges, "the frame is a style, not an edit to discard");
                 Shot(window, folder, "editor-frame.png");
             }
@@ -260,7 +281,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal(Visibility.Visible, window.PointerLayer.Visibility);
                 Assert.Equal(Visibility.Visible, window.PointerGlyph.Visibility);
                 Assert.Equal(3, window.CursorShapes.Children.Count);
-                Assert.False(window.SaveButton.IsEnabled, "nothing changed yet");
+                Assert.True(window.NeedsRendering, "the pointer has to be drawn in");
 
                 window.CursorTab.IsChecked = true;
                 Assert.Equal(Visibility.Visible, window.CursorPanel.Visibility);
@@ -269,7 +290,6 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Pump(() => false, 200);
 
                 Assert.Equal(3, window.PointerStyle.Size);
-                Assert.True(window.SaveButton.IsEnabled, "another pointer makes another video");
                 Assert.False(window.Timeline!.HasChanges, "the pointer is a style, not an edit to discard");
                 Shot(window, folder, "editor-cursor.png");
 

@@ -206,13 +206,6 @@
                         </Path>
                     </Border>
                     <TextBlock x:Name="DoneText" Style="{StaticResource Label}" Margin="0,0,10,0" />
-                    <Button x:Name="EditButton" Style="{StaticResource PillButton}" Click="OnEdit" Visibility="Collapsed"
-                            ToolTip="Cortar partes del video, cambiar su orden y guardar el resultado" AutomationProperties.Name="Editar">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Style="{StaticResource Glyph}" Data="M6,3 A3,3 0 1 0 6,9 A3,3 0 1 0 6,3 Z M6,15 A3,3 0 1 0 6,21 A3,3 0 1 0 6,15 Z M20,4 L8.1,15.9 M14.5,14.5 L20,20 M8.1,8.1 L12,12" />
-                            <TextBlock Text="Editar" Style="{StaticResource ButtonText}" />
-                        </StackPanel>
-                    </Button>
                     <Button Style="{StaticResource PillButton}" Click="OnCopy" ToolTip="Copiar el archivo para pegarlo en un chat o un documento" AutomationProperties.Name="Copiar">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource Glyph}" Data="M10,8 H18 A2,2 0 0 1 20,10 V18 A2,2 0 0 1 18,20 H10 A2,2 0 0 1 8,18 V10 A2,2 0 0 1 10,8 Z M4,16 V6 A2,2 0 0 1 6,4 H16" />

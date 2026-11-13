@@ -37,13 +37,14 @@ public partial class App : Application
 
     // Anything a restart would cut short: choosing an area or editing a capture (the overlay), a recording from the countdown until its
     // bar is closed (which covers encoding the video and the video editor), and the moments in between.
-    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting;
+    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting || _openEditors > 0;
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
     private GuideWindow? _guideWindow;
     private readonly GuideDocument _guide = new(GuideDocument.DefaultFolder);
     private RecordingSession? _recording;
+    private int _openEditors; // finished videos being edited: the app is busy until they close
     private readonly CaptureHistory _history = new(CaptureHistory.DefaultFolder);
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
     private UpdateService _updates = null!; // the same
@@ -683,6 +684,15 @@ public partial class App : Application
         // The tray icon shows that something is being recorded, even when the bar is out of sight.
         session.StateChanged += () => _tray?.SetRecording(session.IsCountingDown || session.IsRecording, session.IsPaused);
         session.Failed += message => _tray!.ShowWarning(message);
+        session.EditorOpened += editor =>
+        {
+            _openEditors++;
+            editor.Closed += (_, _) =>
+            {
+                _openEditors--;
+                OnMaybeIdle();
+            };
+        };
         try
         {
             session.Start(_settings.Current.RecordCountdownSeconds);

@@ -8,7 +8,7 @@
         MinWidth="980"
         MinHeight="680"
         WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="False"
+        ShowInTaskbar="True"
         Background="{DynamicResource WindowBackground}"
         Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI"
@@ -367,11 +367,23 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <ProgressBar x:Name="WorkBar" Height="4" Margin="0,0,16,0" Minimum="0" Maximum="1" VerticalAlignment="Center" Visibility="Collapsed" />
+            <!-- What happened with the last copy or save, and the progress while the video is being made. -->
+            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="DeliveryText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Button x:Name="ShowInFolderButton" Content="Mostrar en la carpeta" Margin="10,0,0,0" Padding="8,2" Focusable="False"
+                            Visibility="Collapsed" Click="OnShowInFolder" ToolTip="Abre la carpeta con el video guardado marcado" />
+                </StackPanel>
+                <ProgressBar x:Name="WorkBar" Height="4" Margin="0,6,0,0" Minimum="0" Maximum="1" Visibility="Collapsed" />
+            </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button x:Name="SaveButton" Content="Guardar video" Margin="0,0,8,0" IsDefault="True" IsEnabled="False" Click="OnSave"
-                        ToolTip="Guarda el resultado como un video nuevo; el original no se toca" />
-                <Button x:Name="CancelButton" Content="Cancelar" IsCancel="True" Click="OnCancel" />
+                <Button x:Name="CopyButton" Margin="0,0,8,0" IsEnabled="False" Click="OnCopy"
+                        ToolTip="Copia el video terminado para pegarlo en un chat o un documento">
+                    <TextBlock Text="Copiar" />
+                </Button>
+                <Button x:Name="SaveButton" Content="Guardar…" Margin="0,0,8,0" IsDefault="True" IsEnabled="False" Click="OnSave"
+                        ToolTip="Guarda el video terminado como archivo; la grabación original no se toca" />
+                <Button x:Name="CloseButton" Content="Cerrar" IsCancel="True" Click="OnCancel" />
             </StackPanel>
         </Grid>
     </Grid>
