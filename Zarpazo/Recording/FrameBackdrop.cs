@@ -45,7 +45,24 @@ internal static class FrameBackdrop
         return pixels;
     }
 
-    /// <summary>The backdrop as a picture, smaller by <paramref name="scale"/> for the editor's preview.</summary>
+    /// <summary>
+    /// The shadow under the recording, for a scene drawn <paramref name="scale"/> times its size. The editor's preview puts it
+    /// on a live card (the graphics card draws it, so a slider moves smoothly); the saved video draws it into the backdrop.
+    /// </summary>
+    public static DropShadowEffect Shadow(VideoFrameStyle style, FrameLayout layout, double scale)
+    {
+        double blur = Math.Max(4, layout.Height * ShadowBlurPerHeight * scale);
+        return new DropShadowEffect
+        {
+            BlurRadius = blur,
+            ShadowDepth = blur * ShadowDepthPerBlur,
+            Direction = ShadowDown,
+            Opacity = ShadowOpacity * style.Shadow,
+            Color = Colors.Black,
+        };
+    }
+
+    /// <summary>The backdrop as a picture, smaller by <paramref name="scale"/>.</summary>
     public static BitmapSource Picture(VideoFrameStyle style, FrameLayout layout, double scale)
     {
         int width = Math.Max(1, (int)Math.Round(layout.Width * scale));
@@ -61,7 +78,6 @@ internal static class FrameBackdrop
         if (style.Shadow > 0)
         {
             // A dark card exactly under the recording: only its shadow shows, the recording covers the rest.
-            double blur = Math.Max(4, layout.Height * ShadowBlurPerHeight * scale);
             var card = new Rectangle
             {
                 Width = layout.Content.Width * scale,
@@ -69,14 +85,7 @@ internal static class FrameBackdrop
                 RadiusX = layout.RadiusPixels * scale,
                 RadiusY = layout.RadiusPixels * scale,
                 Fill = Brushes.Black,
-                Effect = new DropShadowEffect
-                {
-                    BlurRadius = blur,
-                    ShadowDepth = blur * ShadowDepthPerBlur,
-                    Direction = ShadowDown,
-                    Opacity = ShadowOpacity * style.Shadow,
-                    Color = Colors.Black,
-                },
+                Effect = Shadow(style, layout, scale),
             };
             Canvas.SetLeft(card, layout.Content.X * scale);
             Canvas.SetTop(card, layout.Content.Y * scale);

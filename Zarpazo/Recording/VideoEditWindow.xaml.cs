@@ -57,6 +57,7 @@ public partial class VideoEditWindow : Window
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
     private bool _showingFrame;
     private bool _framePending; // the scene will be laid out again for the newest frame
+    private bool _pointerPending; // the pointer will be drawn again for the newest style
     private readonly DispatcherTimer _frameSave = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
     /// <param name="settings">Where the frame chosen is remembered; none in tests.</param>
@@ -1283,28 +1284,38 @@ public partial class VideoEditWindow : Window
             return;
         }
 
-        Scene.Width = width;
-        Scene.Height = height;
+        Scene.Width = ContentHost.Width = width;
+        Scene.Height = ContentHost.Height = height;
         if (_frame.Enabled)
         {
-            _layout = FrameLayout.For(_frame, (int)width, (int)height);
-            Int32Rect content = _layout.Value.Content;
-            // A smaller backdrop is plenty for the preview, and quick to draw again when a choice changes.
-            Backdrop.Source = FrameBackdrop.Picture(_frame, _layout.Value, Math.Min(1, 960 / width));
+            // The recording keeps its size and is moved and shrunk into its place: a transform, which the graphics card
+            // applies, rather than a new size for the player.
+            FrameLayout layout = FrameLayout.For(_frame, (int)width, (int)height);
+            _layout = layout;
+            Int32Rect content = layout.Content;
+            double scaleX = content.Width / width, scaleY = content.Height / height;
+            ContentHost.RenderTransform = new MatrixTransform(scaleX, 0, 0, scaleY, content.X, content.Y);
+            double radius = Math.Min(layout.RadiusPixels, Math.Min(content.Width, content.Height) / 2);
+            ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY) : null;
+
+            if (!ReferenceEquals(BackdropFill.Tag, _frame.Background))
+            {
+                BackdropFill.Background = Output.BeautifyBackground.Find(_frame.Background).ToBrush();
+                BackdropFill.Tag = _frame.Background;
+            }
+            ShadowCard.Margin = new Thickness(content.X, content.Y, 0, 0);
+            ShadowCard.Width = content.Width;
+            ShadowCard.Height = content.Height;
+            ShadowCard.CornerRadius = new CornerRadius(radius);
+            ShadowCard.Visibility = _frame.Shadow > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ShadowCard.Effect = _frame.Shadow > 0 ? FrameBackdrop.Shadow(_frame, layout, 1) : null;
             Backdrop.Visibility = Visibility.Visible;
-            ContentHost.Margin = new Thickness(content.X, content.Y, 0, 0);
-            ContentHost.Width = content.Width;
-            ContentHost.Height = content.Height;
-            double radius = _layout.Value.RadiusPixels;
-            ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, content.Width, content.Height), radius, radius) : null;
         }
         else
         {
             _layout = null;
             Backdrop.Visibility = Visibility.Collapsed;
-            ContentHost.Margin = new Thickness(0);
-            ContentHost.Width = width;
-            ContentHost.Height = height;
+            ContentHost.RenderTransform = Transform.Identity;
             ContentHost.Clip = null;
         }
         RebuildPreviewCamera();
@@ -1496,9 +1507,7 @@ public partial class VideoEditWindow : Window
             _cursorSave.Stop();
             _cursorSave.Start();
         }
-        RebuildPointer();
-        ApplyZoomPreview();
-        RefreshState();
+        SchedulePointer();
     }
 
     private void OnCursorReset(object sender, RoutedEventArgs e)
@@ -1511,9 +1520,24 @@ public partial class VideoEditWindow : Window
             _cursorSave.Stop();
             _cursorSave.Start();
         }
-        RebuildPointer();
-        ApplyZoomPreview();
-        RefreshState();
+        SchedulePointer();
+    }
+
+    // A slider sends a change for every pixel it moves: the pointer is drawn again once per frame, with the latest style.
+    private void SchedulePointer()
+    {
+        if (_pointerPending)
+        {
+            return;
+        }
+        _pointerPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        {
+            _pointerPending = false;
+            RebuildPointer();
+            ApplyZoomPreview();
+            RefreshState();
+        });
     }
 
     private void SaveCursorChoice()
@@ -1526,7 +1550,8 @@ public partial class VideoEditWindow : Window
     // The pointer's path for the style chosen, and its drawing.
     private void RebuildPointer()
     {
-        _motion = _track is { PointerInPicture: false } ? new CursorMotion(_track, _cursor) : null;
+        _motion = _track is not { PointerInPicture: false } ? null
+            : _motion?.Restyled(_track, _cursor) ?? new CursorMotion(_track, _cursor);
         PointerLayer.Visibility = _motion != null && _cursor.Visible ? Visibility.Visible : Visibility.Collapsed;
         (Color fill, Color edge) = CursorArt.Paint(_cursor.Shape);
         Geometry geometry = CursorArt.Geometry(_cursor.Shape);

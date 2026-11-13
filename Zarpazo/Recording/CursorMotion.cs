@@ -105,6 +105,21 @@ internal sealed class CursorMotion
             .ToArray();
     }
 
+    // The same path in another style: only the smoothing and the sway shape the path, so for any other change (size, shape,
+    // click effect, bounce) it is not worked out again. The editor's sliders call this at every step.
+    private CursorMotion(CursorMotion path, CursorStyle style)
+    {
+        _style = style;
+        _x = path._x;
+        _y = path._y;
+        _angle = path._angle;
+        _clicks = path._clicks;
+    }
+
+    /// <summary>This path in <paramref name="style"/>; worked out again only if the smoothing or the sway differ.</summary>
+    public CursorMotion Restyled(CursorTrack track, CursorStyle style) =>
+        style.Smoothing == _style.Smoothing && style.Sway == _style.Sway ? new CursorMotion(this, style) : new CursorMotion(track, style);
+
     /// <summary>The pointer at <paramref name="seconds"/> of the original; null when it is not drawn (switched off, or off the picture).</summary>
     public CursorPose? PoseAt(double seconds)
     {

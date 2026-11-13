@@ -242,7 +242,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Pump(() => false, 300);
 
                 Assert.Equal(Visibility.Visible, window.Backdrop.Visibility);
-                Assert.True(window.ContentHost.Width < window.Stage.Width, "the recording is smaller, inside its frame");
+                Assert.True(window.ContentHost.RenderTransform.Value.M11 < 1, "the recording is smaller, inside its frame");
                 Assert.True(window.NeedsRendering, "a framed video is a different video");
                 Assert.False(window.Timeline!.HasChanges, "the frame is a style, not an edit to discard");
                 Shot(window, folder, "editor-frame.png");
@@ -295,6 +295,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
 
                 window.CursorBox.IsChecked = false;
                 window.CursorBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 100); // drawn again with the next frame
                 Assert.Equal(Visibility.Collapsed, window.PointerLayer.Visibility);
                 Assert.False(window.CursorOptions.IsEnabled);
             }

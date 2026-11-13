@@ -576,7 +576,12 @@
                         <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
                               MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
                             <Grid x:Name="Scene">
-                                <Image x:Name="Backdrop" Stretch="Fill" Visibility="Collapsed" />
+                                <!-- The frame's backdrop, live (a gradient and a card with the shadow): a slider changes only what the graphics
+                                     card draws, so it follows the hand. The saved video draws the same with FrameBackdrop. -->
+                                <Grid x:Name="Backdrop" Visibility="Collapsed">
+                                    <Border x:Name="BackdropFill" />
+                                    <Border x:Name="ShadowCard" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Black" />
+                                </Grid>
                                 <Grid x:Name="ContentHost" HorizontalAlignment="Left" VerticalAlignment="Top">
                                     <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
                                                   Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
