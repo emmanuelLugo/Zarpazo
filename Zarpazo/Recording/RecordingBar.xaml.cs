@@ -2,33 +2,51 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using Cursors = System.Windows.Input.Cursors;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
-using FontFamily = System.Windows.Media.FontFamily;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using Orientation = System.Windows.Controls.Orientation;
 using VerticalAlignment = System.Windows.VerticalAlignment;
+using Path = System.Windows.Shapes.Path;
 using Rectangle = System.Drawing.Rectangle;
 
 namespace Zarpazo.Recording;
 
-/// <summary>The small control that sits next to the recorded area: time and Stop while recording, then Copy and Save.</summary>
+/// <summary>
+/// The floating pill that sits next to the recorded area: time and Stop while recording, then Copy and Save. It can be
+/// dragged away by its dots; from then on it stays where it was put.
+/// </summary>
 public partial class RecordingBar : Window
 {
     private const int WmDpiChanged = 0x02E0;
-    private const int GapPixels = 10; // between the recorded area's frame and the bar
+    private const int GapPixels = 10; // between the recorded area's frame and the pill
 
-    private const double MeterWidth = 64;
+    private const double MeterWidth = 56;
+
+    // The icons the bar swaps in code, on the same 24 x 24 grid as the ones in the XAML.
+    internal static readonly Geometry PauseGlyph = Frozen("M6,4 H9.5 A1,1 0 0 1 10.5,5 V19 A1,1 0 0 1 9.5,20 H6 A1,1 0 0 1 5,19 V5 A1,1 0 0 1 6,4 Z M14.5,4 H18 A1,1 0 0 1 19,5 V19 A1,1 0 0 1 18,20 H14.5 A1,1 0 0 1 13.5,19 V5 A1,1 0 0 1 14.5,4 Z");
+    internal static readonly Geometry ResumeGlyph = Frozen("M7,4.5 A1,1 0 0 1 8.5,3.6 L19.5,11.1 A1,1 0 0 1 19.5,12.9 L8.5,20.4 A1,1 0 0 1 7,19.5 Z");
+    internal static readonly Geometry MicrophoneGlyph = Frozen("M12,2 A3,3 0 0 0 9,5 V12 A3,3 0 0 0 15,12 V5 A3,3 0 0 0 12,2 Z M19,10 V12 A7,7 0 0 1 5,12 V10 M12,19 V22");
+    internal static readonly Geometry MicrophoneOffGlyph = Frozen("M12,2 A3,3 0 0 0 9,5 V12 A3,3 0 0 0 15,12 V5 A3,3 0 0 0 12,2 Z M19,10 V12 A7,7 0 0 1 5,12 V10 M12,19 V22 M3,3 L21,21");
+    internal static readonly Geometry SpeakerGlyph = Frozen("M11,5 L6,9 H3 V15 H6 L11,19 Z M15.5,8.5 A5,5 0 0 1 15.5,15.5 M18.5,5.5 A9,9 0 0 1 18.5,18.5");
+    internal static readonly Geometry SpeakerOffGlyph = Frozen("M11,5 L6,9 H3 V15 H6 L11,19 Z M22,9 L16,15 M16,9 L22,15");
+
+    private static readonly Brush RecordingRed = Frozen(Color.FromRgb(0xEF, 0x44, 0x44));
+    private static readonly Brush PausedAmber = Frozen(Color.FromRgb(0xFB, 0xBF, 0x24));
 
     private const float GainStep = 0.1f;
 
     private readonly List<Border> _meterFills = [];
-    private readonly List<(TextBlock Icon, StackPanel Group, AudioMeter Meter)> _meterIcons = [];
+    private readonly List<(Path Icon, StackPanel Group, AudioMeter Meter)> _meterIcons = [];
     private readonly List<float> _gains = [];
     private readonly List<float> _gainBeforeMute = [];
     private Rectangle _region;
+    private bool _movedByHand;
+    private bool? _blinking;
 
     public RecordingBar()
     {
@@ -53,11 +71,15 @@ public partial class RecordingBar : Window
     /// <param name="meters">One level bar per sound source, so it is clear at a glance that each one is picking something up.</param>
     internal void ShowRecording(TimeSpan elapsed, TimeSpan limit, IReadOnlyList<AudioMeter> meters, bool paused = false)
     {
-        ElapsedText.Text = paused ? $"{Format(elapsed)} · en pausa" : $"{Format(elapsed)} / {Format(limit)}";
-        // The red dot means "recording"; while paused it turns amber, and the button offers to carry on.
-        StatusDot.Fill = new SolidColorBrush(paused ? Color.FromRgb(0xFD, 0xD8, 0x35) : Color.FromRgb(0xE5, 0x39, 0x35));
-        PauseText.Text = paused ? "Reanudar" : "Pausa";
-        PauseIcon.Data = Geometry.Parse(paused ? "M0,0 L9,5 L0,10 Z" : "M1,0 H3.5 V10 H1 Z M6.5,0 H9 V10 H6.5 Z");
+        ElapsedText.Text = Format(elapsed);
+        LimitText.Text = $"/ {Format(limit)}";
+        // The red dot blinks while recording; while paused it turns amber and stays still, and the button offers to carry on.
+        Brush status = paused ? PausedAmber : RecordingRed;
+        StatusDot.Fill = status;
+        StatusText.Foreground = status;
+        StatusText.Text = paused ? "PAUSA" : "REC";
+        Blink(!paused);
+        PauseIcon.Data = paused ? ResumeGlyph : PauseGlyph;
         UpdateMeters(meters);
         ShowPanel(RecordingPanel);
     }
@@ -65,7 +87,7 @@ public partial class RecordingBar : Window
     /// <summary>The seconds left before the recording starts.</summary>
     internal void ShowCountdown(int secondsLeft)
     {
-        CountdownText.Text = $"Empieza en {secondsLeft}…";
+        CountdownNumber.Text = secondsLeft.ToString();
         ShowPanel(CountdownPanel);
     }
 
@@ -75,6 +97,7 @@ public partial class RecordingBar : Window
         {
             BuildMeters(meters);
         }
+        MetersDivider.Visibility = meters.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         for (int i = 0; i < meters.Count; i++)
         {
@@ -97,10 +120,10 @@ public partial class RecordingBar : Window
         {
             int source = i;
             AudioMeter meter = meters[i];
-            var fill = new Border { Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Background = AudioLevelDisplay.Color(0) };
-            var track = new Border { Width = MeterWidth, Height = 8, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Child = fill, VerticalAlignment = VerticalAlignment.Center };
-            var icon = new TextBlock { FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 12, Foreground = Brushes.White, Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand };
-            var group = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 10, 0), Background = Brushes.Transparent, Children = { icon, track } };
+            var fill = new Border { Width = 0, CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Left, Background = AudioLevelDisplay.Color(0) };
+            var track = new Border { Width = MeterWidth, Height = 5, CornerRadius = new CornerRadius(2.5), Background = new SolidColorBrush(Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF)), Child = fill, VerticalAlignment = VerticalAlignment.Center };
+            var icon = new Path { Style = (Style)FindResource("Glyph"), Margin = new Thickness(0, 0, 6, 0), Cursor = Cursors.Hand };
+            var group = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 12, 0), Background = Brushes.Transparent, Children = { icon, track } };
             icon.MouseLeftButtonDown += (_, e) =>
             {
                 ToggleMute(source);
@@ -150,14 +173,28 @@ public partial class RecordingBar : Window
     // The icon, the hint and the dimming say whether a source is muted, and how loud it is otherwise.
     private void ShowSource(int source)
     {
-        (TextBlock icon, StackPanel group, AudioMeter meter) = _meterIcons[source];
+        (Path icon, StackPanel group, AudioMeter meter) = _meterIcons[source];
         float gain = _gains[source];
-        icon.Text = gain == 0 ? "\U0001F507" : meter.IsMicrophone ? "\U0001F3A4" : "\U0001F50A";
+        icon.Data = meter.IsMicrophone ? gain == 0 ? MicrophoneOffGlyph : MicrophoneGlyph : gain == 0 ? SpeakerOffGlyph : SpeakerGlyph;
         string state = gain == 0 ? "silenciado" : $"{gain:P0}";
         string hint = $"{meter.Name} · {state}\nClic: silenciar · Rueda: volumen";
         icon.ToolTip = hint;
         group.ToolTip = hint;
         group.Opacity = gain == 0 ? 0.5 : 1;
+    }
+
+    // A slow fade in and out, the usual sign that something is being recorded; it goes still while paused.
+    private void Blink(bool on)
+    {
+        if (_blinking == on)
+        {
+            return;
+        }
+
+        _blinking = on;
+        StatusDot.BeginAnimation(OpacityProperty, on
+            ? new DoubleAnimation(1, 0.3, TimeSpan.FromSeconds(0.8)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase() }
+            : null);
     }
 
     internal void ShowEncoding(string message)
@@ -184,11 +221,15 @@ public partial class RecordingBar : Window
 
     private void ShowPanel(UIElement panel)
     {
+        if (panel != RecordingPanel)
+        {
+            Blink(false);
+        }
         foreach (UIElement other in new UIElement[] { RecordingPanel, CountdownPanel, EncodingPanel, DonePanel, FailurePanel })
         {
             other.Visibility = other == panel ? Visibility.Visible : Visibility.Collapsed;
         }
-        if (_region != Rectangle.Empty)
+        if (_region != Rectangle.Empty && !_movedByHand)
         {
             Reposition(); // each state has its own width
         }
@@ -208,15 +249,38 @@ public partial class RecordingBar : Window
         int width = (int)Math.Ceiling(DesiredSize.Width * scale);
         int height = (int)Math.Ceiling(DesiredSize.Height * scale);
 
+        // The window is bigger than the pill by the room its shadow takes; the gap and the screen edges count from the pill.
+        int shadow = (int)Math.Round(Pill.Margin.Left * scale);
         Rectangle screen = Screen.FromRectangle(_region).Bounds;
-        int left = Math.Clamp(_region.Left + (_region.Width - width) / 2, screen.Left, Math.Max(screen.Left, screen.Right - width));
-        int below = _region.Bottom + GapPixels;
-        int above = _region.Top - GapPixels - height;
-        int top = below + height <= screen.Bottom ? below
-            : above >= screen.Top ? above
-            : Math.Max(screen.Top, _region.Bottom - height - GapPixels); // the area fills the screen: inside it, kept out of the picture by Windows
+        int left = Math.Clamp(_region.Left + (_region.Width - width) / 2, screen.Left - shadow, Math.Max(screen.Left - shadow, screen.Right - width + shadow));
+        int below = _region.Bottom + GapPixels - shadow;
+        int above = _region.Top - GapPixels - height + shadow;
+        int top = below + height - shadow <= screen.Bottom ? below
+            : above + shadow >= screen.Top ? above
+            : Math.Max(screen.Top - shadow, _region.Bottom - height + shadow - GapPixels); // the area fills the screen: inside it, kept out of the picture by Windows
 
         WindowNative.Place(new WindowInteropHelper(this).Handle, new Rectangle(left, top, width, height));
+    }
+
+    private void OnGripDown(object sender, MouseButtonEventArgs e)
+    {
+        DragMove();
+        _movedByHand = true; // put there on purpose: changing state no longer brings it back next to the area
+        e.Handled = true;
+    }
+
+    private static Geometry Frozen(string path)
+    {
+        Geometry geometry = Geometry.Parse(path);
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private static Brush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private void OnPause(object sender, RoutedEventArgs e) => PauseRequested?.Invoke(this, EventArgs.Empty);

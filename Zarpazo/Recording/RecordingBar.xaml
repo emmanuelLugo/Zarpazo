@@ -3,109 +3,244 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Zarpazo"
         WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
         SizeToContent="WidthAndHeight"
-        Background="#FF202124">
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+    <!-- A floating pill: the window itself is see-through (so the corners can be round and the shadow soft, which a plain
+         window can't have on Windows 10), and the margin around the pill is the room its shadow needs. -->
     <Window.Resources>
-        <Style x:Key="Action" TargetType="Button">
+        <SolidColorBrush x:Key="Ink" Color="#FFF4F4F5" />
+        <SolidColorBrush x:Key="Muted" Color="#FFA1A1AA" />
+        <SolidColorBrush x:Key="Red" Color="#FFEF4444" />
+
+        <!-- Line icons drawn on a 24 x 24 grid and shown at about 17 px, all with the same stroke, so they read as one set. -->
+        <Style x:Key="Glyph" TargetType="Path">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Stroke" Value="{StaticResource Ink}" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="SnapsToDevicePixels" Value="False" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="LayoutTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="0.7" ScaleY="0.7" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A round button with only an icon: quiet until the pointer is on it. -->
+        <Style x:Key="IconButton" TargetType="Button">
             <Setter Property="Focusable" Value="False" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Margin" Value="2,0,0,0" />
+            <Setter Property="Margin" Value="2,0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Box" MinWidth="30" Height="30" Padding="10,0" CornerRadius="6" Background="#1AFFFFFF">
+                        <Border x:Name="Box" Width="34" Height="34" CornerRadius="17" Background="Transparent">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#33FFFFFF" />
+                                <Setter TargetName="Box" Property="Background" Value="#1FFFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#4DFFFFFF" />
+                                <Setter TargetName="Box" Property="Background" Value="#33FFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- The one button that stands out: stop. -->
+        <Style x:Key="StopButton" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Box" Width="40" Height="40" CornerRadius="20" Background="{StaticResource Red}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#FFEF4444" BlurRadius="12" ShadowDepth="0" Opacity="0.45" />
+                            </Border.Effect>
+                            <Rectangle Width="13" Height="13" RadiusX="3" RadiusY="3" Fill="White" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#FFF26363" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#FFDC3434" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- An icon and a word, for the actions once the file is ready. -->
+        <Style x:Key="PillButton" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Margin" Value="3,0" />
+            <Setter Property="Background" Value="#1AFFFFFF" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Box" Height="34" CornerRadius="17" Padding="12,0,14,0" Background="{TemplateBinding Background}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Box" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="Label" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{StaticResource Ink}" />
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
+        <Style x:Key="ButtonText" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+        </Style>
+
+        <!-- A thin line between groups of controls. -->
+        <Style x:Key="Divider" TargetType="Rectangle">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Fill" Value="#26FFFFFF" />
+            <Setter Property="Margin" Value="8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Six dots to hold the bar by and move it out of the way. -->
+        <ControlTemplate x:Key="GripTemplate" TargetType="ContentControl">
+            <Border Background="Transparent" Width="22" Height="34" Cursor="SizeAll" ToolTip="Arrastrar para mover la barra">
+                <UniformGrid Columns="2" Rows="3" Width="8" Height="13" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Ellipse Width="3" Height="3" Fill="#FF71717A" />
+                    <Ellipse Width="3" Height="3" Fill="#FF71717A" />
+                    <Ellipse Width="3" Height="3" Fill="#FF71717A" />
+                    <Ellipse Width="3" Height="3" Fill="#FF71717A" />
+                    <Ellipse Width="3" Height="3" Fill="#FF71717A" />
+                    <Ellipse Width="3" Height="3" Fill="#FF71717A" />
+                </UniformGrid>
+            </Border>
+        </ControlTemplate>
+
+        <Geometry x:Key="CloseGlyph">M18,6 L6,18 M6,6 L18,18</Geometry>
     </Window.Resources>
 
-    <Border BorderBrush="#40FFFFFF" BorderThickness="1" Padding="8,6">
-        <Grid>
-            <!-- Recording -->
-            <StackPanel x:Name="RecordingPanel" Orientation="Horizontal">
-                <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="#E53935" Margin="2,0,8,0" VerticalAlignment="Center" />
-                <TextBlock x:Name="ElapsedText" Style="{StaticResource Label}" FontFamily="Consolas" Margin="0,0,10,0" />
-                <StackPanel x:Name="MetersPanel" Orientation="Horizontal" VerticalAlignment="Center" />
-                <Button Style="{StaticResource Action}" Click="OnPause" ToolTip="Pausar o reanudar: lo que pase en la pausa no queda grabado" AutomationProperties.Name="Pausar">
-                    <StackPanel Orientation="Horizontal">
+    <Grid x:Name="Pill" Margin="14">
+        <!-- The shadow has a layer of its own, so the text and icons on top aren't drawn through the effect. -->
+        <Border CornerRadius="26" Background="#FF18181B">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.5" />
+            </Border.Effect>
+        </Border>
+        <Border CornerRadius="26" Padding="6" BorderBrush="#24FFFFFF" BorderThickness="1">
+        <StackPanel Orientation="Horizontal">
+            <ContentControl Template="{StaticResource GripTemplate}" MouseLeftButtonDown="OnGripDown" />
+
+            <Grid>
+                <!-- Recording -->
+                <StackPanel x:Name="RecordingPanel" Orientation="Horizontal">
+                    <Ellipse x:Name="StatusDot" Width="9" Height="9" Fill="{StaticResource Red}" Margin="4,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="StatusText" Text="REC" Style="{StaticResource Label}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Red}" Margin="0,0,10,0" />
+                    <TextBlock x:Name="ElapsedText" Style="{StaticResource Label}" FontWeight="SemiBold" FontSize="14" Typography.NumeralAlignment="Tabular" />
+                    <TextBlock x:Name="LimitText" Style="{StaticResource Label}" Foreground="{StaticResource Muted}" Margin="4,0,0,0" Typography.NumeralAlignment="Tabular" />
+                    <Rectangle x:Name="MetersDivider" Style="{StaticResource Divider}" Margin="12,0,10,0" />
+                    <StackPanel x:Name="MetersPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+                    <Rectangle Style="{StaticResource Divider}" Margin="2,0,6,0" />
+                    <Button Style="{StaticResource IconButton}" Click="OnPause" ToolTip="Pausar o reanudar: lo que pase en la pausa no queda grabado" AutomationProperties.Name="Pausar">
                         <!-- Two bars while recording (press to pause); a triangle while paused (press to resume). -->
-                        <Path x:Name="PauseIcon" Data="M1,0 H3.5 V10 H1 Z M6.5,0 H9 V10 H6.5 Z" Fill="White" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock x:Name="PauseText" Text="Pausa" Style="{StaticResource Label}" />
-                    </StackPanel>
-                </Button>
-                <Button Style="{StaticResource Action}" Click="OnStop" ToolTip="Detener (también con el atajo de captura)" AutomationProperties.Name="Detener">
-                    <StackPanel Orientation="Horizontal">
-                        <Rectangle Width="10" Height="10" Fill="White" RadiusX="1.5" RadiusY="1.5" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Detener" Style="{StaticResource Label}" />
-                    </StackPanel>
-                </Button>
-                <Button Style="{StaticResource Action}" Click="OnCancel" ToolTip="Descartar la grabación" AutomationProperties.Name="Descartar">
-                    <Path Data="M1,1 L9,9 M9,1 L1,9" Stroke="#EF5350" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                </Button>
-            </StackPanel>
+                        <Path x:Name="PauseIcon" Style="{StaticResource Glyph}" Fill="{StaticResource Ink}" StrokeThickness="0" />
+                    </Button>
+                    <Button Style="{StaticResource StopButton}" Click="OnStop" ToolTip="Detener (también con el atajo de captura)" AutomationProperties.Name="Detener" />
+                    <Button Style="{StaticResource IconButton}" Click="OnCancel" ToolTip="Descartar la grabación" AutomationProperties.Name="Descartar">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource CloseGlyph}" Stroke="{StaticResource Muted}" />
+                    </Button>
+                </StackPanel>
 
-            <!-- Counting down to the start -->
-            <StackPanel x:Name="CountdownPanel" Orientation="Horizontal" Visibility="Collapsed">
-                <TextBlock x:Name="CountdownText" Style="{StaticResource Label}" Margin="4,0,10,0" />
-                <Button Style="{StaticResource Action}" Click="OnCancel" ToolTip="Cancelar" AutomationProperties.Name="Cancelar">
-                    <Path Data="M1,1 L9,9 M9,1 L1,9" Stroke="#EF5350" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                </Button>
-            </StackPanel>
+                <!-- Counting down to the start -->
+                <StackPanel x:Name="CountdownPanel" Orientation="Horizontal" Visibility="Collapsed">
+                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Red}" Margin="2,0,10,0">
+                        <TextBlock x:Name="CountdownNumber" Style="{StaticResource Label}" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" />
+                    </Border>
+                    <TextBlock x:Name="CountdownText" Text="Empieza a grabar…" Style="{StaticResource Label}" Margin="0,0,12,0" />
+                    <Button Style="{StaticResource IconButton}" Click="OnCancel" ToolTip="Cancelar" AutomationProperties.Name="Cancelar">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource CloseGlyph}" Stroke="{StaticResource Muted}" />
+                    </Button>
+                </StackPanel>
 
-            <!-- Making the file -->
-            <StackPanel x:Name="EncodingPanel" Orientation="Horizontal" Visibility="Collapsed">
-                <TextBlock x:Name="EncodingText" Style="{StaticResource Label}" Margin="4,0,10,0" />
-                <ProgressBar IsIndeterminate="True" Width="80" Height="4" VerticalAlignment="Center" Margin="0,0,4,0" />
-            </StackPanel>
+                <!-- Making the file -->
+                <StackPanel x:Name="EncodingPanel" Orientation="Horizontal" Visibility="Collapsed" Height="34">
+                    <TextBlock x:Name="EncodingText" Style="{StaticResource Label}" Margin="6,0,12,0" />
+                    <ProgressBar IsIndeterminate="True" Width="90" Height="4" VerticalAlignment="Center" Margin="0,0,10,0"
+                                 Foreground="{StaticResource Red}" Background="#26FFFFFF" BorderThickness="0" />
+                </StackPanel>
 
-            <!-- Ready -->
-            <StackPanel x:Name="DonePanel" Orientation="Horizontal" Visibility="Collapsed">
-                <TextBlock x:Name="DoneText" Style="{StaticResource Label}" Margin="4,0,10,0" />
-                <Button x:Name="EditButton" Style="{StaticResource Action}" Click="OnEdit" Visibility="Collapsed"
-                        ToolTip="Cortar partes del video, cambiar su orden y guardar el resultado" AutomationProperties.Name="Editar">
-                    <TextBlock Text="Editar…" Style="{StaticResource Label}" />
-                </Button>
-                <Button Style="{StaticResource Action}" Click="OnCopy" ToolTip="Copiar el archivo para pegarlo en un chat o un documento" AutomationProperties.Name="Copiar">
-                    <TextBlock Text="Copiar" Style="{StaticResource Label}" />
-                </Button>
-                <Button Style="{StaticResource Action}" Click="OnSave" ToolTip="Guardar como archivo" AutomationProperties.Name="Guardar">
-                    <TextBlock Text="Guardar…" Style="{StaticResource Label}" />
-                </Button>
-                <Button Style="{StaticResource Action}" Click="OnClose" ToolTip="Cerrar" AutomationProperties.Name="Cerrar">
-                    <Path Data="M1,1 L9,9 M9,1 L1,9" Stroke="White" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                </Button>
-            </StackPanel>
+                <!-- Ready -->
+                <StackPanel x:Name="DonePanel" Orientation="Horizontal" Visibility="Collapsed">
+                    <Border Width="22" Height="22" CornerRadius="11" Background="#2622C55E" Margin="4,0,8,0" VerticalAlignment="Center">
+                        <Path Style="{StaticResource Glyph}" Data="M20,6 L9,17 L4,12" Stroke="#FF4ADE80" StrokeThickness="3">
+                            <Path.LayoutTransform>
+                                <ScaleTransform ScaleX="0.5" ScaleY="0.5" />
+                            </Path.LayoutTransform>
+                        </Path>
+                    </Border>
+                    <TextBlock x:Name="DoneText" Style="{StaticResource Label}" Margin="0,0,10,0" />
+                    <Button x:Name="EditButton" Style="{StaticResource PillButton}" Click="OnEdit" Visibility="Collapsed"
+                            ToolTip="Cortar partes del video, cambiar su orden y guardar el resultado" AutomationProperties.Name="Editar">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource Glyph}" Data="M6,3 A3,3 0 1 0 6,9 A3,3 0 1 0 6,3 Z M6,15 A3,3 0 1 0 6,21 A3,3 0 1 0 6,15 Z M20,4 L8.1,15.9 M14.5,14.5 L20,20 M8.1,8.1 L12,12" />
+                            <TextBlock Text="Editar" Style="{StaticResource ButtonText}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PillButton}" Click="OnCopy" ToolTip="Copiar el archivo para pegarlo en un chat o un documento" AutomationProperties.Name="Copiar">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource Glyph}" Data="M10,8 H18 A2,2 0 0 1 20,10 V18 A2,2 0 0 1 18,20 H10 A2,2 0 0 1 8,18 V10 A2,2 0 0 1 10,8 Z M4,16 V6 A2,2 0 0 1 6,4 H16" />
+                            <TextBlock Text="Copiar" Style="{StaticResource ButtonText}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PillButton}" Background="{StaticResource Red}" Click="OnSave" ToolTip="Guardar como archivo" AutomationProperties.Name="Guardar">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource Glyph}" Stroke="White" Data="M12,3 V15 M7,10 L12,15 L17,10 M5,20 H19" />
+                            <TextBlock Text="Guardar…" Style="{StaticResource ButtonText}" Foreground="White" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" Click="OnClose" ToolTip="Cerrar" AutomationProperties.Name="Cerrar">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource CloseGlyph}" Stroke="{StaticResource Muted}" />
+                    </Button>
+                </StackPanel>
 
-            <!-- Something went wrong -->
-            <StackPanel x:Name="FailurePanel" Orientation="Horizontal" Visibility="Collapsed">
-                <TextBlock x:Name="FailureText" Style="{StaticResource Label}" Foreground="#FFEF9A9A" Margin="4,0,10,0" MaxWidth="360" TextWrapping="Wrap" />
-                <Button Style="{StaticResource Action}" Click="OnClose" AutomationProperties.Name="Cerrar">
-                    <Path Data="M1,1 L9,9 M9,1 L1,9" Stroke="White" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                </Button>
-            </StackPanel>
-        </Grid>
-    </Border>
+                <!-- Something went wrong -->
+                <StackPanel x:Name="FailurePanel" Orientation="Horizontal" Visibility="Collapsed">
+                    <Path Style="{StaticResource Glyph}" Stroke="#FFF87171" Margin="4,0,8,0" Data="M10.3,3.9 L1.8,18 A2,2 0 0 0 3.5,21 H20.5 A2,2 0 0 0 22.2,18 L13.7,3.9 A2,2 0 0 0 10.3,3.9 Z M12,9 V13 M12,17 H12.01" />
+                    <TextBlock x:Name="FailureText" Style="{StaticResource Label}" Foreground="#FFFCA5A5" Margin="0,0,10,0" MaxWidth="360" TextWrapping="Wrap" />
+                    <Button Style="{StaticResource IconButton}" Click="OnClose" ToolTip="Cerrar" AutomationProperties.Name="Cerrar">
+                        <Path Style="{StaticResource Glyph}" Data="{StaticResource CloseGlyph}" Stroke="{StaticResource Muted}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+        </Border>
+    </Grid>
 </Window>
