@@ -229,4 +229,32 @@ public sealed class ZoomRendererTests : IClassFixture<SampleVideos>, IDisposable
         Assert.Single(clip.EmbeddedAudioTracks);
         Assert.Equal(["both.mp4"], Directory.GetFiles(_folder, "both*").Select(Path.GetFileName));
     }
+
+    [Fact]
+    public async Task A_video_recorded_without_the_pointer_is_saved_with_the_one_the_editor_draws()
+    {
+        string source = await QuarterVideoAsync();
+        string target = Path.Combine(_folder, "pointer.mp4");
+        // Resting in the black bottom-right quarter; the dark arrow has a white edge, so its outline shows on black.
+        var track = new CursorTrack(Width, Height, [new CursorSample(0, 240, 120)], [], PointerInPicture: false);
+        CursorStyle style = CursorStyle.Default with { Size = 3, Sway = 0 };
+
+        await VideoExporter.ExportAsync(source, target, [new VideoSegment(0, 3)], [], sourceDuration: 3, frame: null, progress: null, track, style);
+
+        var picture = new byte[Width * Height * 4];
+        using (var reader = new VideoFrameReader(target, Width, Height))
+        {
+            Assert.True(reader.TryRead(picture, out _));
+        }
+        int bright = 0;
+        for (int y = 120; y < 180; y++)
+        {
+            for (int x = 236; x < 290; x++)
+            {
+                bright += picture[(y * Width + x) * 4 + 1] > 180 ? 1 : 0;
+            }
+        }
+        Assert.True(bright > 40, $"only {bright} light pixels where the pointer should be");
+        Assert.Equal(0, picture[(170 * Width + 100) * 4 + 1] > 180 ? 1 : 0); // and none far from it
+    }
 }

@@ -20,8 +20,10 @@ internal static class VideoExporter
         await ExportAsync(source, target, segments, zooms, sourceDuration, frame: null, progress);
 
     /// <param name="frame">The frame to show the recording in; null or switched off for none.</param>
+    /// <param name="track">The pointer recorded with the video, drawn in <paramref name="cursor"/>'s style; nothing is drawn
+    /// without either, or when the recording already has the pointer in its pictures.</param>
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
-        double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null)
+        double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null)
     {
         bool framed = frame is { Enabled: true };
         if (framed)
@@ -32,7 +34,8 @@ internal static class VideoExporter
         }
 
         var camera = new ZoomCamera(segments, zooms);
-        if (camera.IsEmpty && !framed)
+        CursorLayer? pointer = CursorLayer.For(track, cursor, segments);
+        if (camera.IsEmpty && !framed && pointer == null)
         {
             await ExportAsync(source, target, segments, progress);
             return;
@@ -41,7 +44,7 @@ internal static class VideoExporter
         bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].Muted;
         if (whole)
         {
-            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress);
+            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer);
             return;
         }
 
@@ -50,7 +53,7 @@ internal static class VideoExporter
         try
         {
             await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
-            await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)));
+            await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)), pointer);
         }
         finally
         {

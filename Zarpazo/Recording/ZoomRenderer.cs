@@ -23,7 +23,9 @@ internal static class ZoomRenderer
         await RenderAsync(source, target, camera, frame: null, progress);
 
     /// <param name="frame">The frame to put the recording in, with its camera's times and points in the scene; null for none.</param>
-    public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null)
+    /// <param name="cursor">The pointer to draw over every picture; null for none.</param>
+    public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null,
+        CursorLayer? cursor = null)
     {
         StorageFile file = await StorageFile.GetFileFromPathAsync(source);
         MediaEncodingProfile profile = await MediaEncodingProfile.CreateFromFileAsync(file);
@@ -43,10 +45,11 @@ internal static class ZoomRenderer
         double bitsPerPixel = Math.Clamp(profile.Video.Bitrate / ((double)width * height * fps), MinBitsPerPixel, 0.5);
 
         FrameCompositor? compositor = null;
+        FrameLayout? layout = null;
         if (frame is { Enabled: true })
         {
-            FrameLayout layout = FrameLayout.For(frame, width, height);
-            compositor = new FrameCompositor(layout, FrameBackdrop.Render(frame, layout), width, height);
+            layout = FrameLayout.For(frame, width, height);
+            compositor = new FrameCompositor(layout.Value, FrameBackdrop.Render(frame, layout.Value), width, height);
         }
 
         var writer = new Mp4Writer(target, width, height, fps, withAudio, bitsPerPixel, live: false);
@@ -88,14 +91,16 @@ internal static class ZoomRenderer
                     }
 
                     byte[] picture = writer.RentPicture();
+                    ZoomView view = camera.ViewAt(t);
                     if (compositor != null)
                     {
-                        compositor.Render(current, picture, camera.ViewAt(t));
+                        compositor.Render(current, picture, view);
                     }
                     else
                     {
-                        ZoomResampler.Render(current, picture, width, height, camera.ViewAt(t));
+                        ZoomResampler.Render(current, picture, width, height, view);
                     }
+                    cursor?.Draw(picture, width, height, t, view, layout);
                     await writer.AddVideoAsync(picture, TimeSpan.FromSeconds(t), cancel.Token);
                     progress?.Report(Math.Clamp(t / duration, 0, 1));
                 }
