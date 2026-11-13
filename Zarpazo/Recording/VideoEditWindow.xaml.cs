@@ -56,6 +56,8 @@ public partial class VideoEditWindow : Window
     private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
     private bool _showingFrame;
+    private bool _framePending; // the scene will be laid out again for the newest frame
+    private readonly DispatcherTimer _frameSave = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
     /// <param name="settings">Where the frame chosen is remembered; none in tests.</param>
     /// <param name="delivery">Where the finished video goes when it is copied or saved; by default "name_editado.mp4" next to the source.</param>
@@ -68,6 +70,11 @@ public partial class VideoEditWindow : Window
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
         _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
         _cursorSave.Tick += (_, _) => SaveCursorChoice();
+        _frameSave.Tick += (_, _) =>
+        {
+            _frameSave.Stop();
+            _settings?.Save();
+        };
         BuildFrameChoices();
         BuildCursorChoices();
         _ready = true;
@@ -83,7 +90,7 @@ public partial class VideoEditWindow : Window
             _closed = true;
             CompositionTarget.Rendering -= OnRendering;
             _delivery.Finish();
-            if (_cursorSave.IsEnabled)
+            if (_cursorSave.IsEnabled || _frameSave.IsEnabled)
             {
                 SaveCursorChoice(); // a slider let go just before closing
             }
@@ -161,6 +168,7 @@ public partial class VideoEditWindow : Window
             }
             RebuildPointer();
             ShowCursorChoices();
+            ShowFrameValues(); // the corners in pixels of this video
             ApplyFrame();
             View.SelectedIndex = 0;
             SetPlayhead(0);
@@ -1188,12 +1196,31 @@ public partial class VideoEditWindow : Window
         {
             swatch.IsChecked = (string)swatch.Tag == _frame.Background;
         }
-        FramePaddingBox.SelectedIndex = Array.IndexOf(VideoFrameStyle.PaddingChoices, _frame.Padding);
-        FrameRadiusBox.SelectedIndex = Array.IndexOf(VideoFrameStyle.RadiusChoices, _frame.Radius);
-        FrameShadowBox.IsChecked = _frame.Shadow;
+        FramePaddingSlider.Value = _frame.Padding;
+        FrameRadiusSlider.Value = _frame.Radius;
+        FrameShadowSlider.Value = _frame.Shadow;
+        ShowFrameValues();
         FrameOptions.IsEnabled = _frame.Enabled;
         FrameOptions.Opacity = _frame.Enabled ? 1 : 0.5;
+        FrameResetButton.IsEnabled = _frame with { Enabled = false } != VideoFrameStyle.Default with { Enabled = false };
         _showingFrame = false;
+    }
+
+    // The room as a share of the picture, the corners in pixels of the video, the shadow as how dark it is.
+    private void ShowFrameValues()
+    {
+        double height = double.IsNaN(Stage.Height) ? 1080 : Stage.Height;
+        FramePaddingText.Text = $"{Math.Round(_frame.Padding * 100)} %";
+        FrameRadiusText.Text = $"{Math.Round(_frame.Radius * height)} px";
+        FrameShadowText.Text = $"{Math.Round(_frame.Shadow * 100)} %";
+    }
+
+    private void OnFrameSlider(object sender, RoutedPropertyChangedEventArgs<double> e) => OnFrameChanged(sender, e);
+
+    private void OnFrameReset(object sender, RoutedEventArgs e)
+    {
+        SetFrame(VideoFrameStyle.Default with { Enabled = _frame.Enabled });
+        ShowFrameChoices();
     }
 
     private void OnFrameChanged(object sender, RoutedEventArgs e)
@@ -1205,21 +1232,45 @@ public partial class VideoEditWindow : Window
 
         string background = FrameBackgrounds.Children.OfType<RadioButton>().FirstOrDefault(swatch => swatch.IsChecked == true)?.Tag as string
             ?? _frame.Background;
-        _frame = new VideoFrameStyle(
+        SetFrame(new VideoFrameStyle(
             FrameBox.IsChecked == true,
             background,
-            VideoFrameStyle.PaddingChoices[Math.Max(0, FramePaddingBox.SelectedIndex)],
-            VideoFrameStyle.RadiusChoices[Math.Max(0, FrameRadiusBox.SelectedIndex)],
-            FrameShadowBox.IsChecked == true);
-        ShowFrameChoices();
+            Math.Round(FramePaddingSlider.Value, 3),
+            Math.Round(FrameRadiusSlider.Value, 4),
+            Math.Round(FrameShadowSlider.Value * 20) / 20).Tidied());
+        if (sender is Slider)
+        {
+            ShowFrameValues(); // a slider is left alone while it is dragged
+            FrameResetButton.IsEnabled = true;
+        }
+        else
+        {
+            ShowFrameChoices();
+        }
+    }
+
+    // Takes a new frame: remembered for the next video (written a moment after the last change), and shown. A slider sends
+    // a change for every pixel it moves; the scene is laid out again once per frame drawn, with the latest values.
+    private void SetFrame(VideoFrameStyle frame)
+    {
+        _frame = frame;
         if (_settings != null)
         {
             _settings.Current.VideoFrame = _frame;
-            _settings.Save(); // remembered for the next video
+            _frameSave.Stop();
+            _frameSave.Start();
         }
-        ApplyFrame();
-        ApplyZoomPreview();
-        RefreshState();
+        if (!_framePending)
+        {
+            _framePending = true;
+            Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+            {
+                _framePending = false;
+                ApplyFrame();
+                ApplyZoomPreview();
+                RefreshState();
+            });
+        }
     }
 
     // Lays out the scene for the frame: the backdrop behind, the recording in its place with its corners rounded. Without a
@@ -1325,6 +1376,48 @@ public partial class VideoEditWindow : Window
             tile.Checked += OnCursorChanged;
             CursorShapes.Children.Add(tile);
         }
+
+        // The click effects, each with a drawing of it in the colour it has in the video.
+        var blue = new SolidColorBrush(CursorArt.ClickColor);
+        foreach (ClickEffect effect in Enum.GetValues<ClickEffect>())
+        {
+            ShapePath icon = effect switch
+            {
+                ClickEffect.None => new ShapePath
+                {
+                    Data = Geometry.Parse("M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 Z M6.3,6.3 L17.7,17.7"),
+                    Stroke = new SolidColorBrush(Color.FromRgb(0xE8, 0xEA, 0xED)),
+                    StrokeThickness = 1.8,
+                },
+                ClickEffect.Pulse => new ShapePath
+                {
+                    Data = Geometry.Parse("M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 Z"),
+                    Fill = new SolidColorBrush(Color.FromArgb(0x90, CursorArt.ClickColor.R, CursorArt.ClickColor.G, CursorArt.ClickColor.B)),
+                },
+                _ => new ShapePath
+                {
+                    Data = Geometry.Parse("M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 Z M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z"),
+                    Stroke = blue,
+                    StrokeThickness = 1.8,
+                },
+            };
+            icon.Width = icon.Height = 24;
+            var tile = new RadioButton
+            {
+                Style = (Style)FindResource("Tile"),
+                GroupName = "cursorClick",
+                Tag = effect,
+                Content = icon,
+                ToolTip = effect switch
+                {
+                    ClickEffect.None => "Sin efecto en los clics",
+                    ClickEffect.Pulse => "Pulso: una mancha suave que crece y se apaga",
+                    _ => "Onda: un anillo que crece desde el puntero",
+                },
+            };
+            tile.Checked += OnCursorChanged;
+            CursorClicks.Children.Add(tile);
+        }
         ShowCursorChoices();
     }
 
@@ -1339,7 +1432,11 @@ public partial class VideoEditWindow : Window
         CursorSizeSlider.Value = _cursor.Size;
         CursorSmoothingSlider.Value = _cursor.Smoothing;
         CursorSwaySlider.Value = _cursor.Sway;
-        CursorClickBox.SelectedIndex = (int)_cursor.Click;
+        foreach (RadioButton tile in CursorClicks.Children.OfType<RadioButton>())
+        {
+            tile.IsChecked = (ClickEffect)tile.Tag == _cursor.Click;
+        }
+        CursorResetButton.IsEnabled = _cursor with { Visible = true } != CursorStyle.Default with { Visible = true };
         CursorBounceBox.IsChecked = _cursor.Bounce;
         ShowCursorValues();
 
@@ -1380,7 +1477,7 @@ public partial class VideoEditWindow : Window
             Math.Round(CursorSizeSlider.Value, 1),
             Math.Round(CursorSmoothingSlider.Value * 20) / 20,
             Math.Round(CursorSwaySlider.Value * 20) / 20,
-            (ClickEffect)Math.Max(0, CursorClickBox.SelectedIndex),
+            CursorClicks.Children.OfType<RadioButton>().FirstOrDefault(tile => tile.IsChecked == true)?.Tag as ClickEffect? ?? _cursor.Click,
             CursorBounceBox.IsChecked == true).Tidied();
         if (sender is not Slider)
         {
@@ -1389,6 +1486,7 @@ public partial class VideoEditWindow : Window
         else
         {
             ShowCursorValues();
+            CursorResetButton.IsEnabled = true;
         }
 
         // Remembered for the next video; written a moment after the last change, not at every step of a slider.
@@ -1403,9 +1501,25 @@ public partial class VideoEditWindow : Window
         RefreshState();
     }
 
+    private void OnCursorReset(object sender, RoutedEventArgs e)
+    {
+        _cursor = CursorStyle.Default with { Visible = _cursor.Visible };
+        ShowCursorChoices();
+        if (_settings != null)
+        {
+            _settings.Current.VideoCursor = _cursor;
+            _cursorSave.Stop();
+            _cursorSave.Start();
+        }
+        RebuildPointer();
+        ApplyZoomPreview();
+        RefreshState();
+    }
+
     private void SaveCursorChoice()
     {
         _cursorSave.Stop();
+        _frameSave.Stop();
         _settings?.Save();
     }
 

@@ -9,21 +9,24 @@ namespace Zarpazo.Recording;
 /// </summary>
 /// <param name="Enabled">Off, the video is saved as recorded (with its zooms).</param>
 /// <param name="Background">Key of one of <see cref="BeautifyBackground.All"/>, the same backgrounds as Embellecer.</param>
-/// <param name="Padding">The room around the recording, as a share of the picture's height.</param>
-/// <param name="Radius">How round the corners are, as a share of the picture's height.</param>
-internal sealed record VideoFrameStyle(bool Enabled, string Background, double Padding, double Radius, bool Shadow)
+/// <param name="Padding">The room around the recording, as a share of the picture's height (0 to <see cref="MaxPadding"/>).</param>
+/// <param name="Radius">How round the corners are, as a share of the picture's height (0 to <see cref="MaxRadius"/>).</param>
+/// <param name="Shadow">How dark the shadow under the recording is: 0 none, 1 the darkest.</param>
+internal sealed record VideoFrameStyle(bool Enabled, string Background, double Padding, double Radius, double Shadow)
 {
-    /// <summary>The choices the editor offers: small, medium and large room; square, soft and round corners.</summary>
-    public static readonly double[] PaddingChoices = [0.04, 0.07, 0.11];
-    public static readonly double[] RadiusChoices = [0, 0.012, 0.025];
+    public const double MaxPadding = 0.15;
+    public const double MaxRadius = 0.05;
 
-    public static VideoFrameStyle Default { get; } = new(false, BeautifyBackground.Default.Key, 0.07, 0.012, true);
+    public static VideoFrameStyle Default { get; } = new(false, BeautifyBackground.Default.Key, 0.07, 0.012, 0.6);
 
-    /// <summary>The same style with its values snapped to the choices on offer (a hand-edited settings file).</summary>
+    /// <summary>The same style with its values brought inside what is offered (a hand-edited settings file).</summary>
     public VideoFrameStyle Tidied() => this with
     {
         Background = BeautifyBackground.Find(Background).Key,
-        Padding = PaddingChoices.MinBy(choice => Math.Abs(choice - Padding)),
-        Radius = RadiusChoices.MinBy(choice => Math.Abs(choice - Radius)),
+        Padding = Clamp(Padding, MaxPadding, Default.Padding),
+        Radius = Clamp(Radius, MaxRadius, Default.Radius),
+        Shadow = Clamp(Shadow, 1, Default.Shadow),
     };
+
+    private static double Clamp(double value, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, 0, max) : fallback;
 }

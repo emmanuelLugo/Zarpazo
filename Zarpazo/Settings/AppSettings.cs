@@ -134,19 +134,19 @@ internal sealed class AppSettings
     public string VideoFrameBackground { get; set; } = Recording.VideoFrameStyle.Default.Background;
     public double VideoFramePadding { get; set; } = Recording.VideoFrameStyle.Default.Padding;
     public double VideoFrameRadius { get; set; } = Recording.VideoFrameStyle.Default.Radius;
-    public bool VideoFrameShadow { get; set; } = Recording.VideoFrameStyle.Default.Shadow;
+    public double VideoFrameShadowStrength { get; set; } = Recording.VideoFrameStyle.Default.Shadow;
 
     [JsonIgnore]
     public Recording.VideoFrameStyle VideoFrame
     {
-        get => new Recording.VideoFrameStyle(VideoFrameEnabled, VideoFrameBackground ?? "", VideoFramePadding, VideoFrameRadius, VideoFrameShadow).Tidied();
+        get => new Recording.VideoFrameStyle(VideoFrameEnabled, VideoFrameBackground ?? "", VideoFramePadding, VideoFrameRadius, VideoFrameShadowStrength).Tidied();
         set
         {
             VideoFrameEnabled = value.Enabled;
             VideoFrameBackground = value.Background;
             VideoFramePadding = value.Padding;
             VideoFrameRadius = value.Radius;
-            VideoFrameShadow = value.Shadow;
+            VideoFrameShadowStrength = value.Shadow;
         }
     }
 

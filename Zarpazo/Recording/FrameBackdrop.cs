@@ -14,7 +14,7 @@ namespace Zarpazo.Recording;
 /// </summary>
 internal static class FrameBackdrop
 {
-    private const double ShadowOpacity = 0.5;
+    private const double ShadowOpacity = 0.8; // at full strength
     private const double ShadowBlurPerHeight = 0.035;
     private const double ShadowDepthPerBlur = 0.3;
     private const double ShadowDown = 270;
@@ -58,7 +58,7 @@ internal static class FrameBackdrop
             ClipToBounds = true,
         };
 
-        if (style.Shadow)
+        if (style.Shadow > 0)
         {
             // A dark card exactly under the recording: only its shadow shows, the recording covers the rest.
             double blur = Math.Max(4, layout.Height * ShadowBlurPerHeight * scale);
@@ -74,7 +74,7 @@ internal static class FrameBackdrop
                     BlurRadius = blur,
                     ShadowDepth = blur * ShadowDepthPerBlur,
                     Direction = ShadowDown,
-                    Opacity = ShadowOpacity,
+                    Opacity = ShadowOpacity * style.Shadow,
                     Color = Colors.Black,
                 },
             };

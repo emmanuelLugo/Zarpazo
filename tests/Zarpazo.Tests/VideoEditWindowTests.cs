@@ -235,7 +235,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
                 Assert.False(window.NeedsRendering,
                     $"edited {window.Timeline!.IsEdited}, zooms {window.Timeline.Zooms.Count}, frame {window.FrameBox.IsChecked}, track {window.Track != null}");
-                Assert.Equal(8, window.FrameBackgrounds.Children.Count);
+                Assert.Equal(Zarpazo.Output.BeautifyBackground.All.Count, window.FrameBackgrounds.Children.Count);
 
                 window.FrameBox.IsChecked = true;
                 window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));

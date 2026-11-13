@@ -16,6 +16,16 @@ internal sealed record BeautifyBackground(string Key, string Name, Color From, C
         new("noche", "Noche", Hex("#232526"), Hex("#414345")),
         new("gris", "Gris claro", Hex("#D7DDE8"), Hex("#F5F7FA")),
         new("blanco", "Blanco", Hex("#FFFFFF"), Hex("#FFFFFF")),
+        new("aurora", "Aurora", Hex("#00C9FF"), Hex("#92FE9D")),
+        new("fuego", "Fuego", Hex("#F12711"), Hex("#F5AF19")),
+        new("rosa", "Rosa", Hex("#FF9A9E"), Hex("#FECFEF")),
+        new("medianoche", "Medianoche", Hex("#0F2027"), Hex("#2C5364")),
+        new("durazno", "Durazno", Hex("#FFECD2"), Hex("#FCB69F")),
+        new("cielo", "Cielo", Hex("#A1C4FD"), Hex("#C2E9FB")),
+        new("uva", "Uva", Hex("#8E2DE2"), Hex("#4A00E0")),
+        new("menta", "Menta", Hex("#43E97B"), Hex("#38F9D7")),
+        new("coral", "Coral", Hex("#FF7E5F"), Hex("#FEB47B")),
+        new("grafito", "Grafito", Hex("#141E30"), Hex("#243B55")),
     ];
 
     public static BeautifyBackground Default => All[0];

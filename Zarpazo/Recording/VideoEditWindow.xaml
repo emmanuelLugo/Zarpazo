@@ -57,7 +57,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="Box" CornerRadius="8" BorderThickness="1.5" BorderBrush="{DynamicResource Border}" Background="#FF7A7F87">
+                            <Border x:Name="Box" CornerRadius="8" BorderThickness="1.5" BorderBrush="{DynamicResource Border}" Background="{DynamicResource Surface}">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
@@ -220,6 +220,137 @@
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Margin" Value="0,0,0,12" />
             </Style>
+            <!-- A setting as a row, like Recordly's: the whole row is the slider, filled up to its value, with a thin knob;
+                 its name and value are written over it by the panel. A click anywhere on it moves the value there. -->
+            <Style x:Key="RowFill" TargetType="RepeatButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RepeatButton">
+                            <Border Background="{DynamicResource Pressed}" CornerRadius="8,0,0,8" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="RowRest" TargetType="RepeatButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RepeatButton">
+                            <Border Background="Transparent" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="RowKnob" TargetType="Thumb">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border Width="10" Background="Transparent" Cursor="SizeWE">
+                                <Border Width="2" Height="18" CornerRadius="1" Background="{DynamicResource TextPrimary}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="RowSlider" TargetType="Slider">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="IsMoveToPointEnabled" Value="True" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Slider">
+                            <Border Height="38" CornerRadius="8" Background="{DynamicResource Surface}">
+                                <Track x:Name="PART_Track">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource RowFill}" Command="Slider.DecreaseLarge" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource RowRest}" Command="Slider.IncreaseLarge" />
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource RowKnob}" />
+                                    </Track.Thumb>
+                                </Track>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="RowLabel" TargetType="TextBlock">
+                <Setter Property="IsHitTestVisible" Value="False" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="14,0" />
+            </Style>
+            <Style x:Key="RowValue" TargetType="TextBlock" BasedOn="{StaticResource RowLabel}">
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+            </Style>
+            <Style x:Key="Row" TargetType="Grid">
+                <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+
+            <!-- An on/off setting as a switch, with its name on the left. -->
+            <Style x:Key="Switch" TargetType="CheckBox">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="CheckBox">
+                            <Grid Background="Transparent" Height="30">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter VerticalAlignment="Center" />
+                                <Border x:Name="Track" Grid.Column="1" Width="36" Height="20" CornerRadius="10" Background="{DynamicResource BorderStrong}">
+                                    <Ellipse x:Name="Knob" Width="14" Height="14" Fill="White" HorizontalAlignment="Left" Margin="3,0" />
+                                </Border>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Track" Property="Background" Value="{DynamicResource Accent}" />
+                                    <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- "Restablecer" next to a section's title: a link in the accent colour. -->
+            <Style x:Key="LinkButton" TargetType="Button">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <TextBlock x:Name="Text" Text="{TemplateBinding Content}" Background="Transparent" />
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Text" Property="TextDecorations" Value="Underline" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.4" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="SubHeader" TargetType="TextBlock" BasedOn="{StaticResource PanelHeader}">
+                <Setter Property="Margin" Value="0,18,0,10" />
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -310,67 +441,74 @@
                     <Grid>
                         <!-- The frame: a background behind the recording, room around it, rounded corners and a shadow. -->
                         <StackPanel x:Name="FramePanel">
-                            <TextBlock Text="MARCO" Style="{StaticResource PanelHeader}" />
-                            <CheckBox x:Name="FrameBox" Content="Poner marco" Focusable="False" Click="OnFrameChanged"
+                            <Grid>
+                                <TextBlock Text="MARCO" Style="{StaticResource PanelHeader}" />
+                                <Button x:Name="FrameResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Click="OnFrameReset" ToolTip="Vuelve a los valores de fábrica del marco" />
+                            </Grid>
+                            <CheckBox x:Name="FrameBox" Content="Poner marco" Style="{StaticResource Switch}" Click="OnFrameChanged"
                                       ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
                             <StackPanel x:Name="FrameOptions">
-                                <TextBlock Text="Fondo" Style="{StaticResource PanelTitle}" />
+                                <TextBlock Text="FONDO" Style="{StaticResource SubHeader}" />
                                 <WrapPanel x:Name="FrameBackgrounds" />
-                                <TextBlock Text="Margen" Style="{StaticResource PanelTitle}" Margin="0,6,0,6" />
-                                <ComboBox x:Name="FramePaddingBox" Focusable="False" SelectionChanged="OnFrameChanged">
-                                    <ComboBoxItem Content="Pequeño" />
-                                    <ComboBoxItem Content="Medio" />
-                                    <ComboBoxItem Content="Grande" />
-                                </ComboBox>
-                                <TextBlock Text="Esquinas" Style="{StaticResource PanelTitle}" />
-                                <ComboBox x:Name="FrameRadiusBox" Focusable="False" SelectionChanged="OnFrameChanged">
-                                    <ComboBoxItem Content="Rectas" />
-                                    <ComboBoxItem Content="Suaves" />
-                                    <ComboBoxItem Content="Redondas" />
-                                </ComboBox>
-                                <CheckBox x:Name="FrameShadowBox" Content="Sombra" Margin="0,12,0,0" Focusable="False" Click="OnFrameChanged" />
+                                <TextBlock Text="FORMA" Style="{StaticResource SubHeader}" />
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="FramePaddingSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.15" SmallChange="0.005" LargeChange="0.02"
+                                            ValueChanged="OnFrameSlider" ToolTip="El espacio de fondo alrededor del video" />
+                                    <TextBlock Text="Relleno" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="FramePaddingText" Style="{StaticResource RowValue}" />
+                                </Grid>
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="FrameRadiusSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.05" SmallChange="0.002" LargeChange="0.01"
+                                            ValueChanged="OnFrameSlider" ToolTip="Cuán redondeadas son las esquinas del video" />
+                                    <TextBlock Text="Radio" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="FrameRadiusText" Style="{StaticResource RowValue}" />
+                                </Grid>
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="FrameShadowSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.2"
+                                            ValueChanged="OnFrameSlider" ToolTip="Cuán oscura es la sombra bajo el video" />
+                                    <TextBlock Text="Sombra" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="FrameShadowText" Style="{StaticResource RowValue}" />
+                                </Grid>
                             </StackPanel>
                         </StackPanel>
 
                         <!-- The pointer: the video is recorded without it, and the one drawn here goes into the saved video. -->
                         <StackPanel x:Name="CursorPanel" Visibility="Collapsed">
-                            <TextBlock Text="CURSOR" Style="{StaticResource PanelHeader}" />
-                            <CheckBox x:Name="CursorBox" Content="Mostrar cursor" Focusable="False" Click="OnCursorChanged"
+                            <Grid>
+                                <TextBlock Text="CURSOR" Style="{StaticResource PanelHeader}" />
+                                <Button x:Name="CursorResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Click="OnCursorReset" ToolTip="Vuelve a los valores de fábrica del cursor" />
+                            </Grid>
+                            <CheckBox x:Name="CursorBox" Content="Mostrar cursor" Style="{StaticResource Switch}" Click="OnCursorChanged"
                                       ToolTip="Dibuja el puntero en el video: más grande, con movimiento suave y un efecto en cada clic" />
                             <TextBlock x:Name="CursorNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
                                        Margin="0,8,0,0" Visibility="Collapsed" />
                             <StackPanel x:Name="CursorOptions">
-                                <TextBlock Text="Estilo" Style="{StaticResource PanelTitle}" />
+                                <TextBlock Text="ESTILO" Style="{StaticResource SubHeader}" />
                                 <StackPanel x:Name="CursorShapes" Orientation="Horizontal" />
-
-                                <Grid Margin="0,12,0,0">
-                                    <TextBlock Text="Tamaño" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
-                                    <TextBlock x:Name="CursorSizeText" Style="{StaticResource SliderValue}" />
+                                <TextBlock Text="MOVIMIENTO" Style="{StaticResource SubHeader}" />
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CursorSizeSlider" Style="{StaticResource RowSlider}" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5"
+                                            ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
+                                    <TextBlock Text="Tamaño" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CursorSizeText" Style="{StaticResource RowValue}" />
                                 </Grid>
-                                <Slider x:Name="CursorSizeSlider" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5" Focusable="False"
-                                        ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
-
-                                <Grid Margin="0,8,0,0">
-                                    <TextBlock Text="Suavizado" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
-                                    <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource SliderValue}" />
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CursorSmoothingSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
+                                            ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
+                                    <TextBlock Text="Suavizado" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource RowValue}" />
                                 </Grid>
-                                <Slider x:Name="CursorSmoothingSlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
-                                        ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
-
-                                <Grid Margin="0,8,0,0">
-                                    <TextBlock Text="Balanceo" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
-                                    <TextBlock x:Name="CursorSwayText" Style="{StaticResource SliderValue}" />
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CursorSwaySlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
+                                            ValueChanged="OnCursorSlider" ToolTip="Cuánto se inclina la flecha al moverse de lado" />
+                                    <TextBlock Text="Balanceo" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CursorSwayText" Style="{StaticResource RowValue}" />
                                 </Grid>
-                                <Slider x:Name="CursorSwaySlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
-                                        ValueChanged="OnCursorSlider" ToolTip="Cuánto se inclina la flecha al moverse de lado" />
-
-                                <TextBlock Text="Efecto de clic" Style="{StaticResource PanelTitle}" />
-                                <ComboBox x:Name="CursorClickBox" Focusable="False" SelectionChanged="OnCursorChanged">
-                                    <ComboBoxItem Content="Ninguno" />
-                                    <ComboBoxItem Content="Onda" />
-                                    <ComboBoxItem Content="Pulso" />
-                                </ComboBox>
-                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Margin="0,12,0,0" Focusable="False" Click="OnCursorChanged"
+                                <TextBlock Text="EFECTO DE CLIC" Style="{StaticResource SubHeader}" />
+                                <StackPanel x:Name="CursorClicks" Orientation="Horizontal" />
+                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Style="{StaticResource Switch}" Margin="0,10,0,0" Click="OnCursorChanged"
                                           ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
                             </StackPanel>
                         </StackPanel>
