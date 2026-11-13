@@ -15,6 +15,13 @@ internal static class InstalledCopy
 
     public static bool IsThisCopyInstalled() => Matches(Environment.ProcessPath, ReadInstallLocation());
 
+    /// <summary>Whether the installer has put a copy on this PC, which may not be the one that is running (a development build, say).</summary>
+    public static bool ExistsOnThisPc()
+    {
+        string? location = ReadInstallLocation();
+        return !string.IsNullOrWhiteSpace(location) && Directory.Exists(location.Trim());
+    }
+
     /// <summary>True when the program at <paramref name="processPath"/> sits in <paramref name="installLocation"/>.</summary>
     internal static bool Matches(string? processPath, string? installLocation)
     {

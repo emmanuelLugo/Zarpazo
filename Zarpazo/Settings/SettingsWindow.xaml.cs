@@ -170,7 +170,9 @@ public partial class SettingsWindow : Window
                 InstallUpdateButton.IsEnabled = InstallLaterButton.IsEnabled = CheckUpdateButton.IsEnabled = !_restartQueuedShown;
             }
             UpdateStatus.Text = $"Hay una versión nueva: {release.Version} (tienes la {AppVersion.Current})."
-                + (!inPlace ? " Esta copia no se instaló con el instalador, así que se descarga desde la página."
+                + (!inPlace ? InstalledCopy.ExistsOnThisPc()
+                        ? " Esta copia no es la instalada, así que no se actualiza sola. La instalada sí: ábrela desde el menú Inicio o la bandeja y actualiza desde aquí."
+                        : " Esta copia no se instaló con el instalador, así que se descarga desde la página."
                     : _updates.RestartQueued ? " Se reiniciará para actualizar en cuanto termines lo que haces."
                     : ready && _updates.InstallOnClose ? " Está descargada y se instalará al salir de Zarpazo, o la próxima vez que la abras."
                     : ready ? " Ya está descargada y comprobada: al reiniciar se instala sola y Zarpazo vuelve a abrirse."
