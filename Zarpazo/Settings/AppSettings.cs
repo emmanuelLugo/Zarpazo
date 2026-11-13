@@ -150,7 +150,39 @@ internal sealed class AppSettings
         }
     }
 
-    /// <summary>How big the pointer is drawn in recordings: 1 (as on screen), 1.5 or 2.</summary>
+    /// <summary>The pointer drawn on videos (see <see cref="Recording.CursorStyle"/>); the last one chosen in the editor.</summary>
+    public bool VideoCursorVisible { get; set; } = Recording.CursorStyle.Default.Visible;
+    public string VideoCursorShape { get; set; } = Recording.CursorStyle.Default.Shape.ToString();
+    public double VideoCursorSize { get; set; } = Recording.CursorStyle.Default.Size;
+    public double VideoCursorSmoothing { get; set; } = Recording.CursorStyle.Default.Smoothing;
+    public double VideoCursorSway { get; set; } = Recording.CursorStyle.Default.Sway;
+    public string VideoCursorClick { get; set; } = Recording.CursorStyle.Default.Click.ToString();
+    public bool VideoCursorBounce { get; set; } = Recording.CursorStyle.Default.Bounce;
+
+    [JsonIgnore]
+    public Recording.CursorStyle VideoCursor
+    {
+        get => new Recording.CursorStyle(
+            VideoCursorVisible,
+            Enum.TryParse(VideoCursorShape, out Recording.CursorShape shape) ? shape : Recording.CursorStyle.Default.Shape,
+            VideoCursorSize,
+            VideoCursorSmoothing,
+            VideoCursorSway,
+            Enum.TryParse(VideoCursorClick, out Recording.ClickEffect click) ? click : Recording.CursorStyle.Default.Click,
+            VideoCursorBounce).Tidied();
+        set
+        {
+            VideoCursorVisible = value.Visible;
+            VideoCursorShape = value.Shape.ToString();
+            VideoCursorSize = value.Size;
+            VideoCursorSmoothing = value.Smoothing;
+            VideoCursorSway = value.Sway;
+            VideoCursorClick = value.Click.ToString();
+            VideoCursorBounce = value.Bounce;
+        }
+    }
+
+    /// <summary>How big the pointer is painted into GIF recordings: 1 (as on screen), 1.5 or 2.</summary>
     public double RecordCursorScale { get; set; } = 1;
 
     /// <summary>Seconds counted down before a recording starts: 0, 3 or 5.</summary>

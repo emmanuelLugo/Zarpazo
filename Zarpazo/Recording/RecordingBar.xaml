@@ -193,7 +193,7 @@
                 <!-- Making the file -->
                 <StackPanel x:Name="EncodingPanel" Orientation="Horizontal" Visibility="Collapsed" Height="34">
                     <TextBlock x:Name="EncodingText" Style="{StaticResource Label}" Margin="6,0,12,0" />
-                    <ProgressBar IsIndeterminate="True" Width="90" Height="4" VerticalAlignment="Center" Margin="0,0,10,0"
+                    <ProgressBar x:Name="EncodingProgress" IsIndeterminate="True" Maximum="100" Width="90" Height="4" VerticalAlignment="Center" Margin="0,0,10,0"
                                  Foreground="{StaticResource Red}" Background="#26FFFFFF" BorderThickness="0" />
                 </StackPanel>
 

@@ -336,27 +336,32 @@
                             <Border x:Name="SpeakersLevelFill" Width="0" CornerRadius="4" HorizontalAlignment="Left" />
                         </Border>
 
-                        <TextBlock Text="Efectos (GIF y video)" Style="{StaticResource PanelLabel}" />
-                        <CheckBox x:Name="RecordHighlightBox" Content="Resaltar el cursor y los clics" Foreground="White" FontFamily="Segoe UI" FontSize="13"
-                                  ToolTip="Un halo alrededor del puntero y un anillo en cada clic, para que se siga mejor lo que haces"
-                                  Focusable="False" Click="OnRecordHighlight" />
+                        <TextBlock Text="Efectos" Style="{StaticResource PanelLabel}" />
                         <CheckBox x:Name="RecordKeysBox" Content="Mostrar atajos de teclado" Foreground="White" FontFamily="Segoe UI" FontSize="13"
                                   ToolTip="Muestra Ctrl+C, Alt+Tab, Enter, F5… Nunca muestra las letras que escribes, para que una contraseña no quede a la vista"
-                                  Margin="0,6,0,0" Focusable="False" Click="OnRecordKeys" />
-                        <TextBlock Text="Tamaño del puntero" Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="12" Margin="0,8,0,3" />
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="RecordCursorNormal" GroupName="recordCursor" Tag="1" Style="{StaticResource Choice}"
-                                         ToolTip="Como se ve en la pantalla">
-                                <TextBlock Text="Normal" Margin="8,0" />
-                            </RadioButton>
-                            <RadioButton x:Name="RecordCursorLarge" GroupName="recordCursor" Tag="1.5" Style="{StaticResource Choice}"
-                                         ToolTip="Una vez y media: se sigue mejor, sobre todo con zoom">
-                                <TextBlock Text="Grande" Margin="8,0" />
-                            </RadioButton>
-                            <RadioButton x:Name="RecordCursorHuge" GroupName="recordCursor" Tag="2" Style="{StaticResource Choice}"
-                                         ToolTip="El doble de grande">
-                                <TextBlock Text="Muy grande" Margin="8,0" />
-                            </RadioButton>
+                                  Focusable="False" Click="OnRecordKeys" />
+                        <!-- A video is recorded without the pointer: the editor draws its own, in the style chosen there. A GIF has it painted in. -->
+                        <TextBlock x:Name="RecordPointerVideoNote" Text="En video, el cursor se elige en el editor: estilo, tamaño, suavizado y efecto de clic."
+                                   Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="12" TextWrapping="Wrap" MaxWidth="260" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                        <StackPanel x:Name="RecordPointerGif" Margin="0,6,0,0">
+                            <CheckBox x:Name="RecordHighlightBox" Content="Resaltar el cursor y los clics" Foreground="White" FontFamily="Segoe UI" FontSize="13"
+                                      ToolTip="Un halo alrededor del puntero y un anillo en cada clic, para que se siga mejor lo que haces"
+                                      Focusable="False" Click="OnRecordHighlight" />
+                            <TextBlock Text="Tamaño del puntero" Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="12" Margin="0,8,0,3" />
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="RecordCursorNormal" GroupName="recordCursor" Tag="1" Style="{StaticResource Choice}"
+                                             ToolTip="Como se ve en la pantalla">
+                                    <TextBlock Text="Normal" Margin="8,0" />
+                                </RadioButton>
+                                <RadioButton x:Name="RecordCursorLarge" GroupName="recordCursor" Tag="1.5" Style="{StaticResource Choice}"
+                                             ToolTip="Una vez y media: se sigue mejor, sobre todo con zoom">
+                                    <TextBlock Text="Grande" Margin="8,0" />
+                                </RadioButton>
+                                <RadioButton x:Name="RecordCursorHuge" GroupName="recordCursor" Tag="2" Style="{StaticResource Choice}"
+                                             ToolTip="El doble de grande">
+                                    <TextBlock Text="Muy grande" Margin="8,0" />
+                                </RadioButton>
+                            </StackPanel>
                         </StackPanel>
 
                         <Button Margin="0,12,0,0" Focusable="False" Click="OnRecordStart" AutomationProperties.Name="Empezar a grabar">

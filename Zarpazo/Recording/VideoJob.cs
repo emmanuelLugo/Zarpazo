@@ -30,6 +30,7 @@ internal sealed class VideoJob : RecordingJob
     private byte[]? _firstPicture;
     private int _width;
     private int _height;
+    private double _pointerScale = 1;
 
     /// <param name="audioOffsetMs">Moves the sound against the picture: negative plays it earlier, positive later.</param>
     public VideoJob(Rectangle region, RecordingOptions options, int audioOffsetMs = 0, RecordingQuality? quality = null)
@@ -89,8 +90,12 @@ internal sealed class VideoJob : RecordingJob
         _writer = new Mp4Writer(_path, width, height, _quality.VideoFramesPerSecond, withAudio: inputs.Count > 0, _quality.BitsPerPixelPerFrame);
         // The effects and the pointer's record read the mouse together, so neither misses a quick click the other saw.
         _input = new FrameInputState(new WindowsInputState());
-        _grabber = new RegionGrabber(_region, width, height, RecordingEffects.FromOptions(_options, _input));
+        // The pointer is left out of the pictures, and with it its halo and click rings: the editor draws its own from the
+        // pointer's record, smoothed and in the style chosen there. Only the shortcuts pressed are painted in.
+        RecordingOptions painted = _options with { HighlightCursor = false, CursorScale = 1 };
+        _grabber = new RegionGrabber(_region, width, height, RecordingEffects.FromOptions(painted, _input), drawPointer: false);
         _cursor = new CursorRecorder(_input, _region, width, height);
+        _pointerScale = width / (double)_region.Width * WindowNative.ScreenScale(_region);
         if (inputs.Count > 0)
         {
             _audio = new AudioRecorder(inputs, _writer, _clock, _audioOffsetMs);
@@ -171,12 +176,15 @@ internal sealed class VideoJob : RecordingJob
         });
     }
 
-    // Only the zoom of the editor needs it, so a video without it is still a good video.
+    // The pointer is drawn from it when the video is saved; without it the video is still a good video, only without a pointer.
     private void SaveCursor()
     {
         try
         {
-            _cursor?.ToTrack(_clock.ElapsedMilliseconds).Save(_path!);
+            if (_cursor?.ToTrack(_clock.ElapsedMilliseconds) is { } track)
+            {
+                (track with { PointerInPicture = false, PointerScale = _pointerScale }).Save(_path!);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

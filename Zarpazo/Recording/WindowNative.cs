@@ -21,6 +21,21 @@ internal static class WindowNative
     /// <summary>Keeps the window out of screenshots and recordings (Windows 10 2004 and later); false if Windows refuses.</summary>
     public static bool ExcludeFromScreenCapture(IntPtr hwnd) => SetWindowDisplayAffinity(hwnd, ExcludeFromCapture);
 
+    /// <summary>The scaling of the screen the area is mostly on: 1 at 100 %, 1.5 at 150 %. The pointer grows with it.</summary>
+    public static double ScreenScale(Rectangle area)
+    {
+        var rect = new NativeRect { Left = area.Left, Top = area.Top, Right = area.Right, Bottom = area.Bottom };
+        IntPtr monitor = MonitorFromRect(ref rect, MonitorDefaultToNearest);
+        try
+        {
+            return GetDpiForMonitor(monitor, EffectiveDpi, out uint dpi, out _) == 0 && dpi > 0 ? dpi / 96.0 : 1;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return 1;
+        }
+    }
+
     /// <summary>Places a window in physical pixels, which WPF's own Left/Top can't do across monitors with different scaling.</summary>
     public static void Place(IntPtr hwnd, Rectangle bounds) =>
         SetWindowPos(hwnd, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, SwpNoZOrder | SwpNoActivate);
@@ -33,6 +48,21 @@ internal static class WindowNative
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowDisplayAffinity(IntPtr hwnd, uint affinity);
+
+    private const uint MonitorDefaultToNearest = 2;
+    private const int EffectiveDpi = 0;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromRect(ref NativeRect rect, uint flags);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);

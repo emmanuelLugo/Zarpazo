@@ -326,6 +326,9 @@ public partial class EditorToolbar : UserControl
         // A GIF has no sound, so the boxes only mean something for a video.
         RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = RecordSpeakersList.IsEnabled
             = _recording.Format == RecordingFormat.Video;
+        // A video's pointer is chosen in the editor; these only shape the one painted into a GIF.
+        RecordPointerGif.Visibility = _recording.Format == RecordingFormat.Video ? Visibility.Collapsed : Visibility.Visible;
+        RecordPointerVideoNote.Visibility = _recording.Format == RecordingFormat.Video ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnRecordButton(object sender, RoutedEventArgs e)

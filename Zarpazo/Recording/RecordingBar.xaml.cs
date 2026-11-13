@@ -197,9 +197,17 @@ public partial class RecordingBar : Window
             : null);
     }
 
-    internal void ShowEncoding(string message)
+    /// <param name="progress">How far along, 0 to 1; null when it can't be told.</param>
+    internal void ShowEncoding(string message, double? progress = null)
     {
+        bool same = EncodingPanel.Visibility == Visibility.Visible && EncodingText.Text == message;
         EncodingText.Text = message;
+        EncodingProgress.IsIndeterminate = progress == null;
+        EncodingProgress.Value = (progress ?? 0) * 100;
+        if (same)
+        {
+            return; // only the bar moved: the pill keeps its size and place
+        }
         ShowPanel(EncodingPanel);
     }
 

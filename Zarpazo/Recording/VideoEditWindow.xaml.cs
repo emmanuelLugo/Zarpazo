@@ -43,6 +43,7 @@ public partial class VideoEditWindow : Window
     private long _playheadStamp; // when the playhead was last read from the player, to move the zoom smoothly in between
     private readonly Settings.SettingsStore? _settings;
     private VideoFrameStyle _frame;
+    private CursorStyle _cursor;
     private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
     private bool _showingFrame;
@@ -54,6 +55,7 @@ public partial class VideoEditWindow : Window
         Theme.TitleBarTheme.Follow(this);
         _settings = settings;
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
+        _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
         BuildFrameChoices();
         _ready = true;
         _source = source;
@@ -733,7 +735,8 @@ public partial class VideoEditWindow : Window
         try
         {
             var progress = new Progress<double>(value => WorkBar.Value = value);
-            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress);
+            await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
+                _track, _cursor);
             EditedPath = target;
             _saved = true;
             _busy = false; // or Closing would refuse
@@ -752,7 +755,7 @@ public partial class VideoEditWindow : Window
     private string NewFileName()
     {
         string folder = Path.GetDirectoryName(_source)!;
-        string name = Path.GetFileNameWithoutExtension(_source);
+        string name = CursorBake.WithoutOriginalSuffix(Path.GetFileNameWithoutExtension(_source));
         string path = Path.Combine(folder, name + "_editado.mp4");
         for (int n = 2; File.Exists(path); n++)
         {

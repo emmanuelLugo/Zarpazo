@@ -25,6 +25,7 @@ internal sealed class RecordingSession
     private DispatcherTimer? _clock;
     private DispatcherTimer? _countdownTimer;
     private string? _filePath;
+    private string? _editSource; // the recording without the pointer, for the editor to draw it again; null to edit _filePath
     private string? _historyPath; // this recording's entry in the history, replaced if it is trimmed
     private bool _closedAlready;
 
@@ -204,12 +205,21 @@ internal sealed class RecordingSession
                 _bar.ShowFailure("La grabación fue demasiado corta.");
                 return;
             }
+            string drawn = "";
+            if (_job.CanEdit)
+            {
+                drawn = await DrawPointerAsync(path);
+                if (_closedAlready)
+                {
+                    return;
+                }
+            }
             _filePath = path;
             _historyPath = AddToHistory(path);
             _job.ReleaseThumbnail();
             MemoryTrim.Release();
             string saved = AutoSave(path);
-            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{saved}", _job.CanEdit);
+            _bar.ShowDone($"{Describe(reason)}{Capitalized(_job.Label)} listo · {SizeText(new FileInfo(path).Length)}{drawn}{saved}", _job.CanEdit);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -218,6 +228,29 @@ internal sealed class RecordingSession
             {
                 _bar.ShowFailure($"No se pudo crear el {_job.Label}: {ex.Message}");
             }
+        }
+    }
+
+    // A video is recorded without the pointer; it is drawn in now, in the style last chosen in the editor, so a video copied
+    // or saved straight away has it. What is added to the bar's message says if that failed.
+    private async Task<string> DrawPointerAsync(string path)
+    {
+        _bar!.ShowEncoding("Dibujando el cursor…", 0);
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                if (!_closedAlready)
+                {
+                    _bar.ShowEncoding("Dibujando el cursor…", value);
+                }
+            });
+            _editSource = await CursorBake.ApplyAsync(path, _settings.Current.VideoCursor, progress);
+            return "";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return " · sin cursor"; // the recording is back in its place, only without the pointer
         }
     }
 
@@ -269,13 +302,14 @@ internal sealed class RecordingSession
             return;
         }
 
-        var window = new VideoEditWindow(_filePath, _settings) { Owner = _bar };
+        var window = new VideoEditWindow(_editSource ?? _filePath, _settings) { Owner = _bar };
         if (window.ShowDialog() != true || window.EditedPath is not { } trimmed)
         {
             return;
         }
 
         _filePath = trimmed;
+        _editSource = null; // editing again starts from this result, as before
         if (_historyPath != null)
         {
             try

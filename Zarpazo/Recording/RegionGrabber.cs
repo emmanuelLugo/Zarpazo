@@ -13,13 +13,16 @@ internal sealed class RegionGrabber : IDisposable
     private readonly byte[]? _shrunk; // the whole area, to shrink from; only when it is wider than the video's limit
     private readonly RecordingEffects? _effects;
     private readonly DesktopDuplicator? _duplicator; // the fast copy through the graphics card, when the area is on one screen
+    private readonly bool _drawPointer;
 
     /// <param name="region">The part of the screen, in physical pixels.</param>
     /// <param name="effects">What to draw over the pictures (a halo around the pointer, the shortcuts pressed); none for plain pictures.</param>
-    public RegionGrabber(Rectangle region, int width, int height, RecordingEffects? effects = null)
+    /// <param name="drawPointer">Paint the mouse pointer in; a video leaves it out, as the editor draws its own.</param>
+    public RegionGrabber(Rectangle region, int width, int height, RecordingEffects? effects = null, bool drawPointer = true)
     {
         _region = region;
         _effects = effects;
+        _drawPointer = drawPointer;
         Width = width;
         Height = height;
         _full = new Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb);
@@ -73,7 +76,10 @@ internal sealed class RegionGrabber : IDisposable
             }
             copy = Stopwatch.GetTimestamp();
             _effects?.DrawUnderPointer(graphics, _region.Location, timeMs);
-            CursorPainter.Draw(graphics, _region.Location, _effects?.CursorScale ?? 1);
+            if (_drawPointer)
+            {
+                CursorPainter.Draw(graphics, _region.Location, _effects?.CursorScale ?? 1);
+            }
             _effects?.DrawKeys(graphics, _region.Size);
             draw = Stopwatch.GetTimestamp();
         }
