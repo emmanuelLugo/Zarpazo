@@ -15,6 +15,7 @@ internal sealed class AudioInput : IDisposable
     private readonly IWaveIn _capture;
     private readonly BufferedWaveProvider _buffer;
     private readonly byte[] _discard;
+    private bool _started;
 
     private AudioInput(IWaveIn capture, string name, bool isMicrophone)
     {
@@ -107,7 +108,17 @@ internal sealed class AudioInput : IDisposable
         }
     }
 
-    public void Start() => _capture.StartRecording();
+    /// <summary>Starts listening; a second call does nothing.</summary>
+    /// <exception cref="System.Runtime.InteropServices.COMException">Windows would not open the device, such as the
+    /// speakers of a Bluetooth headset in hands-free mode, whose sound can't be captured.</exception>
+    public void Start()
+    {
+        if (!_started)
+        {
+            _capture.StartRecording();
+            _started = true;
+        }
+    }
 
     /// <summary>Throws away what the device has sent and nobody has used yet, such as what came in during a pause.</summary>
     public void Clear() => _buffer.ClearBuffer();

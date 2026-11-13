@@ -38,6 +38,9 @@ internal abstract class RecordingJob
     /// <summary>The sound sources and how loud each is, for the bar while recording; none for a GIF or a silent video.</summary>
     public virtual IReadOnlyList<AudioMeter> Meters => [];
 
+    /// <summary>Something the person should know that does not stop the recording, such as a sound source left out; null if none.</summary>
+    public string? Warning { get; protected set; }
+
     /// <summary>Raised, from a capture thread, when the job stops by itself.</summary>
     public abstract event Action<RecordingEnd>? LimitReached;
 

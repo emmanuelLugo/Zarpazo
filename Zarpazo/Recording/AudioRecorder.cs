@@ -33,8 +33,9 @@ internal sealed class AudioRecorder : IDisposable
     {
         foreach (AudioInput input in _inputs)
         {
-            input.Start();
+            input.Start(); // already listening when the job tried the devices beforehand
         }
+        DiscardBuffered(); // what was heard before the start is not part of the video
         _thread = new Thread(Run) { IsBackground = true, Name = "Zarpazo audio" };
         _thread.Start();
     }

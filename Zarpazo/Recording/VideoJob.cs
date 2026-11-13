@@ -87,6 +87,26 @@ internal sealed class VideoJob : RecordingJob
             throw;
         }
 
+        // Each device is tried now, before the file is made: one Windows won't open (the speakers of a Bluetooth headset in
+        // hands-free mode can't be listened to) is left out, and the video is recorded with the others.
+        var problems = new List<string>();
+        foreach (AudioInput input in inputs.ToList())
+        {
+            try
+            {
+                input.Start();
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                problems.Add(input.IsMicrophone
+                    ? "No se pudo abrir el micrófono: se grabó sin él."
+                    : "No se pudo grabar el sonido de Windows (pasa con auriculares Bluetooth en modo manos libres): se grabó sin él.");
+                inputs.Remove(input);
+                input.Dispose();
+            }
+        }
+        Warning = problems.Count > 0 ? string.Join(" ", problems) : null;
+
         _writer = new Mp4Writer(_path, width, height, _quality.VideoFramesPerSecond, withAudio: inputs.Count > 0, _quality.BitsPerPixelPerFrame);
         // The effects and the pointer's record read the mouse together, so neither misses a quick click the other saw.
         _input = new FrameInputState(new WindowsInputState());

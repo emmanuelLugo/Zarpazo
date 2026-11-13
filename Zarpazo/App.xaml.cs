@@ -684,6 +684,7 @@ public partial class App : Application
         // The tray icon shows that something is being recorded, even when the bar is out of sight.
         session.StateChanged += () => _tray?.SetRecording(session.IsCountingDown || session.IsRecording, session.IsPaused);
         session.Failed += message => _tray!.ShowWarning(message);
+        session.Warned += message => _tray!.ShowWarning(message);
         session.EditorOpened += editor =>
         {
             _openEditors++;

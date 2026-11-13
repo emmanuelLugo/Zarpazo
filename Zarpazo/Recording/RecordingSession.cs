@@ -27,6 +27,7 @@ internal sealed class RecordingSession
     private string? _filePath;
     private string? _historyPath; // this recording's entry in the history, replaced if it is trimmed
     private bool _closedAlready;
+    private bool _finishing; // the file is being made or is made: closing no longer throws it away
 
     /// <param name="region">The area to record, in physical screen pixels.</param>
     /// <param name="closed">Called when the person is done with it, so the owner can let go of it.</param>
@@ -60,6 +61,9 @@ internal sealed class RecordingSession
     /// </summary>
     public event Action<VideoEditWindow>? EditorOpened;
 
+    /// <summary>Raised when the recording goes ahead without something asked for, such as a sound source; the message says what.</summary>
+    public event Action<string>? Warned;
+
     /// <summary>Raised when the recording could not start after a countdown; the message says why.</summary>
     public event Action<string>? Failed;
 
@@ -69,6 +73,10 @@ internal sealed class RecordingSession
     {
         // Before anything is shown: a missing microphone is reported at once, not after the countdown.
         _job.Prepare(_folder);
+        if (_job.Warning is { } warning)
+        {
+            Warned?.Invoke(warning);
+        }
 
         _outline = new RecordingOutline(_region);
         _bar = new RecordingBar();
@@ -192,6 +200,7 @@ internal sealed class RecordingSession
             return; // already stopped, e.g. the limit and the button at the same moment
         }
         IsRecording = false;
+        _finishing = true;
         _clock?.Stop();
         _outline?.Close();
         _bar.ShowEncoding($"Creando el {_job.Label}…");
@@ -386,8 +395,9 @@ internal sealed class RecordingSession
         _closedAlready = true;
         _countdownTimer?.Stop();
         _countdown?.Close();
-        if (IsRecording || IsCountingDown)
+        if (IsRecording || IsCountingDown || !_finishing)
         {
+            // Also a recording that failed to start: its empty file goes.
             IsRecording = false;
             IsCountingDown = false;
             _clock?.Stop();
