@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Ellipse = System.Windows.Shapes.Ellipse;
 using ShapePath = System.Windows.Shapes.Path;
+using Shape = System.Windows.Shapes.Shape;
 using System.Windows.Threading;
 using Windows.Media.Editing;
 using Windows.Storage;
@@ -51,7 +52,13 @@ public partial class VideoEditWindow : Window
     private CursorStyle _cursor;
     private CursorMotion? _motion; // the drawn pointer's path; null when this video has none to draw
     private bool _showingCursor;
-    private readonly DispatcherTimer _cursorSave = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private ZoomStyle _zoomStyle;
+    private bool _showingZoomStyle;
+    private bool _lookFromControls; // the look is being changed by a panel, which shows the change itself
+    private IReadOnlyList<VideoSegment>? _seenSegments; // what the window last saw of the edit, to tell a change of look alone
+    private IReadOnlyList<ZoomRegion>? _seenZooms;
+    private IReadOnlyList<VideoPreset> _presets;
+    private long _presetsClosedAt; // see OnPresets
     private readonly List<Ellipse> _clickMarks = [];
     private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
@@ -78,7 +85,8 @@ public partial class VideoEditWindow : Window
         _settings = settings;
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
         _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
-        _cursorSave.Tick += (_, _) => SaveCursorChoice();
+        _zoomStyle = settings?.Current.VideoZoom ?? ZoomStyle.Default;
+        _presets = settings?.Current.Presets ?? [];
         _frameSave.Tick += (_, _) =>
         {
             _frameSave.Stop();
@@ -86,6 +94,8 @@ public partial class VideoEditWindow : Window
         };
         BuildFrameChoices();
         BuildCursorChoices();
+        ShowZoomStyle();
+        BuildPresetRows();
         _ready = true;
         _source = source;
         _delivery = delivery ?? new VideoDelivery(source, NewFileName(), settings);
@@ -99,7 +109,7 @@ public partial class VideoEditWindow : Window
             _closed = true;
             CompositionTarget.Rendering -= OnRendering;
             _delivery.Finish();
-            if (_cursorSave.IsEnabled || _frameSave.IsEnabled)
+            if (_frameSave.IsEnabled)
             {
                 SaveCursorChoice(); // a slider let go just before closing
             }
@@ -172,13 +182,14 @@ public partial class VideoEditWindow : Window
             _sourceHeight = height & ~1;
 
             _timeline = new EditTimeline(duration);
+            _timeline.StartWithLook(Look); // the style remembered from the last video: undo goes back to it, not further
             View.Timeline = _timeline;
             Lane.Timeline = _timeline; // before the window listens, so the zooms are placed again before the window looks at them
             _timeline.Changed += OnTimelineChanged;
             _track = CursorTrack.Load(_source);
             if (_track != null)
             {
-                _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration)); // like Recordly: the clicks come zoomed already
+                _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration, _zoomStyle.Depth)); // like Recordly: the clicks come zoomed already
             }
             RebuildPointer();
             ShowCursorChoices();
@@ -253,6 +264,21 @@ public partial class VideoEditWindow : Window
 
     private void OnTimelineChanged(object? sender, EventArgs e)
     {
+        // A new look (from a panel, a preset, undo or redo) is shown; when nothing else changed, that is all there is to do,
+        // and a slider moved while the video plays does not stop it.
+        bool lookOnly = ReferenceEquals(_timeline!.Segments, _seenSegments) && ReferenceEquals(_timeline.Zooms, _seenZooms) && _timeline.Crop == _shownCrop;
+        _seenSegments = _timeline.Segments;
+        _seenZooms = _timeline.Zooms;
+        if (_timeline.Look != Look)
+        {
+            TakeLook(_timeline.Look, _lookFromControls);
+        }
+        if (lookOnly)
+        {
+            RefreshState();
+            return;
+        }
+
         ShowCropChoices(); // an undone crop puts its rows back
         if (_timeline!.Crop != _shownCrop)
         {
@@ -811,7 +837,7 @@ public partial class VideoEditWindow : Window
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop);
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? _zoomStyle.Motion : "");
 
     private void SetBusy(bool busy)
     {
@@ -846,7 +872,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion);
                 }
                 else
                 {
@@ -1078,7 +1104,7 @@ public partial class VideoEditWindow : Window
         (double X, double Y) focus = _track?.PositionAt((long)(at * 1000)) is { } pointer
             ? (Math.Clamp(pointer.X, 0, 1), Math.Clamp(pointer.Y, 0, 1))
             : (0.5, 0.5);
-        int index = _timeline.AddZoom(new ZoomRegion(at - 1.25, at + 1.25, ZoomRegion.DefaultScale, focus.X, focus.Y));
+        int index = _timeline.AddZoom(new ZoomRegion(at - 1.25, at + 1.25, _zoomStyle.Depth, focus.X, focus.Y));
         if (index < 0)
         {
             KeptText.Text = "Ahí ya hay un zoom o no queda sitio para otro. Elige otro momento.";
@@ -1096,7 +1122,7 @@ public partial class VideoEditWindow : Window
         }
 
         StopPlayback();
-        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(_track, _timeline!.SourceDuration);
+        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(_track, _timeline!.SourceDuration, _zoomStyle.Depth);
         if (zooms.Count == 0)
         {
             KeptText.Text = "No hay clics dentro de la zona grabada, así que no hay dónde hacer zoom.";
@@ -1315,17 +1341,7 @@ public partial class VideoEditWindow : Window
 
     // Takes a new frame: remembered for the next video (written a moment after the last change), and shown. A slider sends
     // a change for every pixel it moves; the scene is laid out again once per frame drawn, with the latest values.
-    private void SetFrame(VideoFrameStyle frame)
-    {
-        _frame = frame;
-        if (_settings != null)
-        {
-            _settings.Current.VideoFrame = _frame;
-            _frameSave.Stop();
-            _frameSave.Start();
-        }
-        ScheduleScene();
-    }
+    private void SetFrame(VideoFrameStyle frame) => ChangeLook(Look with { Frame = frame });
 
     // A slider sends a change for every pixel it moves: the scene is laid out again once per frame drawn, with the latest values.
     private void ScheduleScene()
@@ -1425,7 +1441,7 @@ public partial class VideoEditWindow : Window
         {
             zooms = layout.ToScene(zooms);
         }
-        _previewCamera = new ZoomCamera(_timeline.Segments, zooms);
+        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion);
     }
 
     // ---------- crop
@@ -1470,8 +1486,8 @@ public partial class VideoEditWindow : Window
         _timeline!.SetCrop(_timeline.Crop.With(edge, Math.Round(e.NewValue, 4)));
     }
 
-    // A drag along a row is one step to undo, like a drag on the picture.
-    private void OnCropRowsDown(object sender, MouseButtonEventArgs e)
+    // A drag along any row of the panels is one step to undo, like a drag on the picture.
+    private void OnPanelRowsDown(object sender, MouseButtonEventArgs e)
     {
         if (CanEdit && e.OriginalSource is DependencyObject source && FindSlider(source) != null)
         {
@@ -1479,7 +1495,7 @@ public partial class VideoEditWindow : Window
         }
     }
 
-    private void OnCropRowsUp(object sender, RoutedEventArgs e) => _timeline?.EndGesture();
+    private void OnPanelRowsUp(object sender, RoutedEventArgs e) => _timeline?.EndGesture();
 
     private static Slider? FindSlider(DependencyObject? element)
     {
@@ -1595,6 +1611,331 @@ public partial class VideoEditWindow : Window
     }
 
 
+
+    // ---------- look: frame, pointer and zoom style together
+
+    /// <summary>The frame, pointer and zoom style chosen now.</summary>
+    internal VideoLook Look => new(_frame, _cursor, _zoomStyle);
+
+    // A change made in a panel: once the video is open it goes through the edit, so it can be undone (a slider's drag as
+    // one step); the panel shows it itself.
+    private void ChangeLook(VideoLook look)
+    {
+        look = look.Tidied();
+        if (_timeline == null)
+        {
+            TakeLook(look, fromControls: true);
+            return;
+        }
+
+        _lookFromControls = true;
+        try
+        {
+            _timeline.SetLook(look); // comes back through OnTimelineChanged
+        }
+        finally
+        {
+            _lookFromControls = false;
+        }
+    }
+
+    // Takes a look: remembered for the next video (written a moment after the last change), and shown. One that comes from
+    // undo, redo or a preset is shown in the panels too; a panel's own change is left to it, so a slider is not disturbed
+    // while it is dragged. The pointer and the scene are drawn again once per frame.
+    private void TakeLook(VideoLook look, bool fromControls)
+    {
+        bool pointer = look.Cursor != _cursor;
+        bool scene = look.Frame != _frame || look.Zoom != _zoomStyle;
+        (_frame, _cursor, _zoomStyle) = (look.Frame, look.Cursor, look.Zoom);
+        if (_settings != null)
+        {
+            _settings.Current.VideoLook = look;
+            _frameSave.Stop();
+            _frameSave.Start();
+        }
+        if (!fromControls)
+        {
+            ShowFrameChoices();
+            ShowCursorChoices();
+            ShowZoomStyle();
+        }
+        if (pointer)
+        {
+            SchedulePointer();
+        }
+        if (scene)
+        {
+            ScheduleScene();
+        }
+        BuildPresetRows(); // the preset that matches is marked
+    }
+
+    private void ShowZoomStyle()
+    {
+        _showingZoomStyle = true;
+        ZoomStyleDepthSlider.Value = _zoomStyle.Depth;
+        ZoomSmoothTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Smooth;
+        ZoomFocusedTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Focused;
+        ShowZoomStyleValues();
+        _showingZoomStyle = false;
+    }
+
+    private void ShowZoomStyleValues()
+    {
+        ZoomStyleDepthText.Text = $"{_zoomStyle.Depth.ToString("0.0#", CultureInfo.CurrentCulture)}×";
+        ZoomStyleResetButton.IsEnabled = _zoomStyle != ZoomStyle.Default;
+    }
+
+    private void OnZoomStyleChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || _showingZoomStyle)
+        {
+            return;
+        }
+
+        var style = new ZoomStyle(
+            Math.Round(ZoomStyleDepthSlider.Value * 20) / 20,
+            ZoomFocusedTile.IsChecked == true ? ZoomMotion.Focused : ZoomMotion.Smooth);
+        ChangeLook(Look with { Zoom = style });
+        if (sender is Slider)
+        {
+            ShowZoomStyleValues(); // a slider is left alone while it is dragged
+        }
+        else
+        {
+            ShowZoomStyle();
+        }
+    }
+
+    private void OnZoomStyleSlider(object sender, RoutedPropertyChangedEventArgs<double> e) => OnZoomStyleChanged(sender, e);
+
+    private void OnZoomStyleReset(object sender, RoutedEventArgs e)
+    {
+        ChangeLook(Look with { Zoom = ZoomStyle.Default });
+        ShowZoomStyle();
+    }
+
+    // ---------- presets
+
+    /// <summary>The presets saved, in the order they were made.</summary>
+    internal IReadOnlyList<VideoPreset> Presets => _presets;
+
+    // The list opens under its button. A click on the button while the list is open closes it first (it closes on any click
+    // outside it), and that click must not open it again.
+    private void OnPresets(object sender, RoutedEventArgs e)
+    {
+        if (Environment.TickCount64 - _presetsClosedAt < 250)
+        {
+            return;
+        }
+        PresetNote.Text = "";
+        BuildPresetRows();
+        PresetsPopup.IsOpen = true;
+    }
+
+    private void OnPresetsClosed(object? sender, EventArgs e) => _presetsClosedAt = Environment.TickCount64;
+
+    /// <summary>Gives the frame, pointer and zoom style of a preset, as one step to undo. False when there is none of that name.</summary>
+    internal bool ApplyPreset(string name)
+    {
+        if (VideoPresetList.Find(_presets, name) is not { } preset || _busy)
+        {
+            return false;
+        }
+
+        if (_timeline != null)
+        {
+            _timeline.SetLook(preset.Look);
+        }
+        else
+        {
+            TakeLook(preset.Look.Tidied(), fromControls: false);
+        }
+        DeliveryText.Text = _timeline != null ? $"Preset «{preset.Name}» aplicado · Ctrl+Z lo deshace" : $"Preset «{preset.Name}» aplicado";
+        return true;
+    }
+
+    /// <summary>Saves the look of now as <paramref name="name"/>, in place of a preset of that name. False when the name is empty.</summary>
+    internal bool SavePreset(string name)
+    {
+        bool replacing = VideoPresetList.Find(_presets, name) != null;
+        if (VideoPresetList.Save(_presets, name, Look) is not { } list)
+        {
+            PresetNote.Text = VideoPreset.TidyName(name) == null ? "Escribe un nombre para el preset." : "No caben más presets: borra alguno.";
+            return false;
+        }
+
+        KeepPresets(list);
+        string saved = VideoPresetList.Find(list, name)!.Name;
+        PresetNote.Text = replacing ? $"«{saved}» se actualizó con el estilo actual." : $"«{saved}» guardado.";
+        return true;
+    }
+
+    internal bool RenamePreset(string name, string newName)
+    {
+        if (VideoPresetList.Rename(_presets, name, newName) is not { } list)
+        {
+            PresetNote.Text = VideoPreset.TidyName(newName) == null ? "El nombre no puede quedar vacío." : "Ya hay un preset con ese nombre.";
+            return false;
+        }
+        KeepPresets(list);
+        return true;
+    }
+
+    internal bool DeletePreset(string name)
+    {
+        if (VideoPresetList.Delete(_presets, name) is not { } list)
+        {
+            return false;
+        }
+        KeepPresets(list);
+        PresetNote.Text = $"«{VideoPreset.TidyName(name)}» borrado.";
+        return true;
+    }
+
+    // In the settings at once: a preset is something the person meant to keep.
+    private void KeepPresets(IReadOnlyList<VideoPreset> list)
+    {
+        _presets = list;
+        if (_settings != null)
+        {
+            _settings.Current.Presets = list;
+            try
+            {
+                _settings.Save();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                PresetNote.Text = $"No se pudieron guardar los presets: {ex.Message}";
+            }
+        }
+        BuildPresetRows();
+    }
+
+    private void OnSavePreset(object sender, RoutedEventArgs e)
+    {
+        if (SavePreset(PresetNameBox.Text))
+        {
+            PresetNameBox.Text = "";
+        }
+    }
+
+    private void OnPresetNameKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            OnSavePreset(sender, e);
+            e.Handled = true;
+        }
+    }
+
+    // A row per preset: its name applies it (the one that matches the look of now is ticked), then rename and delete.
+    // Renaming turns the name into a box; deleting asks once more on the same spot instead of opening a dialog.
+    private void BuildPresetRows()
+    {
+        PresetRows.Children.Clear();
+        PresetsEmptyText.Visibility = _presets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        VideoLook now = Look;
+        foreach (VideoPreset preset in _presets)
+        {
+            string name = preset.Name;
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 2) };
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            bool current = preset.Look == now;
+            var check = new ShapePath
+            {
+                Style = (Style)FindResource("Glyph"),
+                Data = (Geometry)FindResource("CheckGlyph"),
+                Visibility = current ? Visibility.Visible : Visibility.Hidden,
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            check.SetResourceReference(Shape.StrokeProperty, "Accent"); // the theme's, whenever it is there
+            var apply = new Button
+            {
+                Style = (Style)FindResource("PresetRow"),
+                ToolTip = current
+                    ? "Es el estilo de ahora. Aplicarlo de nuevo no cambia nada"
+                    : "Aplicar: cambia el marco, el cursor y el estilo del zoom (Ctrl+Z lo deshace)",
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children =
+                    {
+                        check,
+                        new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 170 },
+                    },
+                },
+            };
+            apply.Click += (_, _) =>
+            {
+                if (ApplyPreset(name))
+                {
+                    PresetsPopup.IsOpen = false;
+                }
+            };
+            row.Children.Add(apply);
+
+            var rename = new Button { Style = (Style)FindResource("IconButton"), ToolTip = "Cambiar el nombre" };
+            rename.Content = new ShapePath { Style = (Style)FindResource("Glyph"), Data = (Geometry)FindResource("RenameGlyph") };
+            rename.Click += (_, _) => StartRenaming(row, apply, name);
+            Grid.SetColumn(rename, 1);
+            row.Children.Add(rename);
+
+            var delete = new Button { Style = (Style)FindResource("IconButton"), ToolTip = "Borrar este preset" };
+            delete.Content = new ShapePath { Style = (Style)FindResource("Glyph"), Data = (Geometry)FindResource("TrashGlyph") };
+            delete.Click += (_, _) =>
+            {
+                var sure = new Button { Content = "¿Borrar?", Style = (Style)FindResource("LinkButton"), Margin = new Thickness(8, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = "Haz clic otra vez para borrarlo" };
+                sure.Click += (_, _) => DeletePreset(name);
+                Grid.SetColumn(sure, 2);
+                row.Children.Remove(delete);
+                row.Children.Add(sure);
+            };
+            Grid.SetColumn(delete, 2);
+            row.Children.Add(delete);
+            PresetRows.Children.Add(row);
+        }
+    }
+
+    private void StartRenaming(Grid row, Button apply, string name)
+    {
+        var box = new TextBox { Text = name, MaxLength = VideoPreset.MaxNameLength, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 2, 4, 2) };
+        bool done = false;
+        void Finish(bool keep)
+        {
+            if (done)
+            {
+                return;
+            }
+            done = true;
+            if (!keep || box.Text == name || RenamePreset(name, box.Text))
+            {
+                BuildPresetRows();
+            }
+            else
+            {
+                done = false; // refused: the box stays, with the reason under the list
+                box.SelectAll();
+            }
+        }
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                Finish(e.Key == Key.Enter);
+                e.Handled = true;
+            }
+        };
+        box.LostKeyboardFocus += (_, _) => Finish(keep: true);
+        row.Children.Remove(apply);
+        row.Children.Add(box);
+        box.Focus();
+        box.SelectAll();
+    }
 
     // ---------- pointer
 
@@ -1758,14 +2099,14 @@ public partial class VideoEditWindow : Window
         }
 
         CursorShape shape = CursorShapes.Children.OfType<RadioButton>().FirstOrDefault(tile => tile.IsChecked == true)?.Tag as CursorShape? ?? _cursor.Shape;
-        _cursor = new CursorStyle(
+        ChangeLook(Look with { Cursor = new CursorStyle(
             CursorBox.IsChecked == true,
             shape,
             Math.Round(CursorSizeSlider.Value, 1),
             Math.Round(CursorSmoothingSlider.Value * 20) / 20,
             Math.Round(CursorSwaySlider.Value * 20) / 20,
             CursorClicks.Children.OfType<RadioButton>().FirstOrDefault(tile => tile.IsChecked == true)?.Tag as ClickEffect? ?? _cursor.Click,
-            CursorBounceBox.IsChecked == true).Tidied();
+            CursorBounceBox.IsChecked == true).Tidied() });
         if (sender is not Slider)
         {
             ShowCursorChoices(); // a slider is left alone while it is dragged
@@ -1775,28 +2116,12 @@ public partial class VideoEditWindow : Window
             ShowCursorValues();
             CursorResetButton.IsEnabled = true;
         }
-
-        // Remembered for the next video; written a moment after the last change, not at every step of a slider.
-        if (_settings != null)
-        {
-            _settings.Current.VideoCursor = _cursor;
-            _cursorSave.Stop();
-            _cursorSave.Start();
-        }
-        SchedulePointer();
     }
 
     private void OnCursorReset(object sender, RoutedEventArgs e)
     {
-        _cursor = CursorStyle.Default with { Visible = _cursor.Visible };
+        ChangeLook(Look with { Cursor = CursorStyle.Default with { Visible = _cursor.Visible } });
         ShowCursorChoices();
-        if (_settings != null)
-        {
-            _settings.Current.VideoCursor = _cursor;
-            _cursorSave.Stop();
-            _cursorSave.Start();
-        }
-        SchedulePointer();
     }
 
     // A slider sends a change for every pixel it moves: the pointer is drawn again once per frame, with the latest style.
@@ -1818,7 +2143,6 @@ public partial class VideoEditWindow : Window
 
     private void SaveCursorChoice()
     {
-        _cursorSave.Stop();
         _frameSave.Stop();
         _settings?.Save();
     }

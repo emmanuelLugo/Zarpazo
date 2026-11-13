@@ -234,7 +234,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
             {
                 Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
                 Assert.False(window.NeedsRendering,
-                    $"edited {window.Timeline!.IsEdited}, zooms {window.Timeline.Zooms.Count}, frame {window.FrameBox.IsChecked}, track {window.Track != null}");
+                    $"edited {window.Timeline!.IsEdited}, zooms {window.Timeline.Zooms.Count}, frame {window.FrameBox.IsChecked}, track {window.Track != null}, look {window.Look}, timeline {window.Timeline.Look}, undo {window.Timeline.CanUndo}");
                 Assert.Equal(Zarpazo.Output.BeautifyBackground.All.Count, window.FrameBackgrounds.Children.Count);
 
                 window.FrameBox.IsChecked = true;
@@ -392,6 +392,102 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 window.Close();
             }
         });
+    }
+
+    [NeedsGpuFact]
+    public void A_preset_brings_back_frame_cursor_and_zoom_style_at_once_and_one_undo_takes_it_away()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        string video = WithTrack(pointerInPicture: false);
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(video);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
+                EditTimeline timeline = window.Timeline!;
+                timeline.AddZoom(new ZoomRegion(0.5, 2, 1.5, 0.5, 0.5));
+
+                // A tutorial look: framed, a big pointer, close and quick zooms.
+                window.FrameBox.IsChecked = true;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.CursorSizeSlider.Value = 3;
+                window.ZoomTab.IsChecked = true;
+                window.ZoomStyleDepthSlider.Value = 2;
+                window.ZoomFocusedTile.IsChecked = true;
+                window.ZoomFocusedTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(new ZoomStyle(2, ZoomMotion.Focused), window.Look.Zoom);
+                Assert.Equal(2, timeline.Zooms[0].Scale); // the video's zooms follow the depth
+                Shot(window, folder, "editor-zoom-style.png");
+
+                Assert.True(window.SavePreset("Tutorial"));
+                VideoLook tutorial = window.Look;
+                Assert.False(window.SavePreset("   "));
+                Assert.Single(window.Presets);
+
+                // Back to the plain look, then the preset in one click.
+                window.FrameBox.IsChecked = false;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.CursorSizeSlider.Value = 1.5;
+                window.ZoomStyleDepthSlider.Value = 1.5;
+                Pump(() => false, 200);
+                VideoLook plain = window.Look;
+                Assert.NotEqual(tutorial, plain);
+
+                Assert.True(window.ApplyPreset("tutorial"));
+                Pump(() => false, 200);
+                Assert.Equal(tutorial, window.Look);
+                Assert.Equal(Visibility.Visible, window.Backdrop.Visibility);
+                Assert.Equal(3, window.CursorSizeSlider.Value); // the panels show it
+                Assert.True(window.ZoomFocusedTile.IsChecked);
+                Assert.Equal(2, timeline.Zooms[0].Scale); // the depth went with the preset
+
+                window.UndoButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(plain, window.Look); // all of it, in one step
+                Assert.Equal(1.5, timeline.Zooms[0].Scale);
+                Assert.Equal(1.5, window.CursorSizeSlider.Value);
+
+                Assert.True(window.RenamePreset("Tutorial", "Clase"));
+                Assert.False(window.RenamePreset("Clase", " "));
+                window.PresetsPopup.IsOpen = true;
+                Pump(() => false, 200);
+                Assert.Single(window.PresetRows.Children);
+                ShotOf((FrameworkElement)window.PresetsPopup.Child, folder, "editor-presets.png");
+                window.PresetsPopup.IsOpen = false;
+                Assert.True(window.DeletePreset("clase"));
+                Assert.Empty(window.Presets);
+                Assert.Equal(Visibility.Visible, window.PresetsEmptyText.Visibility);
+            }
+            finally
+            {
+                while (window.Timeline?.CanUndo == true)
+                {
+                    window.Timeline.Undo();
+                }
+                window.Close();
+            }
+        });
+    }
+
+    private static void ShotOf(FrameworkElement element, string? folder, string name)
+    {
+        element.UpdateLayout();
+        if (string.IsNullOrEmpty(folder) || element.ActualWidth < 1)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(folder);
+        var target = new RenderTargetBitmap((int)element.ActualWidth + 8, (int)element.ActualHeight + 8, 96, 96, PixelFormats.Pbgra32);
+        target.Render(element);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(target));
+        using FileStream stream = File.Create(Path.Combine(folder, name));
+        encoder.Save(stream);
     }
 
     // A picture of the window for looking at it: only when the environment variable names a folder.
