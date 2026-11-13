@@ -2,7 +2,7 @@ namespace Zarpazo.Recording;
 
 /// <summary>
 /// The edit of a recording: an ordered list of pieces of the original, played one after the other, and the zooms. Cutting,
-/// deleting, reordering, repeating and trimming a piece all change that list; every change, zooms included, can be undone.
+/// deleting, reordering, repeating and trimming a piece all change that list; every change, zooms and crop included, can be undone.
 /// No window code here, so the rules can be tested alone.
 /// </summary>
 internal sealed class EditTimeline
@@ -14,6 +14,7 @@ internal sealed class EditTimeline
     private readonly List<Snapshot> _redo = new();
     private VideoSegment[] _segments;
     private ZoomRegion[] _zooms = [];
+    private VideoCrop _crop = VideoCrop.None;
     private ZoomRegion[] _startZooms = []; // the zooms the edit opened with, to tell whether anything changed
     private bool _inGesture;
     private bool _gestureSaved;
@@ -36,6 +37,9 @@ internal sealed class EditTimeline
     /// <summary>The zooms, on the original's clock, in order and never overlapping.</summary>
     public IReadOnlyList<ZoomRegion> Zooms => _zooms;
 
+    /// <summary>How much of each side of the picture is cut away; <see cref="VideoCrop.None"/> keeps it whole.</summary>
+    public VideoCrop Crop => _crop;
+
     /// <summary>The length of the edited video: the pieces added up.</summary>
     public double Duration => _segments.Sum(segment => segment.Length);
 
@@ -46,8 +50,8 @@ internal sealed class EditTimeline
     /// <summary>True when the pieces are no longer just the whole recording.</summary>
     public bool IsEdited => _segments.Length != 1 || _segments[0].Start > 0 || _segments[0].End < SourceDuration || _segments[0].Muted;
 
-    /// <summary>True when the edit is no longer as it opened: pieces changed, or zooms other than the ones it started with.</summary>
-    public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms);
+    /// <summary>True when the edit is no longer as it opened: pieces changed, zooms other than the ones it started with, or a crop.</summary>
+    public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms) || !_crop.IsNone;
 
     /// <summary>Where in the edited video a piece begins.</summary>
     public double StartOf(int index)
@@ -243,7 +247,9 @@ internal sealed class EditTimeline
 
     private void Apply(List<VideoSegment> list) => Apply(list.ToArray(), _zooms);
 
-    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms)
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms) => Apply(segments, zooms, _crop);
+
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop)
     {
         if (!_inGesture || !_gestureSaved)
         {
@@ -253,12 +259,30 @@ internal sealed class EditTimeline
         _redo.Clear();
         _segments = segments;
         _zooms = zooms;
+        _crop = crop;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private Snapshot Current => new(_segments, _zooms);
+    private Snapshot Current => new(_segments, _zooms, _crop);
 
-    private void Restore(Snapshot snapshot) => (_segments, _zooms) = (snapshot.Segments, snapshot.Zooms);
+    private void Restore(Snapshot snapshot) => (_segments, _zooms, _crop) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop);
+
+    // ---- Crop ----
+
+    /// <summary>
+    /// Changes the crop, tidied into range. A drag of a side sends many: inside <see cref="BeginGesture"/> they are one step
+    /// to undo. Returns false when nothing changed.
+    /// </summary>
+    public bool SetCrop(VideoCrop crop)
+    {
+        crop = crop.Tidied();
+        if (crop == _crop)
+        {
+            return false;
+        }
+        Apply(_segments, _zooms, crop);
+        return true;
+    }
 
     // ---- Zooms ----
 
@@ -416,5 +440,5 @@ internal sealed class EditTimeline
     }
 
     /// <summary>Everything that can be undone, as it was at one moment.</summary>
-    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms);
+    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop);
 }
