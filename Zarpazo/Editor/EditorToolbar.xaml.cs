@@ -33,6 +33,7 @@ public partial class EditorToolbar : UserControl
     private bool _applyingTool;
     private Rect _area; // where the bars were last placed
     private Size _screen;
+    private Rect _monitor;
     private PlacementMode _side = PlacementMode.Right;
 
     public EditorToolbar()
@@ -62,17 +63,19 @@ public partial class EditorToolbar : UserControl
     /// Puts the tools column and the actions row around the chosen area. The control covers the whole screen but only the two bars
     /// take clicks; everywhere else they reach the window behind.
     /// </summary>
-    internal void Place(Rect area, Size screen)
+    /// <param name="monitor">The monitor the area is on, in the same units; the bars stay on it. The whole screen when not given.</param>
+    internal void Place(Rect area, Size screen, Rect? monitor = null)
     {
         _area = area;
         _screen = screen;
+        _monitor = monitor ?? new Rect(screen);
         Width = screen.Width;
         Height = screen.Height;
         var unbounded = new Size(double.PositiveInfinity, double.PositiveInfinity);
         ToolsBar.Measure(unbounded);
         ActionsBar.Measure(unbounded);
 
-        ToolbarPlacement placement = ToolbarLayout.Place(area, screen, ToolsBar.DesiredSize, ActionsBar.DesiredSize);
+        ToolbarPlacement placement = ToolbarLayout.Place(area, _monitor, ToolsBar.DesiredSize, ActionsBar.DesiredSize);
         Canvas.SetLeft(ToolsBar, placement.Tools.X);
         Canvas.SetTop(ToolsBar, placement.Tools.Y);
         Canvas.SetLeft(ActionsBar, placement.Actions.X);
@@ -296,7 +299,7 @@ public partial class EditorToolbar : UserControl
 
         if (_screen.Width > 0)
         {
-            Place(_area, _screen); // the column got taller or shorter
+            Place(_area, _screen, _monitor); // the column got taller or shorter
         }
         if (previous != tool)
         {

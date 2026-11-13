@@ -1195,8 +1195,33 @@ public partial class OverlayWindow : Window
     {
         Rect area = Selection.Rect;
         Toolbar.Visibility = Visibility.Visible;
-        Toolbar.Place(area, new Size(ActualWidth, ActualHeight)); // the tools beside the area, the actions under it
+        Toolbar.Place(area, new Size(ActualWidth, ActualHeight), MonitorOf(area)); // the tools beside the area, the actions under it
         UpdateHandles(area);
+    }
+
+    /// <summary>The monitor that holds most of the area, in layout units; the whole overlay if it is on none.</summary>
+    private Rect MonitorOf(Rect area)
+    {
+        double scaleX = _screenshot.PixelWidth / ActualWidth;
+        double scaleY = _screenshot.PixelHeight / ActualHeight;
+        Rect best = new(0, 0, ActualWidth, ActualHeight);
+        double bestOverlap = 0;
+        foreach (Rectangle pixels in MonitorBounds)
+        {
+            Rect monitor = SelectionGeometry.FromScreenPixels(pixels, _bounds, scaleX, scaleY);
+            if (monitor.IsEmpty)
+            {
+                continue;
+            }
+            Rect overlap = Rect.Intersect(monitor, area);
+            double size = overlap.IsEmpty ? 0 : overlap.Width * overlap.Height;
+            if (size > bestOverlap)
+            {
+                best = monitor;
+                bestOverlap = size;
+            }
+        }
+        return best;
     }
 
     private void UpdateHandles(Rect area)

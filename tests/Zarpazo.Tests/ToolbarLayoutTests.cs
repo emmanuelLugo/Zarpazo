@@ -67,6 +67,36 @@ public class ToolbarLayoutTests
         Assert.False(RectOf(placed.Tools, Tools).IntersectsWith(RectOf(placed.Actions, Actions)));
     }
 
+    [Fact]
+    public void A_whole_monitor_keeps_its_bars_on_that_monitor_and_off_its_edges()
+    {
+        // Two monitors side by side: the area is the whole left one, so "right of it" would be on the other monitor.
+        var monitor = new Rect(0, 0, 1366, 768);
+        var area = monitor;
+
+        ToolbarPlacement placed = ToolbarLayout.Place(area, monitor, Tools, Actions);
+
+        Rect tools = RectOf(placed.Tools, Tools);
+        Rect actions = RectOf(placed.Actions, Actions);
+        Assert.True(monitor.Contains(tools), $"tools {tools}");
+        Assert.True(monitor.Contains(actions), $"actions {actions}");
+        Assert.True(tools.Right <= monitor.Right - ToolbarLayout.Gap && tools.Top >= ToolbarLayout.Gap, $"tools {tools}");
+        Assert.True(actions.Bottom <= monitor.Bottom - ToolbarLayout.Gap, $"actions {actions}");
+        Assert.False(tools.IntersectsWith(actions));
+    }
+
+    [Fact]
+    public void A_monitor_away_from_the_origin_is_respected()
+    {
+        var monitor = new Rect(1920, 0, 1366, 768); // the second monitor of the overlay
+        var area = new Rect(1920, 0, 1366, 768);
+
+        ToolbarPlacement placed = ToolbarLayout.Place(area, monitor, Tools, Actions);
+
+        Assert.True(monitor.Contains(RectOf(placed.Tools, Tools)));
+        Assert.True(monitor.Contains(RectOf(placed.Actions, Actions)));
+    }
+
     [Theory]
     [InlineData(10, 10, 60, 40)]
     [InlineData(1300, 700, 60, 60)]

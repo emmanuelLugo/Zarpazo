@@ -17,32 +17,39 @@ internal static class ToolbarLayout
     /// fills the screen. The tools go right of the area, level with its top; left of it when there is no room; inside it when
     /// neither side fits. If the two end up on top of each other the tools move out of the way.
     /// </summary>
-    public static ToolbarPlacement Place(Rect area, Size screen, Size tools, Size actions)
+    public static ToolbarPlacement Place(Rect area, Size screen, Size tools, Size actions) =>
+        Place(area, new Rect(screen), tools, actions);
+
+    /// <summary>The same, kept inside <paramref name="screen"/>: the monitor the area is on, so the bars never land on another one.</summary>
+    public static ToolbarPlacement Place(Rect area, Rect screen, Size tools, Size actions)
     {
-        double actionsLeft = Math.Clamp(area.Right - actions.Width, 0, Math.Max(0, screen.Width - actions.Width));
+        double actionsLeft = Math.Clamp(area.Right - actions.Width, screen.Left, Math.Max(screen.Left, screen.Right - actions.Width));
         double actionsTop = area.Bottom + Gap;
-        if (actionsTop + actions.Height > screen.Height)
+        if (actionsTop + actions.Height > screen.Bottom)
         {
             actionsTop = area.Top - actions.Height - Gap;
         }
-        if (actionsTop < 0)
+        if (actionsTop < screen.Top)
         {
-            actionsTop = Math.Max(0, area.Bottom - actions.Height - Gap);
+            actionsTop = Math.Max(screen.Top, Math.Min(area.Bottom, screen.Bottom) - actions.Height - Gap);
         }
 
         bool onRight = true;
+        bool inside = false;
         double toolsLeft = area.Right + Gap;
-        if (toolsLeft + tools.Width > screen.Width)
+        if (toolsLeft + tools.Width > screen.Right)
         {
             toolsLeft = area.Left - tools.Width - Gap;
             onRight = false;
         }
-        if (toolsLeft < 0)
+        if (toolsLeft < screen.Left)
         {
-            toolsLeft = Math.Max(0, area.Right - tools.Width - Gap);
+            toolsLeft = Math.Max(screen.Left, Math.Min(area.Right, screen.Right) - tools.Width - Gap);
             onRight = true;
+            inside = true;
         }
-        double toolsTop = Math.Clamp(area.Top, 0, Math.Max(0, screen.Height - tools.Height));
+        // Inside the area the column keeps a gap from its top edge too, instead of sticking to it.
+        double toolsTop = Math.Clamp(inside ? area.Top + Gap : area.Top, screen.Top, Math.Max(screen.Top, screen.Bottom - tools.Height));
 
         var actionsRect = new Rect(actionsLeft, actionsTop, actions.Width, actions.Height);
         var toolsRect = new Rect(toolsLeft, toolsTop, tools.Width, tools.Height);
@@ -50,15 +57,15 @@ internal static class ToolbarLayout
         {
             double above = actionsRect.Top - Gap - tools.Height;
             double below = actionsRect.Bottom + Gap;
-            if (above >= 0)
+            if (above >= screen.Top)
             {
                 toolsTop = above;
             }
-            else if (below + tools.Height <= screen.Height)
+            else if (below + tools.Height <= screen.Bottom)
             {
                 toolsTop = below;
             }
-            else if (actionsRect.Left - Gap - tools.Width >= 0)
+            else if (actionsRect.Left - Gap - tools.Width >= screen.Left)
             {
                 toolsLeft = actionsRect.Left - Gap - tools.Width; // cramped: side by side
                 onRight = false;
