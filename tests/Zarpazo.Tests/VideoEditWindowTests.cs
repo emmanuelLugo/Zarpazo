@@ -126,6 +126,20 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal("2×", window.SpeedText.Text);
                 Assert.True(window.NeedsRendering, "a faster piece is made again when saved");
                 Assert.InRange(timeline.Duration, 1.25, 1.75);
+
+                // The right-click menu's Velocidad is a list of its own, with the piece's speed ticked...
+                var speeds = window.SpeedMenuItem.Items.OfType<System.Windows.Controls.MenuItem>().Where(item => item.IsCheckable).ToList();
+                Assert.Equal(VideoSegment.Speeds.Length, speeds.Count);
+                Assert.Equal("2×", Assert.Single(speeds, item => item.IsChecked).Header);
+
+                // ...and the dark menu style can show such a list (it once drew only the title, so it never opened).
+                var header = new System.Windows.Controls.MenuItem { Header = "Velocidad" };
+                header.Items.Add(new System.Windows.Controls.MenuItem { Header = "2×" });
+                window.SpeedButton.ContextMenu.Items.Add(header);
+                header.Style = (Style)window.FindResource(typeof(System.Windows.Controls.MenuItem));
+                Assert.True(header.ApplyTemplate());
+                Assert.NotNull(header.Template.FindName("PART_Popup", header));
+                window.SpeedButton.ContextMenu.Items.Remove(header);
             }
             finally
             {

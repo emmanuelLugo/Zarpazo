@@ -649,12 +649,15 @@ public partial class VideoEditWindow : Window
         }
     }
 
+    // Declared on the button in the window, so it takes the window's dark menu style; a click opens it like a right-click.
     private void OnSpeedButton(object sender, RoutedEventArgs e)
     {
-        var menu = new ContextMenu { PlacementTarget = SpeedButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
-        FillSpeedMenu(menu.Items);
-        menu.IsOpen = true;
+        FillSpeedMenu(SpeedMenu.Items); // before it opens, so it opens at its size
+        SpeedMenu.PlacementTarget = SpeedButton;
+        SpeedMenu.IsOpen = true;
     }
+
+    private void OnSpeedMenuOpened(object sender, RoutedEventArgs e) => FillSpeedMenu(SpeedMenu.Items);
 
     // The speeds offered, the selected piece's checked. Faster or slower pieces play without sound, as in the saved video.
     private void FillSpeedMenu(ItemCollection items)
