@@ -56,7 +56,15 @@ public partial class VideoEditWindow : Window
     private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
     private bool _showingFrame;
-    private bool _framePending; // the scene will be laid out again for the newest frame
+    private bool _scenePending; // the scene will be laid out again for the newest frame and crop
+    private int _sourceWidth; // the recorded picture, in even pixels as the saved video reads it; 0 until it opens
+    private int _sourceHeight;
+    private CropArea? _area; // the crop the preview shows; null while it shows the whole recording
+    private bool _showingCrop;
+    private VideoCrop? _shownCrop; // the crop the scene was last laid out for
+    private CropEdges _cropGrab; // the sides of the crop's rectangle being dragged on the picture
+    private VideoCrop _cropGrabStart;
+    private Point _cropGrabFrom;
     private bool _pointerPending; // the pointer will be drawn again for the newest style
     private readonly DispatcherTimer _frameSave = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
@@ -154,9 +162,14 @@ public partial class VideoEditWindow : Window
                 return;
             }
 
-            // The picture at the video's own size: the zoom is worked out in its pixels.
-            Stage.Width = Player.NaturalVideoWidth > 0 ? Player.NaturalVideoWidth : clip.GetVideoEncodingProperties().Width;
-            Stage.Height = Player.NaturalVideoHeight > 0 ? Player.NaturalVideoHeight : clip.GetVideoEncodingProperties().Height;
+            // The picture at the video's own size: the zoom, the frame and the crop are worked out in its pixels (the stage
+            // takes the crop's size in ApplyFrame).
+            int width = Player.NaturalVideoWidth > 0 ? Player.NaturalVideoWidth : (int)clip.GetVideoEncodingProperties().Width;
+            int height = Player.NaturalVideoHeight > 0 ? Player.NaturalVideoHeight : (int)clip.GetVideoEncodingProperties().Height;
+            Player.Width = width;
+            Player.Height = height;
+            _sourceWidth = width & ~1;
+            _sourceHeight = height & ~1;
 
             _timeline = new EditTimeline(duration);
             View.Timeline = _timeline;
@@ -170,6 +183,7 @@ public partial class VideoEditWindow : Window
             RebuildPointer();
             ShowCursorChoices();
             ShowFrameValues(); // the corners in pixels of this video
+            ShowCropChoices();
             ApplyFrame();
             View.SelectedIndex = 0;
             SetPlayhead(0);
@@ -239,6 +253,11 @@ public partial class VideoEditWindow : Window
 
     private void OnTimelineChanged(object? sender, EventArgs e)
     {
+        ShowCropChoices(); // an undone crop puts its rows back
+        if (_timeline!.Crop != _shownCrop)
+        {
+            ScheduleScene();
+        }
         RebuildPreviewCamera();
         StopPlayback();
         View.SelectedIndex = Math.Clamp(View.SelectedIndex, 0, _timeline!.Segments.Count - 1);
@@ -406,6 +425,10 @@ public partial class VideoEditWindow : Window
         PlayIcon.Data = (Geometry)FindResource("PauseGlyph");
         PlayButton.ToolTip = "Pausar (Espacio)";
         _timer.Start();
+        if (CropTab.IsChecked == true)
+        {
+            ApplyFrame(); // the crop being chosen plays as it will look
+        }
         ApplyZoomPreview(); // a chosen zoom stops showing the whole picture: it plays as it will look
     }
 
@@ -415,6 +438,11 @@ public partial class VideoEditWindow : Window
         {
             Player.Pause();
             _playing = false;
+            if (CropTab.IsChecked == true)
+            {
+                ApplyFrame(); // back to the whole recording, to go on choosing the crop
+                ApplyZoomPreview();
+            }
         }
         _timer.Stop();
         Player.IsMuted = false;
@@ -746,7 +774,8 @@ public partial class VideoEditWindow : Window
         {
             ShowDepth(_timeline.Zooms[chosenZoom].Scale);
         }
-        string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "");
+        string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "")
+            + (_timeline.Crop.IsNone ? "" : " · recortado");
 
         bool muted = hasSelection && _timeline.Segments[selected].Muted;
         string muteText = muted ? "Activar sonido" : "Silenciar";
@@ -763,7 +792,7 @@ public partial class VideoEditWindow : Window
         {
             KeptText.Text = _timeline.IsEdited
                 ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)}) · {count} {(count == 1 ? "parte" : "partes")}{zoomText}"
-                : zooms > 0 || _frame.Enabled
+                : zooms > 0 || _frame.Enabled || !_timeline.Crop.IsNone
                     ? $"Sin cortes{zoomText}. Divide con S, elimina con Supr; arrastra un zoom para moverlo o sus bordes para alargarlo."
                     : "Sin cambios. Divide con S, elimina con Supr y arrastra el título de una parte para cambiar su orden.";
         }
@@ -972,8 +1001,9 @@ public partial class VideoEditWindow : Window
         }
 
         int chosen = Lane.SelectedZoom;
-        bool picking = chosen >= 0 && !_playing && _timeline != null && chosen < _timeline.Zooms.Count;
-        ZoomView view = picking ? ZoomView.Full : camera.ViewAt(time);
+        bool cropping = CropEditing;
+        bool picking = chosen >= 0 && !_playing && !cropping && _timeline != null && chosen < _timeline.Zooms.Count;
+        ZoomView view = picking || cropping ? ZoomView.Full : camera.ViewAt(time);
         _shownView = view;
         UpdatePointer(time, view);
         Scene.RenderTransform = view.IsFull
@@ -986,7 +1016,12 @@ public partial class VideoEditWindow : Window
             return;
         }
 
+        // The zoom's point is on the original recording: into the crop, then into the frame (see CropArea).
         ZoomRegion zoom = _timeline!.Zooms[chosen];
+        if (_area is { } area)
+        {
+            zoom = area.ToCrop([zoom])[0];
+        }
         if (_layout is { } layout)
         {
             (double sceneX, double sceneY) = layout.ToScene(zoom.FocusX, zoom.FocusY);
@@ -1099,6 +1134,11 @@ public partial class VideoEditWindow : Window
         {
             return;
         }
+        if (CropEditing)
+        {
+            GrabCrop(e);
+            return;
+        }
 
         int index = Lane.SelectedZoom;
         if (index < 0 && Lane.Camera?.Spans.FirstOrDefault(span => _playhead >= span.Start && _playhead < span.End) is { End: > 0 } span)
@@ -1126,10 +1166,27 @@ public partial class VideoEditWindow : Window
         {
             AimAt(e.GetPosition(Stage));
         }
+        else if (_cropGrab != CropEdges.None)
+        {
+            DragCrop(e.GetPosition(Stage));
+        }
+        else
+        {
+            // Over the crop's rectangle the pointer shows what a press would grab.
+            Stage.Cursor = CropEditing && CanEdit ? CropCursor(CropDrag.HitTest(_timeline!.Crop, e.GetPosition(Stage).X / Stage.Width,
+                e.GetPosition(Stage).Y / Stage.Height, CropReach().X, CropReach().Y)) : null;
+        }
     }
 
     private void OnStageMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_cropGrab != CropEdges.None)
+        {
+            _cropGrab = CropEdges.None;
+            _timeline?.EndGesture();
+            Stage.ReleaseMouseCapture();
+            return;
+        }
         if (!_aiming)
         {
             return;
@@ -1155,6 +1212,10 @@ public partial class VideoEditWindow : Window
             // A point of the scene, as a point of the recording in it.
             x = (x * layout.Width - layout.Content.X) / layout.Content.Width;
             y = (y * layout.Height - layout.Content.Y) / layout.Content.Height;
+        }
+        if (_area is { } area)
+        {
+            (x, y) = area.FromCrop(x, y); // zooms keep points of the whole recording
         }
         _timeline.SetZoomFocus(index, x, y);
         ApplyZoomPreview();
@@ -1212,7 +1273,7 @@ public partial class VideoEditWindow : Window
     // The room as a share of the picture, the corners in pixels of the video, the shadow as how dark it is.
     private void ShowFrameValues()
     {
-        double height = double.IsNaN(Stage.Height) ? 1080 : Stage.Height;
+        double height = OutputArea() is { } area ? area.Height : 1080;
         FramePaddingText.Text = $"{Math.Round(_frame.Padding * 100)} %";
         FrameRadiusText.Text = $"{Math.Round(_frame.Radius * height)} px";
         FrameShadowText.Text = $"{Math.Round(_frame.Shadow * 100)} %";
@@ -1263,32 +1324,60 @@ public partial class VideoEditWindow : Window
             _frameSave.Stop();
             _frameSave.Start();
         }
-        if (!_framePending)
-        {
-            _framePending = true;
-            Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
-            {
-                _framePending = false;
-                ApplyFrame();
-                ApplyZoomPreview();
-                RefreshState();
-            });
-        }
+        ScheduleScene();
     }
 
-    // Lays out the scene for the frame: the backdrop behind, the recording in its place with its corners rounded. Without a
-    // frame the recording fills the scene.
+    // A slider sends a change for every pixel it moves: the scene is laid out again once per frame drawn, with the latest values.
+    private void ScheduleScene()
+    {
+        if (_scenePending)
+        {
+            return;
+        }
+        _scenePending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        {
+            _scenePending = false;
+            ApplyFrame();
+            ApplyZoomPreview();
+            RefreshState();
+        });
+    }
+
+    // The part of the recording the finished video shows, and so its size; null before the video opens.
+    private CropArea? OutputArea() =>
+        _sourceWidth > 0 ? CropArea.For(_timeline?.Crop ?? VideoCrop.None, _sourceWidth, _sourceHeight) : null;
+
+    // Lays out the scene: the stage takes the finished video's size (the crop's), the recording is shifted so the part kept
+    // fills it, and with a frame there is the backdrop behind and the recording in its place with its corners rounded.
+    // Only sizes, transforms and clips change, which the graphics card applies: nothing is drawn again by the processor.
+    // While the crop is being chosen the whole recording is shown instead, with the crop's rectangle over it.
     private void ApplyFrame()
     {
-        double width = Stage.Width, height = Stage.Height;
-        if (double.IsNaN(width) || double.IsNaN(height))
+        if (_sourceWidth <= 0)
         {
             return;
         }
 
-        Scene.Width = ContentHost.Width = width;
-        Scene.Height = ContentHost.Height = height;
-        if (_frame.Enabled)
+        bool cropping = CropEditing;
+        _shownCrop = _timeline?.Crop;
+        CropArea area = cropping ? CropArea.For(VideoCrop.None, _sourceWidth, _sourceHeight) : OutputArea()!.Value;
+        _area = area.IsWhole ? null : area;
+        double width = area.Width, height = area.Height;
+        Stage.Width = Scene.Width = ContentHost.Width = width;
+        Stage.Height = Scene.Height = ContentHost.Height = height;
+        Canvas.SetLeft(Player, -area.Pixels.X);
+        Canvas.SetTop(Player, -area.Pixels.Y);
+        Geometry? cropClip = area.IsWhole ? null : new RectangleGeometry(new Rect(0, 0, width, height));
+
+        CropLayer.Visibility = cropping ? Visibility.Visible : Visibility.Collapsed;
+        if (cropping)
+        {
+            DrawCropRectangle();
+        }
+        UpdatePointerVisibility();
+
+        if (_frame.Enabled && !cropping)
         {
             // The recording keeps its size and is moved and shrunk into its place: a transform, which the graphics card
             // applies, rather than a new size for the player.
@@ -1298,7 +1387,7 @@ public partial class VideoEditWindow : Window
             double scaleX = content.Width / width, scaleY = content.Height / height;
             ContentHost.RenderTransform = new MatrixTransform(scaleX, 0, 0, scaleY, content.X, content.Y);
             double radius = Math.Min(layout.RadiusPixels, Math.Min(content.Width, content.Height) / 2);
-            ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY) : null;
+            ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY) : cropClip;
 
             if (!ReferenceEquals(BackdropFill.Tag, _frame.Background))
             {
@@ -1318,20 +1407,191 @@ public partial class VideoEditWindow : Window
             _layout = null;
             Backdrop.Visibility = Visibility.Collapsed;
             ContentHost.RenderTransform = Transform.Identity;
-            ContentHost.Clip = null;
+            ContentHost.Clip = cropClip;
         }
         RebuildPreviewCamera();
     }
 
-    // The camera of the preview: the timeline's zooms, with their points moved into the scene when there is a frame.
+    // The camera of the preview: the timeline's zooms (on the original recording), with their points moved into the crop
+    // and then into the scene when there is a frame, as VideoExporter does for the saved video.
     private void RebuildPreviewCamera()
     {
         if (_timeline == null)
         {
             return;
         }
-        IReadOnlyList<ZoomRegion> zooms = _layout is { } layout ? layout.ToScene(_timeline.Zooms) : _timeline.Zooms;
+        IReadOnlyList<ZoomRegion> zooms = _area is { } area ? area.ToCrop(_timeline.Zooms) : _timeline.Zooms;
+        if (_layout is { } layout)
+        {
+            zooms = layout.ToScene(zooms);
+        }
         _previewCamera = new ZoomCamera(_timeline.Segments, zooms);
+    }
+
+    // ---------- crop
+
+    // The crop is chosen on the whole recording while its panel is open; playing shows the result.
+    private bool CropEditing => CropTab.IsChecked == true && !_playing && _timeline != null;
+
+    private void ShowCropChoices()
+    {
+        if (_timeline == null)
+        {
+            CropPanel.IsEnabled = false;
+            return;
+        }
+
+        _showingCrop = true;
+        VideoCrop crop = _timeline.Crop;
+        CropPanel.IsEnabled = true;
+        CropTopSlider.Value = crop.Top;
+        CropBottomSlider.Value = crop.Bottom;
+        CropLeftSlider.Value = crop.Left;
+        CropRightSlider.Value = crop.Right;
+        CropTopText.Text = Percent(crop.Top);
+        CropBottomText.Text = Percent(crop.Bottom);
+        CropLeftText.Text = Percent(crop.Left);
+        CropRightText.Text = Percent(crop.Right);
+        CropResetButton.IsEnabled = !crop.IsNone;
+        CropSizeText.Text = OutputArea() is { } area
+            ? crop.IsNone ? $"Imagen completa · {area.Width} × {area.Height} px" : $"El video quedará de {area.Width} × {area.Height} px"
+            : "";
+        _showingCrop = false;
+    }
+
+    private static string Percent(double share) => $"{(share * 100).ToString("0.#", CultureInfo.CurrentCulture)} %";
+
+    private void OnCropSlider(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!_ready || _showingCrop || !CanEdit || sender is not Slider { Tag: CropEdges edge })
+        {
+            return;
+        }
+        _timeline!.SetCrop(_timeline.Crop.With(edge, Math.Round(e.NewValue, 4)));
+    }
+
+    // A drag along a row is one step to undo, like a drag on the picture.
+    private void OnCropRowsDown(object sender, MouseButtonEventArgs e)
+    {
+        if (CanEdit && e.OriginalSource is DependencyObject source && FindSlider(source) != null)
+        {
+            _timeline!.BeginGesture();
+        }
+    }
+
+    private void OnCropRowsUp(object sender, RoutedEventArgs e) => _timeline?.EndGesture();
+
+    private static Slider? FindSlider(DependencyObject? element)
+    {
+        while (element != null && element is not Slider)
+        {
+            element = element is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);
+        }
+        return element as Slider;
+    }
+
+    private void OnCropReset(object sender, RoutedEventArgs e)
+    {
+        if (CanEdit)
+        {
+            _timeline!.SetCrop(VideoCrop.None);
+        }
+    }
+
+    // How close to a side of the rectangle a press grabs it: about ten pixels of the screen, in shares of the picture.
+    private (double X, double Y) CropReach()
+    {
+        double shown = StageBox.ActualWidth > 0 ? StageBox.ActualWidth : Stage.Width;
+        double share = 10 / Math.Max(1, shown);
+        return (share, share * Stage.Width / Stage.Height);
+    }
+
+    private void GrabCrop(MouseButtonEventArgs e)
+    {
+        Point at = e.GetPosition(Stage);
+        var point = new Point(at.X / Stage.Width, at.Y / Stage.Height);
+        (double reachX, double reachY) = CropReach();
+        CropEdges edges = CropDrag.HitTest(_timeline!.Crop, point.X, point.Y, reachX, reachY);
+        if (edges == CropEdges.None)
+        {
+            return;
+        }
+
+        StopPlayback();
+        _cropGrab = edges;
+        _cropGrabStart = _timeline.Crop;
+        _cropGrabFrom = point;
+        _timeline.BeginGesture(); // the whole drag is one step to undo
+        Stage.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void DragCrop(Point at)
+    {
+        double dx = at.X / Stage.Width - _cropGrabFrom.X;
+        double dy = at.Y / Stage.Height - _cropGrabFrom.Y;
+        _timeline?.SetCrop(CropDrag.Drag(_cropGrabStart, _cropGrab, dx, dy));
+    }
+
+    private static Cursor? CropCursor(CropEdges edges) => edges switch
+    {
+        CropEdges.All => Cursors.SizeAll,
+        CropEdges.Left or CropEdges.Right => Cursors.SizeWE,
+        CropEdges.Top or CropEdges.Bottom => Cursors.SizeNS,
+        CropEdges.Left | CropEdges.Top or CropEdges.Right | CropEdges.Bottom => Cursors.SizeNWSE,
+        CropEdges.Right | CropEdges.Top or CropEdges.Left | CropEdges.Bottom => Cursors.SizeNESW,
+        _ => null,
+    };
+
+    private void OnStageBoxSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (CropLayer.Visibility == Visibility.Visible)
+        {
+            DrawCropRectangle(); // its lines keep their width on the screen
+        }
+    }
+
+    // The rectangle kept over the whole recording: the rest dimmed, a thin border and a handle at each corner and side.
+    private void DrawCropRectangle()
+    {
+        double width = Stage.Width, height = Stage.Height;
+        VideoCrop crop = _timeline?.Crop ?? VideoCrop.None;
+        var kept = new Rect(crop.Left * width, crop.Top * height, crop.Width * width, crop.Height * height);
+        // The picture is shrunk or grown to fit: the lines are worked out in pixels of the screen, about 1.5 of them.
+        double line = 1.5 * width / Math.Max(1, StageBox.ActualWidth > 0 ? StageBox.ActualWidth : width / 2);
+
+        CropShade.Data = new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(0, 0, width, height)), new RectangleGeometry(kept));
+        CropFrame.StrokeThickness = line;
+        CropFrame.Width = kept.Width;
+        CropFrame.Height = kept.Height;
+        Canvas.SetLeft(CropFrame, kept.X);
+        Canvas.SetTop(CropFrame, kept.Y);
+
+        if (CropHandles.Children.Count == 0)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                CropHandles.Children.Add(new System.Windows.Shapes.Rectangle { Fill = Brushes.White });
+            }
+        }
+        double size = line * 6;
+        double[] xs = [kept.Left, kept.Left + kept.Width / 2, kept.Right];
+        double[] ys = [kept.Top, kept.Top + kept.Height / 2, kept.Bottom];
+        int n = 0;
+        foreach (double y in ys)
+        {
+            foreach (double x in xs)
+            {
+                if (x == xs[1] && y == ys[1])
+                {
+                    continue; // the middle is grabbed anywhere inside
+                }
+                var handle = (System.Windows.Shapes.Rectangle)CropHandles.Children[n++];
+                handle.Width = handle.Height = size;
+                Canvas.SetLeft(handle, x - size / 2);
+                Canvas.SetTop(handle, y - size / 2);
+            }
+        }
     }
 
 
@@ -1341,13 +1601,27 @@ public partial class VideoEditWindow : Window
     // The side column shows one panel at a time, the frame's or the pointer's.
     private void OnPanelTab(object sender, RoutedEventArgs e)
     {
-        if (FramePanel == null || CursorPanel == null || ZoomPanel == null)
+        if (FramePanel == null || CursorPanel == null || ZoomPanel == null || CropPanel == null)
         {
             return; // the first tab is checked while the XAML loads
         }
         FramePanel.Visibility = FrameTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         CursorPanel.Visibility = CursorTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         ZoomPanel.Visibility = ZoomTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        CropPanel.Visibility = CropTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+        // Opening the crop shows the whole recording to choose on; leaving it shows the result.
+        bool cropping = CropTab.IsChecked == true;
+        if (cropping && Lane.SelectedZoom >= 0)
+        {
+            Lane.SelectedZoom = -1;
+        }
+        if (cropping != (CropLayer.Visibility == Visibility.Visible))
+        {
+            ApplyFrame();
+            ApplyZoomPreview();
+        }
+        Stage.Cursor = null;
     }
 
     /// <summary>The pointer drawn on the video, as chosen now.</summary>
@@ -1554,7 +1828,7 @@ public partial class VideoEditWindow : Window
     {
         _motion = _track is not { PointerInPicture: false } ? null
             : _motion?.Restyled(_track, _cursor) ?? new CursorMotion(_track, _cursor);
-        PointerLayer.Visibility = _motion != null && _cursor.Visible ? Visibility.Visible : Visibility.Collapsed;
+        UpdatePointerVisibility();
         (Color fill, Color edge) = CursorArt.Paint(_cursor.Shape);
         Geometry geometry = CursorArt.Geometry(_cursor.Shape);
         PointerEdge.Data = PointerFill.Data = geometry;
@@ -1562,6 +1836,10 @@ public partial class VideoEditWindow : Window
         PointerEdge.StrokeThickness = CursorArt.EdgeWidth * 2;
         PointerFill.Fill = new SolidColorBrush(fill);
     }
+
+    // The drawn pointer shows when there is one to draw, and not over the whole recording while the crop is chosen.
+    private void UpdatePointerVisibility() =>
+        PointerLayer.Visibility = _motion != null && _cursor.Visible && !CropEditing ? Visibility.Visible : Visibility.Collapsed;
 
     // Puts the pointer and the clicks where the saved video will have them at this moment of the edited video.
     private void UpdatePointer(double time, ZoomView view)
@@ -1592,6 +1870,11 @@ public partial class VideoEditWindow : Window
             }
 
             ClickMark click = clicks[i];
+            if (CursorLayer.Shown(click.X, click.Y, _area) is not { } clickAt)
+            {
+                mark.Visibility = Visibility.Collapsed; // in the part cut away
+                continue;
+            }
             double growth = CursorArt.ClickGrowth(click.Progress);
             byte alpha = (byte)Math.Round(255 * CursorArt.ClickOpacity(click.Progress));
             Color color = CursorArt.ClickColor;
@@ -1611,20 +1894,20 @@ public partial class VideoEditWindow : Window
             }
             // GDI+ draws the ring's line centred on the circle, WPF inside the ellipse: half a line wider matches them.
             double outer = radius + (mark.Stroke != null ? mark.StrokeThickness / 2 : 0);
-            (double x, double y) = CursorLayer.ToPicture(click.X, click.Y, view, _layout, width, height);
+            (double x, double y) = CursorLayer.ToPicture(clickAt.X, clickAt.Y, view, _layout, width, height);
             mark.Width = mark.Height = outer * 2;
             Canvas.SetLeft(mark, x - outer);
             Canvas.SetTop(mark, y - outer);
             mark.Visibility = Visibility.Visible;
         }
 
-        if (_motion.PoseAt(original) is not { } pose)
+        if (_motion.PoseAt(original) is not { } pose || CursorLayer.Shown(pose.X, pose.Y, _area) is not { } tip)
         {
-            PointerGlyph.Visibility = Visibility.Collapsed;
+            PointerGlyph.Visibility = Visibility.Collapsed; // none yet, or in the part cut away
             return;
         }
 
-        (double tipX, double tipY) = CursorLayer.ToPicture(pose.X, pose.Y, view, _layout, width, height);
+        (double tipX, double tipY) = CursorLayer.ToPicture(tip.X, tip.Y, view, _layout, width, height);
         var matrix = Matrix.Identity;
         matrix.Scale(unit * pose.Scale, unit * pose.Scale);
         matrix.Rotate(pose.Angle);

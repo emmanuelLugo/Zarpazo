@@ -328,6 +328,72 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [NeedsGpuFact]
+    public void The_crop_is_chosen_on_the_whole_picture_shown_as_the_result_elsewhere_and_undone_like_any_edit()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        string video = WithTrack(pointerInPicture: false);
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(video);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
+                EditTimeline timeline = window.Timeline!;
+
+                window.CropTab.IsChecked = true;
+                Pump(() => false, 100);
+                Assert.Equal(Visibility.Visible, window.CropPanel.Visibility);
+                Assert.Equal(Visibility.Visible, window.CropLayer.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.PointerLayer.Visibility);
+
+                // A drag along the "Inferior" row is one step to undo.
+                timeline.BeginGesture();
+                window.CropBottomSlider.Value = 0.1;
+                window.CropBottomSlider.Value = 0.2;
+                timeline.EndGesture();
+                window.CropLeftSlider.Value = 0.25;
+                Pump(() => false, 200);
+
+                Assert.Equal(new VideoCrop(0.25, 0, 0, 0.2), timeline.Crop);
+                Assert.Equal(320.0, window.Stage.Width); // chosen on the whole recording
+                Assert.Equal("20 %", window.CropBottomText.Text.Replace(" ", " "));
+                Assert.True(window.NeedsRendering, "a cropped video is a different video");
+                Assert.True(timeline.HasChanges);
+                Shot(window, folder, "editor-crop-choosing.png");
+
+                window.FrameTab.IsChecked = true; // elsewhere, the result
+                Pump(() => false, 200);
+                CropArea area = CropArea.For(timeline.Crop, 320, 180);
+                Assert.Equal(Visibility.Collapsed, window.CropLayer.Visibility);
+                Assert.Equal((double)area.Width, window.Stage.Width);
+                Assert.Equal((double)area.Height, window.Stage.Height);
+                Assert.Equal(-area.Pixels.X, System.Windows.Controls.Canvas.GetLeft(window.Player));
+                Assert.NotNull(window.ContentHost.Clip);
+                Shot(window, folder, "editor-crop-result.png");
+
+                window.UndoButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Assert.Equal(new VideoCrop(0, 0, 0, 0.2), timeline.Crop);
+                window.UndoButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(VideoCrop.None, timeline.Crop);
+                Assert.Equal(0.0, window.CropBottomSlider.Value);
+                Assert.Equal(320.0, window.Stage.Width);
+                Assert.Null(window.ContentHost.Clip);
+            }
+            finally
+            {
+                while (window.Timeline?.CanUndo == true)
+                {
+                    window.Timeline.Undo();
+                }
+                window.Close();
+            }
+        });
+    }
+
     // A picture of the window for looking at it: only when the environment variable names a folder.
     [NeedsGpuFact]
     public void The_window_draws_the_timeline_with_pictures_of_the_video()

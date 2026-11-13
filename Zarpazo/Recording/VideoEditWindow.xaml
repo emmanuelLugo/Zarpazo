@@ -107,6 +107,7 @@
             <Geometry x:Key="ResetGlyph">M3.5,12 A8.5,8.5 0 1 0 6,6 M3.5,3.5 V8.5 H8.5</Geometry>
             <Geometry x:Key="FrameGlyph">M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z M8,8 H16 V16 H8 Z</Geometry>
             <Geometry x:Key="PointerGlyphIcon">M5,3 L11,20 L13.5,13.5 L20,11 Z</Geometry>
+            <Geometry x:Key="CropGlyph">M6,2 V18 H22 M2,6 H18 V22</Geometry>
             <Geometry x:Key="ZoomGlyph">M10.5,3.5 A7,7 0 1 0 10.5,17.5 A7,7 0 1 0 10.5,3.5 Z M20.5,20.5 L15.5,15.5 M10.5,7.5 V13.5 M7.5,10.5 H13.5</Geometry>
             <Geometry x:Key="SplitGlyph">M6,3 A3,3 0 1 0 6,9 A3,3 0 1 0 6,3 Z M6,15 A3,3 0 1 0 6,21 A3,3 0 1 0 6,15 Z M20,4 L8.1,15.9 M14.5,14.5 L20,20 M8.1,8.1 L12,12</Geometry>
             <Geometry x:Key="TrashGlyph">M4,7 H20 M10,11 V17 M14,11 V17 M6,7 L7,20 H17 L18,7 M9,7 V4 H15 V7</Geometry>
@@ -433,6 +434,9 @@
                 <RadioButton x:Name="ZoomTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Zoom">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource ZoomGlyph}" />
                 </RadioButton>
+                <RadioButton x:Name="CropTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Recorte">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource CropGlyph}" />
+                </RadioButton>
             </StackPanel>
 
             <Border Grid.Column="1" Margin="4,14,0,12" CornerRadius="12" Background="{DynamicResource InputBackground}"
@@ -513,6 +517,45 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <!-- The crop: what is cut from each side of the picture (the taskbar, a browser's tabs). It belongs to this
+                             video, so it is undone with the edit and not remembered for the next one. -->
+                        <StackPanel x:Name="CropPanel" Visibility="Collapsed">
+                            <Grid>
+                                <TextBlock Text="RECORTE" Style="{StaticResource PanelHeader}" />
+                                <Button x:Name="CropResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Click="OnCropReset" ToolTip="Vuelve a la imagen completa (se puede deshacer)" />
+                            </Grid>
+                            <StackPanel x:Name="CropOptions" PreviewMouseLeftButtonDown="OnCropRowsDown" PreviewMouseLeftButtonUp="OnCropRowsUp" LostMouseCapture="OnCropRowsUp">
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CropTopSlider" Tag="{x:Static local:CropEdges.Top}" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.5"
+                                            SmallChange="0.005" LargeChange="0.05" ValueChanged="OnCropSlider" ToolTip="Cuánto se quita de arriba, por ejemplo las pestañas del navegador" />
+                                    <TextBlock Text="Superior" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CropTopText" Style="{StaticResource RowValue}" />
+                                </Grid>
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CropBottomSlider" Tag="{x:Static local:CropEdges.Bottom}" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.5"
+                                            SmallChange="0.005" LargeChange="0.05" ValueChanged="OnCropSlider" ToolTip="Cuánto se quita de abajo, por ejemplo la barra de tareas" />
+                                    <TextBlock Text="Inferior" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CropBottomText" Style="{StaticResource RowValue}" />
+                                </Grid>
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CropLeftSlider" Tag="{x:Static local:CropEdges.Left}" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.5"
+                                            SmallChange="0.005" LargeChange="0.05" ValueChanged="OnCropSlider" ToolTip="Cuánto se quita de la izquierda" />
+                                    <TextBlock Text="Izquierda" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CropLeftText" Style="{StaticResource RowValue}" />
+                                </Grid>
+                                <Grid Style="{StaticResource Row}">
+                                    <Slider x:Name="CropRightSlider" Tag="{x:Static local:CropEdges.Right}" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.5"
+                                            SmallChange="0.005" LargeChange="0.05" ValueChanged="OnCropSlider" ToolTip="Cuánto se quita de la derecha" />
+                                    <TextBlock Text="Derecha" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="CropRightText" Style="{StaticResource RowValue}" />
+                                </Grid>
+                            </StackPanel>
+                            <TextBlock x:Name="CropSizeText" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,4,0,0" />
+                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"
+                                       Text="También puedes arrastrar los bordes, las esquinas o el centro del rectángulo sobre el video. Al reproducir o cambiar de panel se ve el resultado." />
+                        </StackPanel>
+
                         <!-- The zooms: suggested from the clicks or added by hand; the chosen one can be changed here. -->
                         <StackPanel x:Name="ZoomPanel" Visibility="Collapsed">
                             <TextBlock Text="ZOOM" Style="{StaticResource PanelHeader}" />
@@ -572,7 +615,7 @@
                 <!-- The scene is drawn at the video's own size inside the Viewbox, so the zoom and the frame are worked out in its pixels.
                      The camera (the zoom) moves the Scene; the frame is its backdrop and the place of the recording in it. -->
                 <Border Background="Black" CornerRadius="10" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Viewbox Stretch="Uniform">
+                    <Viewbox x:Name="StageBox" Stretch="Uniform" SizeChanged="OnStageBoxSizeChanged">
                         <Grid x:Name="Stage" ClipToBounds="True" Background="Black"
                               MouseLeftButtonDown="OnStageMouseDown" MouseMove="OnStageMouseMove" MouseLeftButtonUp="OnStageMouseUp">
                             <Grid x:Name="Scene">
@@ -582,9 +625,13 @@
                                     <Border x:Name="BackdropFill" />
                                     <Border x:Name="ShadowCard" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Black" />
                                 </Grid>
+                                <!-- The recording at its own size; a crop shifts it so the part kept starts at the corner, and the
+                                     host's clip hides the rest: all of it done by the graphics card. -->
                                 <Grid x:Name="ContentHost" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                    <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
-                                                  Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+                                    <Canvas>
+                                        <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
+                                                      Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
+                                    </Canvas>
                                 </Grid>
                             </Grid>
                             <!-- The pointer the saved video will have, drawn over the scene where the camera shows it (not zoomed with
@@ -598,6 +645,13 @@
                                     <Path x:Name="PointerEdge" StrokeLineJoin="Round" />
                                     <Path x:Name="PointerFill" />
                                 </Canvas>
+                            </Canvas>
+                            <!-- While the crop panel is open: the whole recording, dimmed outside what is kept, with a rectangle
+                                 whose sides, corners and middle can be dragged. -->
+                            <Canvas x:Name="CropLayer" Visibility="Collapsed" IsHitTestVisible="False">
+                                <Path x:Name="CropShade" Fill="#A6000000" />
+                                <Rectangle x:Name="CropFrame" Stroke="White" />
+                                <Canvas x:Name="CropHandles" />
                             </Canvas>
                             <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
                             <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
