@@ -6,7 +6,14 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.7.0] - 2026-11-13
+
 ### Añadido
+- Editor de video renovado, al estilo de Recordly: barra superior con deshacer, rehacer, Copiar y Guardar…; a la izquierda, iconos que abren un panel a la vez (Marco, Cursor, Zoom y Recorte); el video grande en el centro y la línea de tiempo a todo lo ancho. Los ajustes son filas que se arrastran desde cualquier punto, con su nombre y valor escritos encima, y cada sección tiene «Restablecer». Diez fondos nuevos, también disponibles en Embellecer.
+- Al detener la grabación de un video se abre directamente el editor, desde donde se copia o se guarda. La grabación igual queda en el historial aunque cierres el editor sin guardar.
+- Recortar el video: el panel «Recorte» muestra la grabación entera con un rectángulo que se arrastra por sus lados, esquinas o centro (o se ajusta con las filas Superior, Inferior, Izquierda y Derecha). El zoom y el puntero siguen funcionando dentro del recorte, y se puede deshacer.
+- Presets de video: el botón «Presets» de la barra superior guarda el aspecto actual (marco, puntero y estilo de zoom) con un nombre y lo aplica después con un clic. El panel Zoom suma el estilo: «Suave» (el de siempre) o «Enfocado» (más rápido).
+- Puntero dibujado: los videos se graban sin el puntero y se dibuja al guardar, así que en el panel «Cursor» se elige su tamaño, cuánto se suaviza su recorrido y el efecto de los clics, con vista previa en vivo.
 - Zoom automático en los videos, al estilo de Screen Studio y Recordly. Al grabar un video, Zarpazo guarda dónde estuvo el puntero y dónde hiciste clic; al abrir el editor («Editar…»), cada grupo de clics ya tiene su zoom: la imagen se acerca suavemente (1,5× por defecto, con un movimiento que arranca y se detiene sin tirones) a lo que tocaste, se queda ahí mientras sigues haciendo clic cerca y vuelve a alejarse. Si dos zooms quedan muy juntos, la cámara pasa de uno a otro sin alejarse.
 - Fila de zooms en el editor de video, debajo de las partes: arrastra un zoom para moverlo o sus bordes para alargarlo; doble clic en la fila o `Z` añade uno donde está la línea roja (mirando adonde estaba el puntero); `Supr` o el clic derecho lo quitan. Al elegir uno, el video muestra la imagen entera con la zona que se verá marcada: haz clic o arrastra para elegir adónde mira, y elige cuánto se acerca (de 1,25× a 3×). «Zoom automático» los vuelve a poner a partir de los clics. Deshacer y rehacer también cubren los zooms, y un zoom sigue a su momento aunque cortes o muevas partes.
 - Tamaño del puntero en las grabaciones (panel Grabar > Efectos): Normal, Grande (1,5×) o Muy grande (2×), como en Recordly. Los punteros de Windows (flecha, mano, texto…) se cargan en su versión grande, así que se ven nítidos; el halo y los anillos de los clics crecen con él. Vale para GIF y video, y se recuerda.
@@ -14,13 +21,18 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Videos a 60 cuadros por segundo: Configuración > Grabación > Cuadros por segundo > «60 (muy fluido)».
 - La vista previa del editor muestra el zoom al reproducir y al moverte por el video, y «Guardar video» lo aplica al video nuevo, con el mismo tamaño, calidad y sonido (un video de 10 s en 1080p tarda unos 8 s en guardarse). El video con zoom sale con un cuadro exacto cada 1/30 s aunque la grabación tenga cuadros que llegaron tarde, así que la cámara se mueve pareja, y con más calidad (al acercar cambian todos los píxeles y a la calidad de una grabación de pantalla se veía en bloques).
 
-### Corregido
-- Al grabar una zona con un número impar de píxeles de ancho o de alto (por ejemplo 1919×1079), el video salía a unos 10 cuadros por segundo: cada cuadro se reescalaba entero para quitarle un píxel. Ahora ese píxel simplemente se deja fuera. Las zonas más grandes que 1920 (pantallas 2K y 4K) también se achican mucho más rápido.
-
 ### Cambiado
+- La barra de grabación es ahora una píldora flotante con iconos de línea y un único botón rojo para detener, y no aparece en los videos de pantalla completa.
+- Al elegir el área, el puntero en cruz es blanco con borde negro y se ve sobre cualquier fondo. El de Windows invertía los colores y desaparecía sobre pantallas blancas oscurecidas.
+- Con una selección grande, las barras de herramientas quedan en el mismo monitor que la selección y separadas del borde de la pantalla.
 - Grabaciones más fluidas: la pantalla se copia con la tarjeta de video (DXGI), unos 8 ms por cuadro en 1080p en lugar de 33, así que el video ya no tiene cuadros que llegan tarde ni se ve a tirones. Si la zona ocupa dos monitores, o Windows no deja copiar la pantalla en ese momento, se usa el método de antes. Vale para GIF y video.
 - El control que acerca la línea de tiempo del editor de video se llama ahora «Acercar línea», para no confundirlo con el zoom del video.
 - Al cerrar el editor de video solo pregunta si hay cambios tuyos sin guardar; los zooms automáticos por sí solos no cuentan.
+
+### Corregido
+- Si Windows no deja grabar una fuente de sonido (por ejemplo, auriculares Bluetooth en modo manos libres), el video se graba igual con las demás fuentes y un aviso explica por qué; antes fallaba toda la grabación y quedaba un archivo vacío.
+- Los controles deslizantes del editor de video siguen al mouse sin tirones.
+- Al grabar una zona con un número impar de píxeles de ancho o de alto (por ejemplo 1919×1079), el video salía a unos 10 cuadros por segundo: cada cuadro se reescalaba entero para quitarle un píxel. Ahora ese píxel simplemente se deja fuera. Las zonas más grandes que 1920 (pantallas 2K y 4K) también se achican mucho más rápido.
 
 ## [0.6.0] - 2026-11-12
 
@@ -114,7 +126,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.6.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.4.0...v0.5.0
