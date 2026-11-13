@@ -15,6 +15,7 @@ internal sealed class AudioMixer(IReadOnlyList<ISampleProvider> sources)
     private readonly float[] _read = new float[SamplesPerChunk];
     private readonly float[] _levels = new float[sources.Count];
     private readonly float[] _gains = Enumerable.Repeat(1f, sources.Count).ToArray();
+    private readonly PeakLimiter _limiter = new(ceiling: 0.98f);
 
     /// <summary>The volume of each source: 0 mutes it, 1 leaves it as it comes. Can be changed while recording.</summary>
     public IReadOnlyList<float> Gains => _gains;
@@ -46,10 +47,12 @@ internal sealed class AudioMixer(IReadOnlyList<ISampleProvider> sources)
             _levels[s] = Math.Max(peak, _levels[s] * LevelDecay);
         }
 
+        // Two loud sources can add past full scale: the whole mix is turned down for that moment, so it doesn't crackle.
+        _limiter.Process(_mix, 0, SamplesPerChunk);
+
         var pcm = new byte[SamplesPerChunk * 2];
         for (int i = 0; i < SamplesPerChunk; i++)
         {
-            // Two loud sources can add past full scale; cut there instead of wrapping around into noise.
             short value = (short)(Math.Clamp(_mix[i], -1f, 1f) * short.MaxValue);
             pcm[i * 2] = (byte)(value & 0xFF);
             pcm[i * 2 + 1] = (byte)(value >> 8);

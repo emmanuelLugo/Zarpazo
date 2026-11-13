@@ -49,7 +49,8 @@ internal sealed class AudioInput : IDisposable
         {
             samples = new WdlResamplingSampleProvider(samples, Mp4Writer.AudioSampleRate);
         }
-        Samples = samples;
+        // A microphone comes in far quieter than the sound of Windows, so it is brought up to a speaking volume.
+        Samples = isMicrophone ? new VoiceLeveler(samples) : samples;
 
         _capture.DataAvailable += (_, e) => _buffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
         // If the device goes away mid-recording the input just stops sending, which the mixer turns into silence.

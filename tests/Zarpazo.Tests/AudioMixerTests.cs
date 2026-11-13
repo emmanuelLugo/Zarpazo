@@ -48,11 +48,11 @@ public sealed class AudioMixerTests
     }
 
     [Fact]
-    public void Sources_that_add_past_full_scale_are_cut_there_instead_of_wrapping_into_noise()
+    public void Sources_that_add_past_full_scale_are_turned_down_instead_of_wrapping_into_noise()
     {
         short[] samples = Samples(new AudioMixer([new Constant(0.8f), new Constant(0.8f)]).NextChunk());
 
-        Assert.All(samples, s => Assert.Equal(short.MaxValue, s));
+        Assert.All(samples, s => Assert.InRange(s, 32000, short.MaxValue));
     }
 
     [Fact]
