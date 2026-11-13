@@ -218,7 +218,7 @@ internal sealed class TimelineView : FrameworkElement
                 break;
             case Gesture.TrimStart:
             {
-                double start = _originalStart + (point.X - _grabX) / _pixelsPerSecond;
+                double start = _originalStart + (point.X - _grabX) / _pixelsPerSecond * _timeline.Segments[_gestureIndex].Rate;
                 _timeline.TrimStart(_gestureIndex, start);
                 VideoSegment segment = _timeline.Segments[_gestureIndex];
                 _bubble = $"{TimeText.Format(segment.Start)} → {TimeText.Format(segment.End)}  ({segment.Length:0.0} s)";
@@ -227,7 +227,7 @@ internal sealed class TimelineView : FrameworkElement
             }
             case Gesture.TrimEnd:
             {
-                double end = _originalEnd + (point.X - _grabX) / _pixelsPerSecond;
+                double end = _originalEnd + (point.X - _grabX) / _pixelsPerSecond * _timeline.Segments[_gestureIndex].Rate;
                 _timeline.TrimEnd(_gestureIndex, end);
                 VideoSegment segment = _timeline.Segments[_gestureIndex];
                 _bubble = $"{TimeText.Format(segment.Start)} → {TimeText.Format(segment.End)}  ({segment.Length:0.0} s)";
@@ -462,7 +462,7 @@ internal sealed class TimelineView : FrameworkElement
         double tile = sample == null ? picturesHeight * 16 / 9 : Math.Max(20, picturesHeight * sample.PixelWidth / sample.PixelHeight);
         for (double x = rect.Left; x < rect.Right; x += tile)
         {
-            double sourceTime = segment.Start + (x + tile / 2 - (left + offsetX)) / _pixelsPerSecond;
+            double sourceTime = segment.Start + (x + tile / 2 - (left + offsetX)) / _pixelsPerSecond * segment.Rate;
             BitmapSource? picture = PictureAt(sourceTime);
             if (picture != null)
             {
@@ -479,7 +479,9 @@ internal sealed class TimelineView : FrameworkElement
         dc.DrawRectangle(selected ? palette.Accent : palette.Surface, null, strip);
         if (rect.Width > 46)
         {
-            string title = $"{index + 1} · {TimeText.Format(segment.Length)}{(segment.Muted ? " · sin sonido" : "")}";
+            string title = $"{index + 1} · {TimeText.Format(segment.PlayLength)}"
+                + (segment.IsRetimed ? $" · {TimeText.Speed(segment.Rate)}" : "")
+                + (segment.Muted ? " · sin sonido" : "");
             FormattedText text = palette.Text(title, 11, selected ? palette.OnAccent : palette.TextPrimary);
             text.MaxTextWidth = rect.Width - 16;
             text.MaxLineCount = 1;

@@ -104,10 +104,10 @@ internal sealed class ZoomCamera
                 double end = Math.Min(zoom.End, segment.End);
                 if (end - start >= MinSpanSeconds)
                 {
-                    spans.Add(new ZoomSpan(at + start - segment.Start, at + end - segment.Start, zoom.Scale, zoom.FocusX, zoom.FocusY, i));
+                    spans.Add(new ZoomSpan(at + segment.ToPlay(start), at + segment.ToPlay(end), zoom.Scale, zoom.FocusX, zoom.FocusY, i));
                 }
             }
-            at += segment.Length;
+            at += segment.PlayLength;
         }
         return spans;
     }

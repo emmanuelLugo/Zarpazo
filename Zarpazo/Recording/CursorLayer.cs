@@ -58,11 +58,11 @@ internal sealed class CursorLayer
         double start = 0;
         foreach (VideoSegment segment in segments)
         {
-            if (seconds < start + segment.Length)
+            if (seconds < start + segment.PlayLength)
             {
-                return segment.Start + Math.Max(0, seconds - start);
+                return segment.ToOriginal(seconds - start);
             }
-            start += segment.Length;
+            start += segment.PlayLength;
         }
         return segments.Count > 0 ? segments[^1].End : seconds;
     }

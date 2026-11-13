@@ -29,7 +29,7 @@ internal static class TimelineLayout
     public static (double Left, double Right) Span(EditTimeline timeline, int index, double pixelsPerSecond)
     {
         double start = timeline.StartOf(index);
-        return (XOf(start, pixelsPerSecond), XOf(start + timeline.Segments[index].Length, pixelsPerSecond));
+        return (XOf(start, pixelsPerSecond), XOf(start + timeline.Segments[index].PlayLength, pixelsPerSecond));
     }
 
     public static TimelineHit HitTest(EditTimeline timeline, double pixelsPerSecond, Point point)

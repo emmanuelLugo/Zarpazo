@@ -47,15 +47,16 @@ internal sealed class EditTimeline
     /// </summary>
     public VideoLook Look => _look;
 
-    /// <summary>The length of the edited video: the pieces added up.</summary>
-    public double Duration => _segments.Sum(segment => segment.Length);
+    /// <summary>The length of the edited video: the pieces added up, each at its speed.</summary>
+    public double Duration => _segments.Sum(segment => segment.PlayLength);
 
     public bool CanUndo => _undo.Count > 0;
 
     public bool CanRedo => _redo.Count > 0;
 
     /// <summary>True when the pieces are no longer just the whole recording.</summary>
-    public bool IsEdited => _segments.Length != 1 || _segments[0].Start > 0 || _segments[0].End < SourceDuration || _segments[0].Muted;
+    public bool IsEdited => _segments.Length != 1 || _segments[0].Start > 0 || _segments[0].End < SourceDuration || _segments[0].Muted
+        || _segments[0].IsRetimed;
 
     /// <summary>True when the edit is no longer as it opened: pieces changed, zooms other than the ones it started with, or a crop.</summary>
     public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms) || !_crop.IsNone;
@@ -66,7 +67,7 @@ internal sealed class EditTimeline
         double at = 0;
         for (int i = 0; i < index; i++)
         {
-            at += _segments[i].Length;
+            at += _segments[i].PlayLength;
         }
         return at;
     }
@@ -78,18 +79,18 @@ internal sealed class EditTimeline
         double at = 0;
         for (int i = 0; i < _segments.Length; i++)
         {
-            if (time < at + _segments[i].Length)
+            if (time < at + _segments[i].PlayLength)
             {
-                return (i, _segments[i].Start + (time - at));
+                return (i, _segments[i].ToOriginal(time - at));
             }
-            at += _segments[i].Length;
+            at += _segments[i].PlayLength;
         }
         return (_segments.Length - 1, _segments[^1].End); // the very end belongs to the last piece
     }
 
     /// <summary>The moment of the edited video where a point of a piece plays.</summary>
     public double ToTimeline(int index, double sourceTime) =>
-        StartOf(index) + Math.Clamp(sourceTime - _segments[index].Start, 0, _segments[index].Length);
+        StartOf(index) + _segments[index].ToPlay(sourceTime);
 
     /// <summary>Whether the piece playing at a moment can be cut there: both halves would be long enough.</summary>
     public bool CanSplit(double time)
@@ -187,6 +188,10 @@ internal sealed class EditTimeline
     }
 
     public bool SetMuted(int index, bool muted) => IsValid(index) && Replace(index, _segments[index] with { Muted = muted });
+
+    /// <summary>Changes how fast a piece plays, within the speeds offered. Returns false when nothing changed.</summary>
+    public bool SetSpeed(int index, double speed) =>
+        IsValid(index) && Replace(index, _segments[index] with { Speed = Math.Clamp(speed, VideoSegment.Speeds[0], VideoSegment.Speeds[^1]) });
 
     /// <summary>Goes back to the whole recording, as one change that can be undone.</summary>
     public bool Reset()

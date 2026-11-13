@@ -19,4 +19,8 @@ internal static class TimeText
         }
         return time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
     }
+
+    /// <summary>A speed as the editor shows it: 2×, 0,5×, 1,5×.</summary>
+    public static string Speed(double speed) =>
+        speed.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("es-ES")) + "×";
 }
