@@ -7,6 +7,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Ellipse = System.Windows.Shapes.Ellipse;
+using ShapePath = System.Windows.Shapes.Path;
 using System.Windows.Threading;
 using Windows.Media.Editing;
 using Windows.Storage;
@@ -44,6 +46,11 @@ public partial class VideoEditWindow : Window
     private readonly Settings.SettingsStore? _settings;
     private VideoFrameStyle _frame;
     private CursorStyle _cursor;
+    private readonly CursorStyle _openedCursor; // the style the video was opened with: another one makes a different video
+    private CursorMotion? _motion; // the drawn pointer's path; null when this video has none to draw
+    private bool _showingCursor;
+    private readonly DispatcherTimer _cursorSave = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private readonly List<Ellipse> _clickMarks = [];
     private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
     private bool _showingFrame;
@@ -56,7 +63,10 @@ public partial class VideoEditWindow : Window
         _settings = settings;
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
         _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
+        _openedCursor = _cursor;
+        _cursorSave.Tick += (_, _) => SaveCursorChoice();
         BuildFrameChoices();
+        BuildCursorChoices();
         _ready = true;
         _source = source;
         _timer.Tick += (_, _) => FollowPlayback();
@@ -65,6 +75,10 @@ public partial class VideoEditWindow : Window
         {
             _closed = true;
             CompositionTarget.Rendering -= OnRendering;
+            if (_cursorSave.IsEnabled)
+            {
+                SaveCursorChoice(); // a slider let go just before closing
+            }
             _timer.Stop();
             Player.Close(); // lets go of the file
         };
@@ -122,6 +136,8 @@ public partial class VideoEditWindow : Window
             {
                 _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration)); // like Recordly: the clicks come zoomed already
             }
+            RebuildPointer();
+            ShowCursorChoices();
             ApplyFrame();
             View.SelectedIndex = 0;
             SetPlayhead(0);
@@ -710,8 +726,11 @@ public partial class VideoEditWindow : Window
             : "";
     }
 
-    // There is something to save: pieces cut or moved, or zooms (the automatic ones count: the video comes out different).
-    private bool HasResult => _timeline != null && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled);
+    // There is something to save: pieces cut or moved, or zooms (the automatic ones count: the video comes out different), a
+    // frame, or another pointer than the one the video was made with.
+    private bool HasResult => _timeline != null && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled || CursorChanged);
+
+    private bool CursorChanged => _track is { PointerInPicture: false } && _cursor != _openedCursor;
 
     private void SetBusy(bool busy)
     {
@@ -787,7 +806,7 @@ public partial class VideoEditWindow : Window
     // draws, the playhead is carried on from the last reading by the time that has passed.
     private void OnRendering(object? sender, EventArgs e)
     {
-        if (_playing && _previewCamera is { IsEmpty: false })
+        if (_playing && (_previewCamera is { IsEmpty: false } || _motion != null))
         {
             double since = Math.Min(0.1, Stopwatch.GetElapsedTime(_playheadStamp).TotalSeconds);
             ApplyZoomPreview(_playhead + since);
@@ -809,6 +828,7 @@ public partial class VideoEditWindow : Window
         bool picking = chosen >= 0 && !_playing && _timeline != null && chosen < _timeline.Zooms.Count;
         ZoomView view = picking ? ZoomView.Full : camera.ViewAt(time);
         _shownView = view;
+        UpdatePointer(time, view);
         Scene.RenderTransform = view.IsFull
             ? Transform.Identity
             : new MatrixTransform(1 / view.Width, 0, 0, 1 / view.Height, -view.X * width / view.Width, -view.Y * height / view.Height);
@@ -1111,6 +1131,227 @@ public partial class VideoEditWindow : Window
         }
         IReadOnlyList<ZoomRegion> zooms = _layout is { } layout ? layout.ToScene(_timeline.Zooms) : _timeline.Zooms;
         _previewCamera = new ZoomCamera(_timeline.Segments, zooms);
+    }
+
+
+
+    // ---------- pointer
+
+    // The side column shows one panel at a time, the frame's or the pointer's.
+    private void OnPanelTab(object sender, RoutedEventArgs e)
+    {
+        if (FramePanel == null || CursorPanel == null)
+        {
+            return; // the first tab is checked while the XAML loads
+        }
+        FramePanel.Visibility = FrameTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        CursorPanel.Visibility = CursorTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The pointer drawn on the video, as chosen now.</summary>
+    internal CursorStyle PointerStyle => _cursor;
+
+    // A tile for each shape, with a drawing of it.
+    private void BuildCursorChoices()
+    {
+        foreach (CursorShape shape in Enum.GetValues<CursorShape>())
+        {
+            (Color fill, Color edge) = CursorArt.Paint(shape);
+            Geometry geometry = CursorArt.Geometry(shape);
+            var drawing = new Canvas
+            {
+                Width = 0,
+                Height = 0,
+                // The arrow hangs from its tip; the dot is round its centre.
+                Margin = shape == CursorShape.Dot ? new Thickness(0) : new Thickness(-14, -22, 0, 0),
+                RenderTransform = new ScaleTransform(1.25, 1.25),
+                Children =
+                {
+                    new ShapePath { Data = geometry, Fill = new SolidColorBrush(edge), Stroke = new SolidColorBrush(edge), StrokeThickness = CursorArt.EdgeWidth * 2, StrokeLineJoin = PenLineJoin.Round },
+                    new ShapePath { Data = geometry, Fill = new SolidColorBrush(fill) },
+                },
+            };
+            var tile = new RadioButton
+            {
+                Style = (Style)FindResource("Tile"),
+                GroupName = "cursorShape",
+                Tag = shape,
+                Content = drawing,
+                ToolTip = shape switch
+                {
+                    CursorShape.LightArrow => "Flecha blanca, como la de Windows",
+                    CursorShape.Dot => "Un punto: marca dónde está sin tapar nada",
+                    _ => "Flecha negra con borde blanco: se ve sobre ventanas claras y oscuras",
+                },
+            };
+            tile.Checked += OnCursorChanged;
+            CursorShapes.Children.Add(tile);
+        }
+        ShowCursorChoices();
+    }
+
+    private void ShowCursorChoices()
+    {
+        _showingCursor = true;
+        CursorBox.IsChecked = _cursor.Visible;
+        foreach (RadioButton tile in CursorShapes.Children.OfType<RadioButton>())
+        {
+            tile.IsChecked = (CursorShape)tile.Tag == _cursor.Shape;
+        }
+        CursorSizeSlider.Value = _cursor.Size;
+        CursorSmoothingSlider.Value = _cursor.Smoothing;
+        CursorSwaySlider.Value = _cursor.Sway;
+        CursorClickBox.SelectedIndex = (int)_cursor.Click;
+        CursorBounceBox.IsChecked = _cursor.Bounce;
+        ShowCursorValues();
+
+        // Only a video recorded without the pointer, with its track, can have one drawn.
+        string? why = _timeline == null ? null
+            : _track == null ? "Este video no guardó el recorrido del cursor: se grabó con una versión anterior de Zarpazo."
+            : _track.PointerInPicture ? "Este video ya tiene el cursor dentro de la imagen: se grabó con una versión anterior de Zarpazo."
+            : null;
+        bool available = _timeline == null || why == null;
+        CursorNote.Text = why ?? "";
+        CursorNote.Visibility = why == null ? Visibility.Collapsed : Visibility.Visible;
+        CursorBox.IsEnabled = available;
+        CursorOptions.IsEnabled = available && _cursor.Visible;
+        CursorOptions.Opacity = CursorOptions.IsEnabled ? 1 : 0.5;
+        _showingCursor = false;
+    }
+
+    private void ShowCursorValues()
+    {
+        CursorSizeText.Text = $"{_cursor.Size.ToString("0.0", CultureInfo.CurrentCulture)}×";
+        CursorSmoothingText.Text = $"{Math.Round(_cursor.Smoothing * 100)} %";
+        CursorSwayText.Text = $"{Math.Round(_cursor.Sway * 100)} %";
+    }
+
+    private void OnCursorSlider(object sender, RoutedPropertyChangedEventArgs<double> e) => OnCursorChanged(sender, e);
+
+    private void OnCursorChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || _showingCursor)
+        {
+            return;
+        }
+
+        CursorShape shape = CursorShapes.Children.OfType<RadioButton>().FirstOrDefault(tile => tile.IsChecked == true)?.Tag as CursorShape? ?? _cursor.Shape;
+        _cursor = new CursorStyle(
+            CursorBox.IsChecked == true,
+            shape,
+            Math.Round(CursorSizeSlider.Value, 1),
+            Math.Round(CursorSmoothingSlider.Value * 20) / 20,
+            Math.Round(CursorSwaySlider.Value * 20) / 20,
+            (ClickEffect)Math.Max(0, CursorClickBox.SelectedIndex),
+            CursorBounceBox.IsChecked == true).Tidied();
+        if (sender is not Slider)
+        {
+            ShowCursorChoices(); // a slider is left alone while it is dragged
+        }
+        else
+        {
+            ShowCursorValues();
+        }
+
+        // Remembered for the next video; written a moment after the last change, not at every step of a slider.
+        if (_settings != null)
+        {
+            _settings.Current.VideoCursor = _cursor;
+            _cursorSave.Stop();
+            _cursorSave.Start();
+        }
+        RebuildPointer();
+        ApplyZoomPreview();
+        RefreshState();
+    }
+
+    private void SaveCursorChoice()
+    {
+        _cursorSave.Stop();
+        _settings?.Save();
+    }
+
+    // The pointer's path for the style chosen, and its drawing.
+    private void RebuildPointer()
+    {
+        _motion = _track is { PointerInPicture: false } ? new CursorMotion(_track, _cursor) : null;
+        PointerLayer.Visibility = _motion != null && _cursor.Visible ? Visibility.Visible : Visibility.Collapsed;
+        (Color fill, Color edge) = CursorArt.Paint(_cursor.Shape);
+        Geometry geometry = CursorArt.Geometry(_cursor.Shape);
+        PointerEdge.Data = PointerFill.Data = geometry;
+        PointerEdge.Fill = PointerEdge.Stroke = new SolidColorBrush(edge);
+        PointerEdge.StrokeThickness = CursorArt.EdgeWidth * 2;
+        PointerFill.Fill = new SolidColorBrush(fill);
+    }
+
+    // Puts the pointer and the clicks where the saved video will have them at this moment of the edited video.
+    private void UpdatePointer(double time, ZoomView view)
+    {
+        if (_motion == null || _timeline == null || PointerLayer.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        double width = Stage.Width, height = Stage.Height;
+        double original = CursorLayer.ToOriginal(_timeline.Segments, time);
+        double unit = CursorLayer.Unit(_cursor, _track!.PointerScale > 0 ? _track.PointerScale : 1, view, _layout);
+
+        IReadOnlyList<ClickMark> clicks = _motion.ClicksAt(original);
+        while (_clickMarks.Count < clicks.Count)
+        {
+            var mark = new Ellipse();
+            _clickMarks.Add(mark);
+            ClickMarks.Children.Add(mark);
+        }
+        for (int i = 0; i < _clickMarks.Count; i++)
+        {
+            Ellipse mark = _clickMarks[i];
+            if (i >= clicks.Count)
+            {
+                mark.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            ClickMark click = clicks[i];
+            double growth = CursorArt.ClickGrowth(click.Progress);
+            byte alpha = (byte)Math.Round(255 * CursorArt.ClickOpacity(click.Progress));
+            Color color = CursorArt.ClickColor;
+            double radius;
+            if (_cursor.Click == ClickEffect.Pulse)
+            {
+                radius = (CursorArt.PulseStartRadius + (CursorArt.PulseEndRadius - CursorArt.PulseStartRadius) * growth) * unit;
+                mark.Fill = new SolidColorBrush(Color.FromArgb((byte)(alpha * 0.45), color.R, color.G, color.B));
+                mark.Stroke = null;
+            }
+            else
+            {
+                radius = (CursorArt.RippleStartRadius + (CursorArt.RippleEndRadius - CursorArt.RippleStartRadius) * growth) * unit;
+                mark.Fill = null;
+                mark.Stroke = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
+                mark.StrokeThickness = CursorArt.RippleWidth * unit;
+            }
+            // GDI+ draws the ring's line centred on the circle, WPF inside the ellipse: half a line wider matches them.
+            double outer = radius + (mark.Stroke != null ? mark.StrokeThickness / 2 : 0);
+            (double x, double y) = CursorLayer.ToPicture(click.X, click.Y, view, _layout, width, height);
+            mark.Width = mark.Height = outer * 2;
+            Canvas.SetLeft(mark, x - outer);
+            Canvas.SetTop(mark, y - outer);
+            mark.Visibility = Visibility.Visible;
+        }
+
+        if (_motion.PoseAt(original) is not { } pose)
+        {
+            PointerGlyph.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        (double tipX, double tipY) = CursorLayer.ToPicture(pose.X, pose.Y, view, _layout, width, height);
+        var matrix = Matrix.Identity;
+        matrix.Scale(unit * pose.Scale, unit * pose.Scale);
+        matrix.Rotate(pose.Angle);
+        matrix.Translate(tipX, tipY);
+        PointerGlyph.RenderTransform = new MatrixTransform(matrix);
+        PointerGlyph.Visibility = Visibility.Visible;
     }
 
     private void OnCancel(object sender, RoutedEventArgs e) => Close();

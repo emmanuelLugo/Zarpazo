@@ -53,6 +53,64 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+            <!-- A choice of the pointer's shape: a tile with a drawing of it, ringed when chosen. -->
+            <Style x:Key="Tile" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Width" Value="56" />
+                <Setter Property="Height" Value="46" />
+                <Setter Property="Margin" Value="0,0,6,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Box" CornerRadius="8" BorderThickness="1.5" BorderBrush="{DynamicResource Border}" Background="#FF7A7F87">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Opacity" Value="0.85" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- The tabs over the side panels: the chosen one underlined. -->
+            <Style x:Key="PanelTab" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border Background="Transparent" Padding="0,6,0,0">
+                                <StackPanel>
+                                    <ContentPresenter HorizontalAlignment="Center" />
+                                    <Border x:Name="Line" Height="2" Margin="0,6,0,0" CornerRadius="1" Background="{DynamicResource Border}" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Line" Property="Background" Value="{DynamicResource Accent}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="SliderValue" TargetType="TextBlock">
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+            </Style>
             <Style x:Key="PanelTitle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
                 <Setter Property="FontSize" Value="12" />
@@ -91,6 +149,18 @@
                                               Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
                             </Grid>
                         </Grid>
+                        <!-- The pointer the saved video will have, drawn over the scene where the camera shows it (not zoomed with
+                             the picture, so it stays sharp), with the effects of the clicks under it. -->
+                        <Canvas x:Name="PointerLayer" IsHitTestVisible="False" Visibility="Collapsed">
+                            <Canvas x:Name="ClickMarks" />
+                            <Canvas x:Name="PointerGlyph">
+                                <Canvas.Effect>
+                                    <DropShadowEffect ShadowDepth="1.6" Direction="270" BlurRadius="4" Opacity="0.4" />
+                                </Canvas.Effect>
+                                <Path x:Name="PointerEdge" StrokeLineJoin="Round" />
+                                <Path x:Name="PointerFill" />
+                            </Canvas>
+                        </Canvas>
                         <!-- While a zoom is chosen: the whole picture, dimmed outside what the zoom will show. -->
                         <Canvas x:Name="FocusLayer" Visibility="Collapsed" IsHitTestVisible="False">
                             <Path x:Name="FocusShade" Fill="#99000000" />
@@ -101,11 +171,25 @@
                 </Viewbox>
             </Border>
 
+            <ScrollViewer Grid.Column="1" Margin="12,0,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <StackPanel Width="220">
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <RadioButton x:Name="FrameTab" Style="{StaticResource PanelTab}" GroupName="sidePanel" IsChecked="True" Checked="OnPanelTab">
+                    <TextBlock Text="Marco" FontWeight="SemiBold" />
+                </RadioButton>
+                <RadioButton x:Name="CursorTab" Grid.Column="1" Style="{StaticResource PanelTab}" GroupName="sidePanel" Checked="OnPanelTab">
+                    <TextBlock Text="Cursor" FontWeight="SemiBold" />
+                </RadioButton>
+            </Grid>
             <!-- The frame: a background behind the recording, room around it, rounded corners and a shadow. -->
-            <Border Grid.Column="1" Width="220" Margin="12,0,0,0" Padding="14,10" CornerRadius="8"
+            <Border x:Name="FramePanel" Padding="14,10" CornerRadius="8"
                     Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
                 <StackPanel>
-                    <CheckBox x:Name="FrameBox" Content="Marco" FontWeight="SemiBold" Focusable="False" Click="OnFrameChanged"
+                    <CheckBox x:Name="FrameBox" Content="Poner marco" FontWeight="SemiBold" Focusable="False" Click="OnFrameChanged"
                               ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
                     <StackPanel x:Name="FrameOptions">
                         <TextBlock Text="Fondo" Style="{StaticResource PanelTitle}" />
@@ -126,6 +210,53 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+
+            <!-- The pointer: the video is recorded without it, and the one drawn here goes into the saved video. -->
+            <Border x:Name="CursorPanel" Padding="14,10" CornerRadius="8" Visibility="Collapsed"
+                    Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                <StackPanel>
+                    <CheckBox x:Name="CursorBox" Content="Mostrar cursor" FontWeight="SemiBold" Focusable="False" Click="OnCursorChanged"
+                              ToolTip="Dibuja el puntero en el video: más grande, con movimiento suave y un efecto en cada clic" />
+                    <TextBlock x:Name="CursorNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
+                               Margin="0,8,0,0" Visibility="Collapsed" />
+                    <StackPanel x:Name="CursorOptions">
+                        <TextBlock Text="Estilo" Style="{StaticResource PanelTitle}" />
+                        <StackPanel x:Name="CursorShapes" Orientation="Horizontal" />
+
+                        <Grid Margin="0,12,0,0">
+                            <TextBlock Text="Tamaño" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
+                            <TextBlock x:Name="CursorSizeText" Style="{StaticResource SliderValue}" />
+                        </Grid>
+                        <Slider x:Name="CursorSizeSlider" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5" Focusable="False"
+                                ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
+
+                        <Grid Margin="0,8,0,0">
+                            <TextBlock Text="Suavizado" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
+                            <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource SliderValue}" />
+                        </Grid>
+                        <Slider x:Name="CursorSmoothingSlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
+                                ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
+
+                        <Grid Margin="0,8,0,0">
+                            <TextBlock Text="Balanceo" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
+                            <TextBlock x:Name="CursorSwayText" Style="{StaticResource SliderValue}" />
+                        </Grid>
+                        <Slider x:Name="CursorSwaySlider" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25" Focusable="False"
+                                ValueChanged="OnCursorSlider" ToolTip="Cuánto se inclina la flecha al moverse de lado" />
+
+                        <TextBlock Text="Efecto de clic" Style="{StaticResource PanelTitle}" />
+                        <ComboBox x:Name="CursorClickBox" Focusable="False" SelectionChanged="OnCursorChanged">
+                            <ComboBoxItem Content="Ninguno" />
+                            <ComboBoxItem Content="Onda" />
+                            <ComboBoxItem Content="Pulso" />
+                        </ComboBox>
+                        <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Margin="0,12,0,0" Focusable="False" Click="OnCursorChanged"
+                                  ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <Grid Grid.Row="1" Margin="0,12,0,0">

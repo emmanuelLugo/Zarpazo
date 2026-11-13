@@ -50,6 +50,20 @@ internal sealed class CursorLayer
         return segments.Count > 0 ? segments[^1].End : seconds;
     }
 
+    /// <summary>
+    /// How many pixels of the picture one unit of <see cref="CursorArt"/> takes: a pixel of the pointer on screen, grown by
+    /// the size chosen and the zoom, shrunk with the recording inside a frame.
+    /// </summary>
+    public static double Unit(CursorStyle style, double pointerScale, ZoomView view, FrameLayout? layout) =>
+        style.Size * pointerScale * view.Scale * (layout is { } frame ? frame.Content.Width / (double)frame.Width : 1);
+
+    /// <summary>Where a point of the recording (shares of it) shows in a picture of <paramref name="width"/> by <paramref name="height"/>.</summary>
+    public static (double X, double Y) ToPicture(double x, double y, ZoomView view, FrameLayout? layout, double width, double height)
+    {
+        (double sx, double sy) = layout is { } frame ? frame.ToScene(x, y) : (x, y);
+        return ((sx - view.X) / view.Width * width, (sy - view.Y) / view.Height * height);
+    }
+
     /// <summary>Draws onto one picture of the edited video.</summary>
     /// <param name="picture">BGRA, <paramref name="width"/> by <paramref name="height"/>, the zoom and the frame already applied.</param>
     /// <param name="seconds">The picture's time in the edited video.</param>
@@ -65,14 +79,11 @@ internal sealed class CursorLayer
             return;
         }
 
-        // One unit of the drawings is a pixel of the pointer on screen; it grows with the size chosen, the zoom, and shrinks
-        // with the recording inside a frame.
-        double inFrame = layout is { } frame ? frame.Content.Width / (double)frame.Width : 1;
-        double unit = _style.Size * _pointerScale * view.Scale * inFrame;
-        PointF ToPicture(double x, double y)
+        double unit = Unit(_style, _pointerScale, view, layout);
+        PointF At(double x, double y)
         {
-            (double sx, double sy) = layout is { } frame ? frame.ToScene(x, y) : (x, y);
-            return new PointF((float)((sx - view.X) / view.Width * width), (float)((sy - view.Y) / view.Height * height));
+            (double px, double py) = ToPicture(x, y, view, layout, width, height);
+            return new PointF((float)px, (float)py);
         }
 
         GCHandle pin = GCHandle.Alloc(picture, GCHandleType.Pinned);
@@ -85,11 +96,11 @@ internal sealed class CursorLayer
 
             foreach (ClickMark click in clicks)
             {
-                DrawClick(graphics, ToPicture(click.X, click.Y), click.Progress, unit);
+                DrawClick(graphics, At(click.X, click.Y), click.Progress, unit);
             }
             if (pose is { } p)
             {
-                DrawPointer(graphics, ToPicture(p.X, p.Y), p, unit);
+                DrawPointer(graphics, At(p.X, p.Y), p, unit);
             }
         }
         finally

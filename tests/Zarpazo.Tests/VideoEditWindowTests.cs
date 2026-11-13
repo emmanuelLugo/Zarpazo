@@ -233,6 +233,80 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    // A copy of the sample with a pointer track: recorded without the pointer (as videos are now), or with it painted in.
+    private string WithTrack(bool pointerInPicture)
+    {
+        string video = Path.Combine(_folder, pointerInPicture ? "old.mp4" : "clean.mp4");
+        File.Copy(_samples.Silent, video);
+        var moves = Enumerable.Range(0, 90).Select(i => new CursorSample(i * 33, 40 + i * 2, 60 + i)).ToList();
+        new CursorTrack(320, 180, moves, [], pointerInPicture).Save(video);
+        return video;
+    }
+
+    [NeedsGpuFact]
+    public void A_video_recorded_without_the_pointer_shows_the_one_that_will_be_drawn_and_a_new_style_is_worth_saving()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        string video = WithTrack(pointerInPicture: false);
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(video);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                Assert.True(window.CursorBox.IsEnabled);
+                Assert.Equal(Visibility.Visible, window.PointerLayer.Visibility);
+                Assert.Equal(Visibility.Visible, window.PointerGlyph.Visibility);
+                Assert.Equal(3, window.CursorShapes.Children.Count);
+                Assert.False(window.SaveButton.IsEnabled, "nothing changed yet");
+
+                window.CursorTab.IsChecked = true;
+                Assert.Equal(Visibility.Visible, window.CursorPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.FramePanel.Visibility);
+                window.CursorSizeSlider.Value = 3;
+                Pump(() => false, 200);
+
+                Assert.Equal(3, window.PointerStyle.Size);
+                Assert.True(window.SaveButton.IsEnabled, "another pointer makes another video");
+                Assert.False(window.Timeline!.HasChanges, "the pointer is a style, not an edit to discard");
+                Shot(window, folder, "editor-cursor.png");
+
+                window.CursorBox.IsChecked = false;
+                window.CursorBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Assert.Equal(Visibility.Collapsed, window.PointerLayer.Visibility);
+                Assert.False(window.CursorOptions.IsEnabled);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [NeedsGpuFact]
+    public void A_video_with_the_pointer_painted_in_offers_no_other_and_says_why()
+    {
+        string video = WithTrack(pointerInPicture: true);
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(video);
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                Assert.False(window.CursorBox.IsEnabled);
+                Assert.Equal(Visibility.Visible, window.CursorNote.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.PointerLayer.Visibility);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A picture of the window for looking at it: only when the environment variable names a folder.
     [NeedsGpuFact]
     public void The_window_draws_the_timeline_with_pictures_of_the_video()
