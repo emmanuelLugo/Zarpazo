@@ -104,6 +104,7 @@ public partial class OverlayWindow : Window
         Toolbar.MouseEnter += (_, _) => HideSizeBubble();
         Toolbar.ToolChanged += OnToolChanged;
         Loaded += (_, _) => PlaceGroupBadge(); // the size is known by now
+        Loaded += (_, _) => UpdateCursor(Mouse.GetPosition(this)); // the cross shows before the mouse moves
         Screenshot.Source = screenshot;
         SelectionBorder.Data = Selection;
         Selection.Changed += (_, _) => UpdateSizeLabel(); // every way the area changes goes through the rectangle
@@ -961,7 +962,7 @@ public partial class OverlayWindow : Window
     {
         if (!IsSelectionFinal)
         {
-            Cursor = Cursors.Cross;
+            Cursor = CrossAt(point);
             return;
         }
 
@@ -974,7 +975,7 @@ public partial class OverlayWindow : Window
                 SelectionHandle.East or SelectionHandle.West => Cursors.SizeWE,
                 SelectionHandle.NorthWest or SelectionHandle.SouthEast => Cursors.SizeNWSE,
                 SelectionHandle.NorthEast or SelectionHandle.SouthWest => Cursors.SizeNESW,
-                _ => Cursors.Cross,
+                _ => CrossAt(point),
             },
             AnnotationTool.Move => Annotations.HandleAt(point, HandleTolerance) switch
             {
@@ -984,8 +985,15 @@ public partial class OverlayWindow : Window
                 SelectionHandle.NorthEast or SelectionHandle.SouthWest => Cursors.SizeNESW,
                 _ => Selection.Rect.Contains(point) && Annotations.HitTest(point, HitTolerance) != null ? Cursors.SizeAll : Cursors.Arrow,
             },
-            _ => Cursors.Cross,
+            _ => CrossAt(point),
         };
+    }
+
+    /// <summary>The outlined cross, sized for the scaling of the monitor under the point.</summary>
+    private Cursor CrossAt(Point point)
+    {
+        Point screen = PointToScreen(point);
+        return CrosshairCursor.For(WindowNative.ScreenScale(new Rectangle((int)screen.X, (int)screen.Y, 1, 1)));
     }
 
     private static IEnumerable<Rectangle> MonitorBounds => System.Windows.Forms.Screen.AllScreens.Select(screen => screen.Bounds);
