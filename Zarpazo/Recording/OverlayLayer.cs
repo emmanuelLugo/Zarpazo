@@ -34,7 +34,7 @@ internal sealed class OverlayLayer
 
     /// <summary>How many pixels a share of the video's height takes in a picture: grown by the zoom, shrunk with the recording inside a frame.</summary>
     public static double Pixels(double share, int height, ZoomView view, FrameLayout? layout) =>
-        share * height * view.Scale * (layout is { } frame ? frame.Content.Height / (double)frame.Height : 1);
+        share * (layout is { } frame ? frame.Content.Height : height) * view.Scale;
 
     /// <summary>Draws onto one picture of the edited video.</summary>
     /// <param name="picture">BGRA, <paramref name="width"/> by <paramref name="height"/>, the zoom and the frame already applied.</param>

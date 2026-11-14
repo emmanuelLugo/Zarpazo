@@ -744,6 +744,20 @@
                                 <Button x:Name="ExportResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
                                         Click="OnExportReset" ToolTip="Vuelve al tamaño y la calidad de la grabación" />
                             </Grid>
+                            <TextBlock Text="Formato" Style="{StaticResource SubHeader}" />
+                            <UniformGrid Columns="4">
+                                <RadioButton x:Name="AspectOriginalTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="Original" Click="OnAspectChanged"
+                                             ToolTip="La forma de la grabación" />
+                                <RadioButton x:Name="AspectWideTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="16:9" Click="OnAspectChanged"
+                                             ToolTip="Horizontal: videos, presentaciones" />
+                                <RadioButton x:Name="AspectTallTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="9:16" Click="OnAspectChanged"
+                                             ToolTip="Vertical: historias, reels, shorts" />
+                                <RadioButton x:Name="AspectSquareTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="1:1" Click="OnAspectChanged"
+                                             Margin="0" ToolTip="Cuadrado: publicaciones" />
+                            </UniformGrid>
+                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       Text="Con otro formato la grabación queda en el centro, sobre el fondo del Marco. Es de este video y se puede deshacer." />
+
                             <TextBlock Text="Tamaño" Style="{StaticResource SubHeader}" />
                             <UniformGrid Columns="2">
                                 <RadioButton x:Name="ResolutionOriginalTile" Style="{StaticResource WordTile}" GroupName="exportResolution" Content="Original" Click="OnExportChanged" Margin="0,0,6,6"

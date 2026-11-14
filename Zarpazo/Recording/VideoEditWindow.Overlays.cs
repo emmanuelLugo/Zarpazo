@@ -88,7 +88,7 @@ public partial class VideoEditWindow
     }
 
     // How much bigger than in the recording the picture shows things now: the zoom, and the frame that shrinks the recording.
-    private double ShownScale => _shownView.Scale * (_layout is { } frame ? frame.Content.Width / (double)frame.Width : 1);
+    private double ShownScale => _shownView.Scale * (_layout?.ContentScale ?? 1);
 
     // ---------- the preview
 
@@ -125,7 +125,7 @@ public partial class VideoEditWindow
     {
         Point from = InPicture(overlay.X, overlay.Y);
         Point to = InPicture(overlay.X2, overlay.Y2);
-        double radius = Stage.Height * 0.065; // about as strong as OverlayLayer's, which this preview stands in for
+        double radius = ContentHost.Height * 0.065; // about as strong as OverlayLayer's, which this preview stands in for
         double pad = radius; // the blur reads past the rectangle's sides, so they do not fade to nothing
         var rectangle = new Rectangle
         {
@@ -150,7 +150,7 @@ public partial class VideoEditWindow
 
     private FrameworkElement TextShape(VideoOverlay overlay)
     {
-        double size = Math.Max(6, overlay.Extent * Stage.Height);
+        double size = Math.Max(6, overlay.Extent * ContentHost.Height);
         var text = new TextBlock
         {
             Text = overlay.Text,
@@ -172,7 +172,7 @@ public partial class VideoEditWindow
         var container = new Canvas();
         Point tail = InPicture(overlay.X, overlay.Y);
         Point tip = InPicture(overlay.X2, overlay.Y2);
-        double thickness = Math.Max(1.5, overlay.Extent * Stage.Height);
+        double thickness = Math.Max(1.5, overlay.Extent * ContentHost.Height);
         if (ArrowShape.For((tail.X, tail.Y), (tip.X, tip.Y), thickness) is not { } shape)
         {
             return container;
@@ -649,7 +649,7 @@ public partial class VideoEditWindow
             if (overlay.Kind == OverlayKind.Arrow)
             {
                 Point tail = RecordingToStage(overlay.X, overlay.Y), tip = RecordingToStage(overlay.X2, overlay.Y2);
-                double reach = Math.Max(slack * 2, overlay.Extent * Stage.Height * ShownScale / 2 + slack);
+                double reach = Math.Max(slack * 2, overlay.Extent * ContentHost.Height * ShownScale / 2 + slack);
                 over = DistanceToSegment(point, tail, tip) <= reach;
             }
             else

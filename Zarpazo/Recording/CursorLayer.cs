@@ -72,7 +72,7 @@ internal sealed class CursorLayer
     /// the size chosen and the zoom, shrunk with the recording inside a frame.
     /// </summary>
     public static double Unit(CursorStyle style, double pointerScale, ZoomView view, FrameLayout? layout) =>
-        style.Size * pointerScale * view.Scale * (layout is { } frame ? frame.Content.Width / (double)frame.Width : 1);
+        style.Size * pointerScale * view.Scale * (layout?.ContentScale ?? 1);
 
     /// <summary>Where a point of the recording (shares of it, or of its crop) shows in a picture of <paramref name="width"/> by <paramref name="height"/>.</summary>
     public static (double X, double Y) ToPicture(double x, double y, ZoomView view, FrameLayout? layout, double width, double height)

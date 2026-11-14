@@ -32,8 +32,11 @@ internal static class ZoomRenderer
     /// <param name="overlays">The blurs, texts and arrows to draw over every picture, under the pointer; null for none.</param>
     /// <param name="output">The size, quality and frame rate to write; null for the recording's own (see <see cref="VideoExportOptions"/>).
     /// Everything above is worked out at the picture's own size, and the result is made smaller at the end.</param>
+    /// <param name="aspect">The video's shape (see <see cref="VideoAspect"/>); another than the cropped picture's puts it in the middle
+    /// of a canvas of that shape, on the frame's background (with no frame chosen, only the background).</param>
     public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null,
-        CursorLayer? cursor = null, VideoCrop crop = default, PlayClock? clock = null, OverlayLayer? overlays = null, VideoExportOptions? output = null)
+        CursorLayer? cursor = null, VideoCrop crop = default, PlayClock? clock = null, OverlayLayer? overlays = null, VideoExportOptions? output = null,
+        VideoAspect aspect = VideoAspect.Original)
     {
         output ??= VideoExportOptions.Default;
         StorageFile file = await StorageFile.GetFileFromPathAsync(source);
@@ -42,8 +45,9 @@ internal static class ZoomRenderer
         int sourceWidth = (int)profile.Video.Width & ~1;
         int sourceHeight = (int)profile.Video.Height & ~1;
         CropArea area = CropArea.For(crop, sourceWidth, sourceHeight);
-        int width = area.Width;
-        int height = area.Height;
+        // The scene is the video: the cropped picture's own size, or a canvas of another shape that it sits in.
+        (int width, int height) = aspect.SceneSize(area.Width, area.Height);
+        frame = (frame ?? VideoFrameStyle.Default).ForScene(aspect.IsLetterboxed(area.Width, area.Height));
         double recordedRate = VideoFrameReader.RecordedFrameRate(source)
             ?? profile.Video.FrameRate.Numerator / (double)Math.Max(1u, profile.Video.FrameRate.Denominator);
         // Recordings stamp their pictures in whole milliseconds (gaps of 33 and 34 ms make 29.4), so the rate is taken as the
@@ -64,7 +68,7 @@ internal static class ZoomRenderer
         FrameLayout? layout = null;
         if (frame is { Enabled: true })
         {
-            layout = FrameLayout.For(frame, width, height);
+            layout = FrameLayout.For(frame, width, height, area.Width, area.Height);
             compositor = new FrameCompositor(layout.Value, FrameBackdrop.Render(frame, layout.Value), sourceWidth, sourceHeight, area.Pixels);
         }
 

@@ -27,24 +27,31 @@ internal static class VideoExporter
     /// <param name="overlays">The blurs, texts and arrows drawn over the video.</param>
     /// <param name="connectZooms">Whether zooms close to each other are joined (see <see cref="ZoomCamera"/>).</param>
     /// <param name="output">The size, quality and frame rate to write; anything but the default makes the video be drawn again.</param>
+    /// <param name="aspect">The video's shape; another than the cropped picture's puts it on the frame's background, which shows
+    /// even when no frame was chosen (see <see cref="VideoFrameStyle.ForScene"/>).</param>
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
         double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null,
         VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null, bool connectZooms = true,
-        VideoExportOptions? output = null)
+        VideoExportOptions? output = null, VideoAspect aspect = VideoAspect.Original)
     {
         output ??= VideoExportOptions.Default;
         bool framed = frame is { Enabled: true };
+        bool letterboxed = false;
         CropArea? area = null;
-        if (framed || !crop.IsNone)
+        if (framed || !crop.IsNone || aspect != VideoAspect.Original)
         {
             // The zooms and the pointer look at points of the recording: into the crop first (see CropArea), then, in a
             // frame, into the scene the camera moves over.
             MediaEncodingProfile size = await MediaEncodingProfile.CreateFromFileAsync(await StorageFile.GetFileFromPathAsync(source));
             area = CropArea.For(crop, (int)size.Video.Width & ~1, (int)size.Video.Height & ~1);
             zooms = area.Value.ToCrop(zooms);
+            letterboxed = aspect.IsLetterboxed(area.Value.Width, area.Value.Height);
+            frame = (frame ?? VideoFrameStyle.Default).ForScene(letterboxed);
+            framed = frame.Enabled;
             if (framed)
             {
-                zooms = FrameLayout.For(frame!, area.Value.Width, area.Value.Height).ToScene(zooms);
+                (int sceneWidth, int sceneHeight) = aspect.SceneSize(area.Value.Width, area.Value.Height);
+                zooms = FrameLayout.For(frame, sceneWidth, sceneHeight, area.Value.Width, area.Value.Height).ToScene(zooms);
             }
         }
 
@@ -54,7 +61,7 @@ internal static class VideoExporter
         bool cropped = area is { IsWhole: false };
         // Windows' editing engine cannot change speed: retimed pieces are joined as recorded and the renderer plays them faster or slower.
         bool retimed = segments.Any(segment => segment.IsRetimed);
-        if (camera.IsEmpty && !framed && pointer == null && drawn == null && !cropped && !retimed && output.IsDefault)
+        if (camera.IsEmpty && !framed && pointer == null && drawn == null && !cropped && !retimed && !letterboxed && output.IsDefault)
         {
             await ExportAsync(source, target, segments, progress);
             return;
@@ -63,7 +70,7 @@ internal static class VideoExporter
         bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].IsSilent;
         if (whole)
         {
-            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn, output: output);
+            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn, output: output, aspect: aspect);
             return;
         }
 
@@ -73,7 +80,7 @@ internal static class VideoExporter
         {
             await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
             await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)), pointer, crop,
-                retimed ? new PlayClock(segments) : null, drawn, output);
+                retimed ? new PlayClock(segments) : null, drawn, output, aspect);
         }
         finally
         {

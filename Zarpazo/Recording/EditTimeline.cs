@@ -17,12 +17,14 @@ internal sealed class EditTimeline
     private VideoCrop _crop = VideoCrop.None;
     private VideoLook _look = VideoLook.Default;
     private VideoOverlay[] _overlays = [];
+    private VideoAspect _aspect = VideoAspect.Original;
     // What the edit opened with, to tell whether anything changed: the whole recording, the automatic zooms, no crop and no
     // overlays; or, for a project opened again, what it was saved with.
     private VideoSegment[] _startSegments;
     private ZoomRegion[] _startZooms = [];
     private VideoCrop _startCrop = VideoCrop.None;
     private VideoOverlay[] _startOverlays = [];
+    private VideoAspect _startAspect = VideoAspect.Original;
     private bool _inGesture;
     private bool _gestureSaved;
 
@@ -50,6 +52,9 @@ internal sealed class EditTimeline
     /// <summary>How much of each side of the picture is cut away; <see cref="VideoCrop.None"/> keeps it whole.</summary>
     public VideoCrop Crop => _crop;
 
+    /// <summary>The shape of the finished video; <see cref="VideoAspect.Original"/> keeps the recording's (cropped) own.</summary>
+    public VideoAspect Aspect => _aspect;
+
     /// <summary>
     /// The frame, pointer and zoom style chosen. Changing it can be undone like the rest, so applying a preset is one step
     /// back; but it is a style, remembered for the next video, so it never counts as a change to discard on closing.
@@ -69,7 +74,7 @@ internal sealed class EditTimeline
 
     /// <summary>True when the edit is no longer as it opened: pieces, zooms, crop or overlays other than the ones it started with.</summary>
     public bool HasChanges => !_segments.SequenceEqual(_startSegments) || !_zooms.SequenceEqual(_startZooms) || _crop != _startCrop
-        || !_overlays.SequenceEqual(_startOverlays);
+        || !_overlays.SequenceEqual(_startOverlays) || _aspect != _startAspect;
 
     /// <summary>Where in the edited video a piece begins.</summary>
     public double StartOf(int index)
@@ -273,7 +278,7 @@ internal sealed class EditTimeline
 
     private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop) => Apply(segments, zooms, crop, _look);
 
-    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop, VideoLook look, VideoOverlay[]? overlays = null)
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop, VideoLook look, VideoOverlay[]? overlays = null, VideoAspect? aspect = null)
     {
         if (!_inGesture || !_gestureSaved)
         {
@@ -286,13 +291,15 @@ internal sealed class EditTimeline
         _crop = crop;
         _look = look;
         _overlays = overlays ?? _overlays;
+        _aspect = aspect ?? _aspect;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private Snapshot Current => new(_segments, _zooms, _crop, _look, _overlays);
+    private Snapshot Current => new(_segments, _zooms, _crop, _look, _overlays, _aspect);
 
     private void Restore(Snapshot snapshot) =>
-        (_segments, _zooms, _crop, _look, _overlays) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop, snapshot.Look, snapshot.Overlays);
+        (_segments, _zooms, _crop, _look, _overlays, _aspect) =
+            (snapshot.Segments, snapshot.Zooms, snapshot.Crop, snapshot.Look, snapshot.Overlays, snapshot.Aspect);
 
     // ---- Project ----
 
@@ -301,7 +308,8 @@ internal sealed class EditTimeline
     /// the times kept inside this recording. It is where the edit starts, so there is nothing to undo and no change to discard.
     /// A piece that does not fit is left out; with none left the edit starts as the whole recording.
     /// </summary>
-    public void Load(IEnumerable<VideoSegment> segments, IEnumerable<ZoomRegion> zooms, VideoCrop crop, IEnumerable<VideoOverlay> overlays, VideoLook look)
+    public void Load(IEnumerable<VideoSegment> segments, IEnumerable<ZoomRegion> zooms, VideoCrop crop, IEnumerable<VideoOverlay> overlays, VideoLook look,
+        VideoAspect aspect = VideoAspect.Original)
     {
         VideoSegment[] kept = [.. segments
             .Where(segment => double.IsFinite(segment.Start) && double.IsFinite(segment.End))
@@ -320,6 +328,7 @@ internal sealed class EditTimeline
             .Select(overlay => FitInTime(overlay, out VideoOverlay fitted) ? (VideoOverlay?)fitted : null)
             .OfType<VideoOverlay>()];
         _look = look.Tidied();
+        _aspect = _startAspect = Enum.IsDefined(aspect) ? aspect : VideoAspect.Original;
         _undo.Clear();
         _redo.Clear();
         Changed?.Invoke(this, EventArgs.Empty);
@@ -367,6 +376,19 @@ internal sealed class EditTimeline
             return false;
         }
         Apply(_segments, _zooms, crop);
+        return true;
+    }
+
+    // ---- Aspect ----
+
+    /// <summary>Changes the shape of the finished video, as one step to undo. Returns false when nothing changed.</summary>
+    public bool SetAspect(VideoAspect aspect)
+    {
+        if (aspect == _aspect || !Enum.IsDefined(aspect))
+        {
+            return false;
+        }
+        Apply(_segments, _zooms, _crop, _look, aspect: aspect);
         return true;
     }
 
@@ -605,5 +627,5 @@ internal sealed class EditTimeline
     }
 
     /// <summary>Everything that can be undone, as it was at one moment.</summary>
-    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop, VideoLook Look, VideoOverlay[] Overlays);
+    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop, VideoLook Look, VideoOverlay[] Overlays, VideoAspect Aspect);
 }

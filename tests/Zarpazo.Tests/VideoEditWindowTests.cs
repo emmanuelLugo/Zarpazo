@@ -489,6 +489,55 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [Fact]
+    public void Another_shape_makes_the_stage_a_canvas_with_the_recording_in_the_middle_and_undo_brings_the_old_one_back()
+    {
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.Silent);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                window.ExportTab.IsChecked = true;
+                Pump(() => false, 200);
+                double width = window.Stage.Width, height = window.Stage.Height;
+                Assert.True(window.AspectOriginalTile.IsChecked);
+                Assert.False(window.NeedsRendering);
+
+                window.AspectTallTile.IsChecked = true;
+                window.AspectTallTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => Math.Abs(window.Stage.Height - height) > 1, 3000);
+
+                Assert.Equal(VideoAspect.Tall, window.Timeline!.Aspect);
+                Assert.Equal(9 / 16.0, window.Stage.Width / window.Stage.Height, 2); // the stage is the video: tall now
+                Assert.Equal(width, window.ContentHost.Width); // the recording keeps its own size inside it
+                Assert.Equal(Visibility.Visible, window.Backdrop.Visibility); // the background shows with no frame chosen
+                Assert.True(window.NeedsRendering, "another shape is drawn again when saved");
+                Assert.True(window.Timeline.HasChanges);
+                Assert.Contains("9:16", window.KeptText.Text);
+                Assert.Contains("×", window.ExportSizeText.Text);
+                Shot(window, Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS"), "editor-format.png");
+
+                window.Timeline.Undo();
+                Pump(() => Math.Abs(window.Stage.Height - height) < 1, 3000);
+                Assert.Equal((width, height), (window.Stage.Width, window.Stage.Height));
+                Assert.True(window.AspectOriginalTile.IsChecked); // the panel follows undo
+                Assert.False(window.NeedsRendering);
+                Assert.Equal(Visibility.Collapsed, window.Backdrop.Visibility);
+            }
+            finally
+            {
+                while (window.Timeline?.CanUndo == true)
+                {
+                    window.Timeline.Undo();
+                }
+                window.Close();
+            }
+        });
+    }
+
     [NeedsGpuFact]
     public void A_preset_brings_back_frame_cursor_and_zoom_style_at_once_and_one_undo_takes_it_away()
     {

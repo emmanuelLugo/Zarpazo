@@ -19,6 +19,13 @@ internal sealed record VideoFrameStyle(bool Enabled, string Background, double P
 
     public static VideoFrameStyle Default { get; } = new(false, BeautifyBackground.Default.Key, 0.07, 0.012, 0.6);
 
+    /// <summary>
+    /// The style to draw a video of another shape than its recording with: the recording sits on the background whether the
+    /// frame was switched on or not, so with it off the background is there but nothing else (no room, corners or shadow).
+    /// </summary>
+    public VideoFrameStyle ForScene(bool letterboxed) =>
+        letterboxed && !Enabled ? this with { Enabled = true, Padding = 0, Radius = 0, Shadow = 0 } : this;
+
     /// <summary>The same style with its values brought inside what is offered (a hand-edited settings file).</summary>
     public VideoFrameStyle Tidied() => this with
     {

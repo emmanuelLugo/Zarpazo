@@ -29,6 +29,9 @@ internal sealed class VideoProject
 
     public CropData Crop { get; set; } = new(0, 0, 0, 0);
 
+    /// <summary>The <see cref="VideoAspect"/> as a number; a file without it (kept before the formats existed) is the original shape.</summary>
+    public int Aspect { get; set; }
+
     public VideoLook? Look { get; set; }
 
     public sealed record SegmentData(double Start, double End, bool Muted, double Speed);
@@ -50,8 +53,11 @@ internal sealed class VideoProject
         Overlays = [.. timeline.Overlays.Select(overlay => new OverlayData((int)overlay.Kind, overlay.Start, overlay.End, overlay.X, overlay.Y,
             overlay.X2, overlay.Y2, overlay.Text, overlay.Ink.A == 0 ? null : overlay.Ink.ToString(), overlay.Size))],
         Crop = new CropData(timeline.Crop.Left, timeline.Crop.Top, timeline.Crop.Right, timeline.Crop.Bottom),
+        Aspect = (int)timeline.Aspect,
         Look = look,
     };
+
+    public VideoAspect ToAspect() => Enum.IsDefined((VideoAspect)Aspect) ? (VideoAspect)Aspect : VideoAspect.Original;
 
     public IReadOnlyList<VideoSegment> ToSegments() =>
         [.. Segments.Select(segment => new VideoSegment(segment.Start, segment.End, segment.Muted, segment.Speed))];

@@ -72,6 +72,7 @@ public partial class VideoEditWindow : Window
     private CropArea? _area; // the crop the preview shows; null while it shows the whole recording
     private bool _showingCrop;
     private VideoCrop? _shownCrop; // the crop the scene was last laid out for
+    private VideoAspect _shownAspect; // and the shape
     private CropEdges _cropGrab; // the sides of the crop's rectangle being dragged on the picture
     private VideoCrop _cropGrabStart;
     private Point _cropGrabFrom;
@@ -202,7 +203,7 @@ public partial class VideoEditWindow : Window
             if (_project != null)
             {
                 // Carrying on from a saved edit: it is where this one starts, with its own look.
-                _timeline.Load(_project.ToSegments(), _project.ToZooms(), _project.ToCrop(), _project.ToOverlays(), Look);
+                _timeline.Load(_project.ToSegments(), _project.ToZooms(), _project.ToCrop(), _project.ToOverlays(), Look, _project.ToAspect());
             }
             else
             {
@@ -224,6 +225,8 @@ public partial class VideoEditWindow : Window
             ShowCursorChoices();
             ShowFrameValues(); // the corners in pixels of this video
             ShowCropChoices();
+            _shownAspect = _timeline.Aspect;
+            ShowAspect();
             ApplyFrame();
             View.SelectedIndex = 0;
             SetPlayhead(0);
@@ -310,6 +313,12 @@ public partial class VideoEditWindow : Window
         {
             ShowCropChoices(); // an undone crop puts its rows back
             ScheduleScene();
+        }
+        if (_timeline.Aspect != _shownAspect)
+        {
+            _shownAspect = _timeline.Aspect;
+            ShowAspect();
+            ScheduleScene(); // another shape: the stage takes the new size
         }
         if (overlaysChanged)
         {
@@ -905,6 +914,7 @@ public partial class VideoEditWindow : Window
         }
         string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "")
             + (_timeline.Crop.IsNone ? "" : " · recortado")
+            + (_timeline.Aspect == VideoAspect.Original ? "" : $" · {_timeline.Aspect.Label()}")
             + (_timeline.Overlays.Count switch { 0 => "", 1 => " · 1 capa", var n => $" · {n} capas" });
 
         bool muted = hasSelection && _timeline.Segments[selected].Muted;
@@ -930,7 +940,7 @@ public partial class VideoEditWindow : Window
         {
             KeptText.Text = _timeline.IsEdited
                 ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)}) · {count} {(count == 1 ? "parte" : "partes")}{zoomText}"
-                : zooms > 0 || _frame.Enabled || !_timeline.Crop.IsNone
+                : zooms > 0 || _frame.Enabled || !_timeline.Crop.IsNone || _timeline.Aspect != VideoAspect.Original
                     ? $"Sin cortes{zoomText}. Divide con S, elimina con Supr; arrastra un zoom para moverlo o sus bordes para alargarlo."
                     : "Sin cambios. Divide con S, elimina con Supr y arrastra el título de una parte para cambiar su orden.";
         }
@@ -943,13 +953,16 @@ public partial class VideoEditWindow : Window
     // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, a pointer to draw,
     // or a crop. Otherwise the finished video is the recording itself.
     internal bool NeedsRendering => _timeline != null
-        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _timeline.Overlays.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone || !_export.IsDefault
+        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _timeline.Overlays.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone || !_export.IsDefault || Letterboxed
             || CursorLayer.For(_track, _cursor, _timeline.Segments) != null);
+
+    // The video is another shape than its picture, so the picture goes on a background.
+    private bool Letterboxed => _timeline != null && OutputArea() is { } area && _timeline.Aspect.IsLetterboxed(area.Width, area.Height);
 
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}" : "", string.Join(";", _timeline.Overlays), _export);
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}" : "", string.Join(";", _timeline.Overlays), _export, _timeline.Aspect);
 
     private void SetBusy(bool busy)
     {
@@ -984,7 +997,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect, _export);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect, _export, _timeline.Aspect);
                 }
                 else
                 {
@@ -1513,9 +1526,16 @@ public partial class VideoEditWindow : Window
         _shownCrop = _timeline?.Crop;
         CropArea area = cropping ? CropArea.For(VideoCrop.None, _sourceWidth, _sourceHeight) : OutputArea()!.Value;
         _area = area.IsWhole ? null : area;
+        // The stage is the finished video: the recording's own size (the crop's) or, in another shape, a canvas it sits in.
+        // The content keeps the recording's size and is moved and shrunk into its place.
         double width = area.Width, height = area.Height;
-        Stage.Width = Scene.Width = ContentHost.Width = width;
-        Stage.Height = Scene.Height = ContentHost.Height = height;
+        VideoAspect aspect = cropping ? VideoAspect.Original : _timeline?.Aspect ?? VideoAspect.Original;
+        (int sceneWidth, int sceneHeight) = aspect.SceneSize(area.Width, area.Height);
+        VideoFrameStyle frame = _frame.ForScene(aspect.IsLetterboxed(area.Width, area.Height));
+        Stage.Width = Scene.Width = sceneWidth;
+        Stage.Height = Scene.Height = sceneHeight;
+        ContentHost.Width = width;
+        ContentHost.Height = height;
         Canvas.SetLeft(Player, -area.Pixels.X);
         Canvas.SetTop(Player, -area.Pixels.Y);
         Geometry? cropClip = area.IsWhole ? null : new RectangleGeometry(new Rect(0, 0, width, height));
@@ -1527,11 +1547,11 @@ public partial class VideoEditWindow : Window
         }
         UpdatePointerVisibility();
 
-        if (_frame.Enabled && !cropping)
+        if (frame.Enabled && !cropping)
         {
             // The recording keeps its size and is moved and shrunk into its place: a transform, which the graphics card
             // applies, rather than a new size for the player.
-            FrameLayout layout = FrameLayout.For(_frame, (int)width, (int)height);
+            FrameLayout layout = FrameLayout.For(frame, sceneWidth, sceneHeight, (int)width, (int)height);
             _layout = layout;
             Int32Rect content = layout.Content;
             double scaleX = content.Width / width, scaleY = content.Height / height;
@@ -1539,17 +1559,17 @@ public partial class VideoEditWindow : Window
             double radius = Math.Min(layout.RadiusPixels, Math.Min(content.Width, content.Height) / 2);
             ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY) : cropClip;
 
-            if (!ReferenceEquals(BackdropFill.Tag, _frame.Background))
+            if (!ReferenceEquals(BackdropFill.Tag, frame.Background))
             {
-                BackdropFill.Background = Output.BeautifyBackground.Find(_frame.Background).ToBrush();
-                BackdropFill.Tag = _frame.Background;
+                BackdropFill.Background = Output.BeautifyBackground.Find(frame.Background).ToBrush();
+                BackdropFill.Tag = frame.Background;
             }
             ShadowCard.Margin = new Thickness(content.X, content.Y, 0, 0);
             ShadowCard.Width = content.Width;
             ShadowCard.Height = content.Height;
             ShadowCard.CornerRadius = new CornerRadius(radius);
-            ShadowCard.Visibility = _frame.Shadow > 0 ? Visibility.Visible : Visibility.Collapsed;
-            ShadowCard.Effect = _frame.Shadow > 0 ? FrameBackdrop.Shadow(_frame, layout, 1) : null;
+            ShadowCard.Visibility = frame.Shadow > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ShadowCard.Effect = frame.Shadow > 0 ? FrameBackdrop.Shadow(frame, layout, 1) : null;
             Backdrop.Visibility = Visibility.Visible;
         }
         else
@@ -1633,6 +1653,32 @@ public partial class VideoEditWindow : Window
         _showingExport = false;
     }
 
+    // The shape of the video belongs to the edit (undone with it), so it is shown from the timeline, not kept in the settings.
+    private void ShowAspect()
+    {
+        VideoAspect aspect = _timeline?.Aspect ?? VideoAspect.Original;
+        _showingExport = true;
+        AspectOriginalTile.IsChecked = aspect == VideoAspect.Original;
+        AspectWideTile.IsChecked = aspect == VideoAspect.Wide;
+        AspectTallTile.IsChecked = aspect == VideoAspect.Tall;
+        AspectSquareTile.IsChecked = aspect == VideoAspect.Square;
+        _showingExport = false;
+        ShowExportSize();
+    }
+
+    private void OnAspectChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || _showingExport || !CanEdit)
+        {
+            return;
+        }
+
+        _timeline!.SetAspect(AspectWideTile.IsChecked == true ? VideoAspect.Wide
+            : AspectTallTile.IsChecked == true ? VideoAspect.Tall
+            : AspectSquareTile.IsChecked == true ? VideoAspect.Square
+            : VideoAspect.Original);
+    }
+
     private void ShowExportSize()
     {
         if (OutputArea() is not { } area)
@@ -1640,10 +1686,12 @@ public partial class VideoEditWindow : Window
             ExportSizeText.Text = "";
             return;
         }
-        (int width, int height) = _export.SizeFor(area.Width, area.Height);
+        (int sceneWidth, int sceneHeight) = (_timeline?.Aspect ?? VideoAspect.Original).SceneSize(area.Width, area.Height);
+        (int width, int height) = _export.SizeFor(sceneWidth, sceneHeight);
+        bool reshaped = (sceneWidth, sceneHeight) != (area.Width, area.Height);
         ExportSizeText.Text = _export.Resolution == ExportResolution.Original
-            ? $"Saldrá de {width} × {height} px, el tamaño de la grabación"
-            : $"Saldrá de {width} × {height} px (la grabación es de {area.Width} × {area.Height})";
+            ? reshaped ? $"Saldrá de {width} × {height} px" : $"Saldrá de {width} × {height} px, el tamaño de la grabación"
+            : $"Saldrá de {width} × {height} px (sin reducir sería de {sceneWidth} × {sceneHeight})";
     }
 
     private void OnExportChanged(object sender, RoutedEventArgs e)
