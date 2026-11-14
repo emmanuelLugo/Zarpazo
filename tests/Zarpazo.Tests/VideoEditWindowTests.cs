@@ -384,6 +384,8 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 window.FrameBorderColorButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 200);
                 Assert.Equal("#00C8FF", window.Look.Frame.BorderColor);
+                window.FrameBarToneRow.BringIntoView(); // the bar's choices are at the end of a long panel
+                Pump(() => false, 200);
                 Shot(window, folder, "editor-frame-bar.png");
 
                 window.FrameBarNone.IsChecked = true;

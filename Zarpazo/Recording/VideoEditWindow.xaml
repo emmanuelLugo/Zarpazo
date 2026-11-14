@@ -590,25 +590,59 @@
                                 </Grid>
 
                                 <TextBlock Text="BARRA DE VENTANA" Style="{StaticResource SubHeader}" />
-                                <WrapPanel Margin="0,0,0,6">
-                                    <RadioButton x:Name="FrameBarNone" Style="{StaticResource Tile}" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Sin barra: solo el video">
-                                        <TextBlock Text="Ninguna" FontSize="12" />
+                                <!-- Each choice shows a small window with that bar, so it can be told at a glance. -->
+                                <UniformGrid Columns="3" Margin="0,0,0,8">
+                                    <RadioButton x:Name="FrameBarNone" Style="{StaticResource Tile}" Width="Auto" Height="62" Margin="0,0,6,0" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Sin barra: solo el video">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Grid Width="40" Height="26" Margin="0,0,0,5">
+                                                <Border CornerRadius="4" Background="#55808080" />
+                                            </Grid>
+                                            <TextBlock Text="Ninguna" FontSize="11" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
+                                        </StackPanel>
                                     </RadioButton>
-                                    <RadioButton x:Name="FrameBarMac" Style="{StaticResource Tile}" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Una barra con tres botones redondos a la izquierda, como en macOS">
-                                        <TextBlock Text="Mac" FontSize="12" />
+                                    <RadioButton x:Name="FrameBarMac" Style="{StaticResource Tile}" Width="Auto" Height="62" Margin="0,0,6,0" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Una barra con tres botones redondos a la izquierda, como en macOS">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Grid Width="40" Height="26" Margin="0,0,0,5">
+                                                <Border CornerRadius="4" Background="#55808080" />
+                                                <Border CornerRadius="4,4,0,0" Height="8" VerticalAlignment="Top" Background="#2B2D31" />
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="4,2.5,0,0">
+                                                    <Ellipse Width="3" Height="3" Fill="#FF5F57" Margin="0,0,2,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#FEBC2E" Margin="0,0,2,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#28C840" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Text="Mac" FontSize="11" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
+                                        </StackPanel>
                                     </RadioButton>
-                                    <RadioButton x:Name="FrameBarWindows" Style="{StaticResource Tile}" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Una barra con minimizar, maximizar y cerrar a la derecha, como en Windows">
-                                        <TextBlock Text="Windows" FontSize="12" />
+                                    <RadioButton x:Name="FrameBarWindows" Style="{StaticResource Tile}" Width="Auto" Height="62" Margin="0" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Una barra con minimizar, maximizar y cerrar a la derecha, como en Windows">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Grid Width="40" Height="26" Margin="0,0,0,5">
+                                                <Border CornerRadius="4" Background="#55808080" />
+                                                <Border CornerRadius="4,4,0,0" Height="8" VerticalAlignment="Top" Background="#2B2D31" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2.5,4,0">
+                                                    <Rectangle Width="3" Height="1" Fill="#A8ADB4" Margin="0,1.5,2,0" />
+                                                    <Rectangle Width="3" Height="3" Stroke="#A8ADB4" StrokeThickness="0.6" Margin="0,0,2,0" />
+                                                    <Path Data="M0,0 L3,3 M3,0 L0,3" Stroke="#A8ADB4" StrokeThickness="0.6" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Text="Windows" FontSize="11" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
+                                        </StackPanel>
                                     </RadioButton>
-                                </WrapPanel>
-                                <WrapPanel x:Name="FrameBarToneRow" Margin="0,0,0,8">
-                                    <RadioButton x:Name="FrameBarDark" Style="{StaticResource Tile}" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos oscuros">
-                                        <TextBlock Text="Oscura" FontSize="12" />
+                                </UniformGrid>
+                                <UniformGrid x:Name="FrameBarToneRow" Columns="2" Margin="0,0,0,8">
+                                    <RadioButton x:Name="FrameBarDark" Style="{StaticResource Tile}" Width="Auto" Height="34" Margin="0,0,6,0" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos oscuros">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Ellipse Width="12" Height="12" Fill="#2B2D31" Stroke="#80808080" StrokeThickness="1" Margin="0,0,7,0" />
+                                            <TextBlock Text="Oscura" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
+                                        </StackPanel>
                                     </RadioButton>
-                                    <RadioButton x:Name="FrameBarLight" Style="{StaticResource Tile}" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos claros">
-                                        <TextBlock Text="Clara" FontSize="12" />
+                                    <RadioButton x:Name="FrameBarLight" Style="{StaticResource Tile}" Width="Auto" Height="34" Margin="0" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos claros">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Ellipse Width="12" Height="12" Fill="#F1F3F4" Stroke="#80808080" StrokeThickness="1" Margin="0,0,7,0" />
+                                            <TextBlock Text="Clara" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
+                                        </StackPanel>
                                     </RadioButton>
-                                </WrapPanel>
+                                </UniformGrid>
                             </StackPanel>
                         </StackPanel>
 
