@@ -159,6 +159,11 @@ public sealed class VideoEditWindowOverlayTests : IDisposable
             }
             finally
             {
+                // Closing with changes asks whether to throw them away: a failed check above would leave that question open for ever.
+                while (window.Timeline?.CanUndo == true)
+                {
+                    window.Timeline.Undo();
+                }
                 window.Close();
             }
         });
