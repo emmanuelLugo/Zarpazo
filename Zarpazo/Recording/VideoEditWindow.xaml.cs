@@ -94,6 +94,7 @@ public partial class VideoEditWindow : Window
         };
         BuildFrameChoices();
         BuildCursorChoices();
+        BuildOverlayInks();
         ShowZoomStyle();
         BuildPresetRows();
         _ready = true;
@@ -185,6 +186,7 @@ public partial class VideoEditWindow : Window
             _timeline.StartWithLook(Look); // the style remembered from the last video: undo goes back to it, not further
             View.Timeline = _timeline;
             Lane.Timeline = _timeline; // before the window listens, so the zooms are placed again before the window looks at them
+            OverlayLane.Timeline = _timeline;
             _timeline.Changed += OnTimelineChanged;
             _track = CursorTrack.Load(_source);
             if (_track != null)
@@ -269,8 +271,10 @@ public partial class VideoEditWindow : Window
         // pieces and the zooms are the same lists as before, that is all, and the video playing is not stopped.
         bool piecesChanged = !ReferenceEquals(_timeline!.Segments, _seenSegments);
         bool zoomsChanged = !ReferenceEquals(_timeline.Zooms, _seenZooms);
+        bool overlaysChanged = !ReferenceEquals(_timeline.Overlays, _seenOverlays);
         _seenSegments = _timeline.Segments;
         _seenZooms = _timeline.Zooms;
+        _seenOverlays = _timeline.Overlays;
         if (_timeline.Look != Look)
         {
             TakeLook(_timeline.Look, _lookFromControls);
@@ -280,8 +284,17 @@ public partial class VideoEditWindow : Window
             ShowCropChoices(); // an undone crop puts its rows back
             ScheduleScene();
         }
+        if (overlaysChanged)
+        {
+            RebuildOverlayShapes();
+            ShowOverlayDetails();
+        }
         if (!piecesChanged && !zoomsChanged)
         {
+            if (overlaysChanged)
+            {
+                ApplyZoomPreview();
+            }
             RefreshState();
             return;
         }
@@ -290,8 +303,8 @@ public partial class VideoEditWindow : Window
         StopPlayback();
         View.SelectedIndex = Math.Clamp(View.SelectedIndex, 0, _timeline!.Segments.Count - 1);
         _playhead = Math.Clamp(_playhead, 0, _timeline.Duration);
-        View.Playhead = Lane.Playhead = _playhead;
-        if (!View.IsDragging && !Lane.IsDragging)
+        View.Playhead = Lane.Playhead = OverlayLane.Playhead = _playhead;
+        if (!View.IsDragging && !Lane.IsDragging && !OverlayLane.IsDragging)
         {
             UpdateScale();
             if (piecesChanged)
@@ -329,7 +342,7 @@ public partial class VideoEditWindow : Window
     // The whole edit fits the width at zoom 1; more than that and the timeline scrolls.
     private void UpdateScale()
     {
-        if (_timeline == null || View.IsDragging || Lane.IsDragging)
+        if (_timeline == null || View.IsDragging || Lane.IsDragging || OverlayLane.IsDragging)
         {
             return;
         }
@@ -340,9 +353,9 @@ public partial class VideoEditWindow : Window
             return;
         }
 
-        View.MinWidth = Lane.MinWidth = viewport;
+        View.MinWidth = Lane.MinWidth = OverlayLane.MinWidth = viewport;
         View.PixelsPerSecond = (viewport - TimelineLayout.Padding * 2 - 1) / Math.Max(0.1, _timeline.Duration) * _zoom;
-        Lane.PixelsPerSecond = View.PixelsPerSecond;
+        Lane.PixelsPerSecond = OverlayLane.PixelsPerSecond = View.PixelsPerSecond;
     }
 
     private void OnScrollerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateScale();
@@ -393,7 +406,7 @@ public partial class VideoEditWindow : Window
     private void SetPlayhead(double time, bool show = true)
     {
         _playhead = Math.Clamp(time, 0, _timeline?.Duration ?? 0);
-        View.Playhead = Lane.Playhead = _playhead;
+        View.Playhead = Lane.Playhead = OverlayLane.Playhead = _playhead;
         UpdatePositionText();
         if (show)
         {
@@ -547,7 +560,7 @@ public partial class VideoEditWindow : Window
 
         _playhead = _timeline.ToTimeline(_playIndex, position);
         _playheadStamp = Stopwatch.GetTimestamp();
-        View.Playhead = Lane.Playhead = _playhead;
+        View.Playhead = Lane.Playhead = OverlayLane.Playhead = _playhead;
         UpdatePositionText();
         EnsurePlayheadVisible();
     }
@@ -747,6 +760,11 @@ public partial class VideoEditWindow : Window
             return;
         }
 
+        if (Keyboard.FocusedElement is TextBox)
+        {
+            return; // typing the words of a text: the keys are the box's
+        }
+
         bool ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         bool shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         bool alt = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
@@ -762,6 +780,9 @@ public partial class VideoEditWindow : Window
                 break;
             case Key.S:
                 Split();
+                break;
+            case Key.Delete or Key.Back when OverlayLane.SelectedOverlay >= 0:
+                DeleteOverlay();
                 break;
             case Key.Delete or Key.Back when Lane.SelectedZoom >= 0:
                 DeleteZoom();
@@ -856,7 +877,8 @@ public partial class VideoEditWindow : Window
             ShowDepth(_timeline.Zooms[chosenZoom].Scale);
         }
         string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "")
-            + (_timeline.Crop.IsNone ? "" : " · recortado");
+            + (_timeline.Crop.IsNone ? "" : " · recortado")
+            + (_timeline.Overlays.Count switch { 0 => "", 1 => " · 1 capa", var n => $" · {n} capas" });
 
         bool muted = hasSelection && _timeline.Segments[selected].Muted;
         string muteText = muted ? "Activar sonido" : "Silenciar";
@@ -894,20 +916,20 @@ public partial class VideoEditWindow : Window
     // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, a pointer to draw,
     // or a crop. Otherwise the finished video is the recording itself.
     internal bool NeedsRendering => _timeline != null
-        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone
+        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _timeline.Overlays.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone
             || CursorLayer.For(_track, _cursor, _timeline.Segments) != null);
 
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop, _timeline.Zooms.Count > 0 ? _zoomStyle.Motion : "");
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? _zoomStyle.Motion : "", string.Join(";", _timeline.Overlays));
 
     private void SetBusy(bool busy)
     {
         _busy = busy;
         WorkBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         WorkBar.Value = 0;
-        View.IsEnabled = Lane.IsEnabled = Stage.IsEnabled = !busy;
+        View.IsEnabled = Lane.IsEnabled = OverlayLane.IsEnabled = Stage.IsEnabled = !busy;
         RefreshState();
     }
 
@@ -935,7 +957,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays);
                 }
                 else
                 {
@@ -1071,7 +1093,7 @@ public partial class VideoEditWindow : Window
     // draws, the playhead is carried on from the last reading by the time that has passed.
     private void OnRendering(object? sender, EventArgs e)
     {
-        if (_playing && (_previewCamera is { IsEmpty: false } || _motion != null))
+        if (_playing && (_previewCamera is { IsEmpty: false } || _motion != null || _timeline?.Overlays.Count > 0))
         {
             double since = Math.Min(0.1, Stopwatch.GetElapsedTime(_playheadStamp).TotalSeconds);
             ApplyZoomPreview(_playhead + since);
@@ -1095,6 +1117,7 @@ public partial class VideoEditWindow : Window
         ZoomView view = picking || cropping ? ZoomView.Full : camera.ViewAt(time);
         _shownView = view;
         UpdatePointer(time, view);
+        UpdateOverlayLayer(time, view);
         Scene.RenderTransform = view.IsFull
             ? Transform.Identity
             : new MatrixTransform(1 / view.Width, 0, 0, 1 / view.Height, -view.X * width / view.Width, -view.Y * height / view.Height);
@@ -1137,6 +1160,8 @@ public partial class VideoEditWindow : Window
     {
         if (Lane.SelectedZoom >= 0)
         {
+            OverlayLane.SelectedOverlay = -1;
+            PutToolDown();
             StopPlayback(); // choosing a zoom shows the whole picture to pick where it looks
             ZoomTab.IsChecked = true; // and its panel, to change how close it goes
         }
@@ -1147,6 +1172,7 @@ public partial class VideoEditWindow : Window
     private void OnTimelineScrubbed(object? sender, double time)
     {
         Lane.SelectedZoom = -1; // working on the pieces: Supr and the buttons act on them again
+        OverlayLane.SelectedOverlay = -1;
         OnScrubbed(sender, time);
     }
 
@@ -1223,6 +1249,11 @@ public partial class VideoEditWindow : Window
         {
             return;
         }
+        if (OverlayEditing)
+        {
+            OverlayStageDown(e);
+            return;
+        }
         if (CropEditing)
         {
             GrabCrop(e);
@@ -1251,7 +1282,15 @@ public partial class VideoEditWindow : Window
 
     private void OnStageMouseMove(object sender, MouseEventArgs e)
     {
-        if (_aiming)
+        if (_grab != OverlayGrab.None)
+        {
+            OverlayStageMove(e);
+        }
+        else if (OverlayEditing)
+        {
+            Stage.Cursor = OverlayCursor(e.GetPosition(Stage));
+        }
+        else if (_aiming)
         {
             AimAt(e.GetPosition(Stage));
         }
@@ -1269,6 +1308,11 @@ public partial class VideoEditWindow : Window
 
     private void OnStageMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_grab != OverlayGrab.None)
+        {
+            OverlayStageUp();
+            return;
+        }
         if (_cropGrab != CropEdges.None)
         {
             _cropGrab = CropEdges.None;
@@ -1489,6 +1533,7 @@ public partial class VideoEditWindow : Window
             ContentHost.Clip = cropClip;
         }
         RebuildPreviewCamera();
+        RebuildOverlayShapes();
     }
 
     // The camera of the preview: the timeline's zooms (on the original recording), with their points moved into the crop
@@ -2008,7 +2053,7 @@ public partial class VideoEditWindow : Window
     // The side column shows one panel at a time, the frame's or the pointer's.
     private void OnPanelTab(object sender, RoutedEventArgs e)
     {
-        if (FramePanel == null || CursorPanel == null || ZoomPanel == null || CropPanel == null)
+        if (FramePanel == null || CursorPanel == null || ZoomPanel == null || CropPanel == null || OverlayPanel == null || OverlayLane == null)
         {
             return; // the first tab is checked while the XAML loads
         }
@@ -2016,6 +2061,12 @@ public partial class VideoEditWindow : Window
         CursorPanel.Visibility = CursorTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         ZoomPanel.Visibility = ZoomTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         CropPanel.Visibility = CropTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        OverlayPanel.Visibility = OverlayTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        if (OverlayTab.IsChecked != true)
+        {
+            PutToolDown();
+            OverlayLane.SelectedOverlay = -1;
+        }
 
         // Opening the crop shows the whole recording to choose on; leaving it shows the result.
         bool cropping = CropTab.IsChecked == true;
@@ -2026,8 +2077,8 @@ public partial class VideoEditWindow : Window
         if (cropping != (CropLayer.Visibility == Visibility.Visible))
         {
             ApplyFrame();
-            ApplyZoomPreview();
         }
+        ApplyZoomPreview(); // the outline of the chosen overlay shows only while its panel is open
         Stage.Cursor = null;
     }
 

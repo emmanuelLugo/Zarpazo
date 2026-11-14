@@ -14,8 +14,6 @@ namespace Zarpazo.Recording;
 internal sealed class OverlayLayer
 {
     private const double BlurRadius = 0.02; // of the picture's height, at the size things have with no zoom
-    private const double ArrowHeadLength = 4.2; // in line widths
-    private const double ArrowHeadHalfAngle = 0.5; // radians
 
     private readonly IReadOnlyList<VideoOverlay> _overlays;
     private readonly IReadOnlyList<VideoSegment> _segments;
@@ -119,20 +117,14 @@ internal sealed class OverlayLayer
         PointF tail = At(overlay.X, overlay.Y, width, height, view, layout);
         PointF head = At(overlay.X2, overlay.Y2, width, height, view, layout);
         float thickness = (float)Math.Max(1.5, Pixels(overlay.Extent, height, view, layout));
-        double length = Math.Sqrt(Math.Pow(head.X - tail.X, 2) + Math.Pow(head.Y - tail.Y, 2));
-        if (length < 1)
+        if (ArrowShape.For((tail.X, tail.Y), (head.X, head.Y), thickness) is not { } shape)
         {
             return;
         }
 
-        double angle = Math.Atan2(head.Y - tail.Y, head.X - tail.X);
-        float headLength = (float)Math.Min(thickness * ArrowHeadLength, length * 0.6);
-        PointF Back(double turn) => new(
-            head.X - (float)(headLength * Math.Cos(angle + turn)),
-            head.Y - (float)(headLength * Math.Sin(angle + turn)));
-        // The line stops inside the head, so its round end does not poke out of the point.
-        var neck = new PointF(head.X - (float)(headLength * 0.7 * Math.Cos(angle)), head.Y - (float)(headLength * 0.7 * Math.Sin(angle)));
-        PointF[] triangle = [head, Back(ArrowHeadHalfAngle), Back(-ArrowHeadHalfAngle)];
+        PointF ToPointF((double X, double Y) at) => new((float)at.X, (float)at.Y);
+        PointF neck = ToPointF(shape.Neck);
+        PointF[] triangle = [ToPointF(shape.Tip), ToPointF(shape.Left), ToPointF(shape.Right)];
 
         System.Windows.Media.Color paint = overlay.Paint;
         for (int pass = 0; pass < 2; pass++)

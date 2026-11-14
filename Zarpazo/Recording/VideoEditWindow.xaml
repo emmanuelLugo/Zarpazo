@@ -128,6 +128,7 @@
             <Geometry x:Key="FolderGlyph">M3,7 A2,2 0 0 1 5,5 H9 L11,7 H19 A2,2 0 0 1 21,9 V17 A2,2 0 0 1 19,19 H5 A2,2 0 0 1 3,17 Z</Geometry>
             <Geometry x:Key="SparkleGlyph">M12,3 L13.8,9.2 L20,11 L13.8,12.8 L12,19 L10.2,12.8 L4,11 L10.2,9.2 Z</Geometry>
             <Geometry x:Key="PlusGlyph">M12,5 V19 M5,12 H19</Geometry>
+            <Geometry x:Key="OverlayGlyph">M4,5 H20 V15 H13 L9,19 V15 H4 Z M8,9 H16 M8,12 H13</Geometry>
             <Geometry x:Key="TimelineZoomGlyph">M10.5,3.5 A7,7 0 1 0 10.5,17.5 A7,7 0 1 0 10.5,3.5 Z M20.5,20.5 L15.5,15.5</Geometry>
 
             <!-- A square button with only an icon: quiet until the pointer is on it. -->
@@ -501,6 +502,9 @@
                 <RadioButton x:Name="CropTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Recorte">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource CropGlyph}" />
                 </RadioButton>
+                <RadioButton x:Name="OverlayTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Desenfoque, texto y flechas">
+                    <Path Style="{StaticResource Glyph}" Data="{StaticResource OverlayGlyph}" />
+                </RadioButton>
             </StackPanel>
 
             <Border Grid.Column="1" Margin="4,14,0,12" CornerRadius="12" Background="{DynamicResource InputBackground}"
@@ -684,6 +688,48 @@
                                 </Button>
                             </StackPanel>
                         </StackPanel>
+
+                        <!-- The overlays: a blur to hide something, a text, an arrow. Drawn on the picture; each one shows for a stretch
+                             of time, set in its own row of the timeline. -->
+                        <StackPanel x:Name="OverlayPanel" Visibility="Collapsed">
+                            <TextBlock Text="CAPAS" Style="{StaticResource PanelHeader}" />
+                            <UniformGrid Columns="3">
+                                <RadioButton x:Name="BlurToolTile" Style="{StaticResource WordTile}" GroupName="overlayTool" Content="Desenfocar" Tag="Blur"
+                                             Click="OnOverlayTool" ToolTip="Oculta una zona del video: una contraseña, un correo, datos de un cliente" />
+                                <RadioButton x:Name="TextToolTile" Style="{StaticResource WordTile}" GroupName="overlayTool" Content="Texto" Tag="Text"
+                                             Click="OnOverlayTool" ToolTip="Escribe un texto sobre el video" />
+                                <RadioButton x:Name="ArrowToolTile" Style="{StaticResource WordTile}" GroupName="overlayTool" Content="Flecha" Tag="Arrow"
+                                             Click="OnOverlayTool" Margin="0" ToolTip="Señala algo con una flecha" />
+                            </UniformGrid>
+                            <TextBlock x:Name="OverlayHint" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"
+                                       Text="Elige una herramienta y haz clic o arrastra sobre el video, en el momento donde está la línea roja. Cada capa dura 3 segundos: estira o mueve su bloque en la fila de abajo de la línea de tiempo." />
+                            <StackPanel x:Name="OverlayDetails" Visibility="Collapsed" Margin="0,8,0,0">
+                                <TextBlock x:Name="OverlayDetailsTitle" Style="{StaticResource PanelTitle}" />
+                                <StackPanel x:Name="OverlayTextBlock">
+                                    <TextBox x:Name="OverlayTextBox" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="120" MinHeight="58" VerticalContentAlignment="Top"
+                                             TextChanged="OnOverlayTextChanged" LostKeyboardFocus="OnOverlayTextLostFocus" ToolTip="Lo que dice el texto" />
+                                </StackPanel>
+                                <StackPanel x:Name="OverlayInkBlock">
+                                    <TextBlock Text="COLOR" Style="{StaticResource SubHeader}" />
+                                    <WrapPanel x:Name="OverlayInks" />
+                                    <Grid Style="{StaticResource Row}" Margin="0,8,0,8">
+                                        <Slider x:Name="OverlaySizeSlider" Style="{StaticResource RowSlider}" Minimum="0.01" Maximum="0.15" SmallChange="0.002" LargeChange="0.02"
+                                                ValueChanged="OnOverlaySizeChanged" />
+                                        <TextBlock x:Name="OverlaySizeLabel" Text="Tamaño" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="OverlaySizeText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                </StackPanel>
+                                <TextBlock x:Name="OverlayBlurNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
+                                           Text="Arrastra el rectángulo sobre el video para moverlo, o sus esquinas para cambiar su tamaño. El desenfoque aparece y desaparece de golpe, para que no se vea nada un instante." />
+                                <Button x:Name="DeleteOverlayButton" Focusable="False" Click="OnDeleteOverlay" HorizontalContentAlignment="Left" Padding="10,7" Margin="0,10,0,0"
+                                        ToolTip="Quita la capa elegida (Supr)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Style="{StaticResource Glyph}" Data="{StaticResource TrashGlyph}" Margin="0,0,8,0" />
+                                        <TextBlock Text="Quitar capa" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
                     </Grid>
                 </ScrollViewer>
             </Border>
@@ -714,6 +760,8 @@
                                         <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" ScrubbingEnabled="True"
                                                       Stretch="Fill" IsMuted="False" MediaOpened="OnOpened" MediaFailed="OnFailed" MediaEnded="OnMediaEnded" />
                                     </Canvas>
+                                    <!-- The blurs, texts and arrows, in the recording's pixels, so the zoom and the frame carry them along. -->
+                                    <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
                                 </Grid>
                             </Grid>
                             <!-- The pointer the saved video will have, drawn over the scene where the camera shows it (not zoomed with
@@ -741,6 +789,9 @@
                                 <Rectangle x:Name="FocusFrame" Stroke="#8E6CEF" />
                                 <Ellipse x:Name="FocusDot" Fill="#8E6CEF" Stroke="White" />
                             </Canvas>
+                            <!-- While the overlays panel is open: the outline and the handles of the chosen one, drawn over the scene
+                                 (not zoomed with the picture) so the handles keep their size. -->
+                            <Canvas x:Name="OverlayHandles" Visibility="Collapsed" IsHitTestVisible="False" />
                         </Grid>
                     </Viewbox>
                 </Border>
@@ -840,6 +891,14 @@
                             </ContextMenu>
                         </local:ZoomLaneView.ContextMenu>
                     </local:ZoomLaneView>
+                    <local:OverlayLaneView x:Name="OverlayLane" Margin="0,0,0,4" SelectionChanged="OnOverlaySelectionChanged" Scrubbed="OnScrubbed"
+                                           GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
+                        <local:OverlayLaneView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Quitar capa" InputGestureText="Supr" Click="OnDeleteOverlay" />
+                            </ContextMenu>
+                        </local:OverlayLaneView.ContextMenu>
+                    </local:OverlayLaneView>
                     </StackPanel>
                 </ScrollViewer>
             </Border>

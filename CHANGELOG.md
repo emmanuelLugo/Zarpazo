@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Capas sobre el video en el editor (icono nuevo a la izquierda, «Desenfoque, texto y flechas»): **Desenfocar** oculta una zona (una contraseña, un correo, datos de un cliente) con un desenfoque fuerte que no se puede leer; **Texto** escribe unas palabras, con su color y tamaño; **Flecha** señala algo. Se eligen con un clic o arrastrando sobre el video, se mueven y se estiran desde la misma imagen, y cada una aparece solo durante su bloque en una fila nueva de la línea de tiempo (3 segundos al ponerla; se arrastra el bloque o sus bordes). Siguen al zoom, al marco y al recorte, y un corte las deja en su momento. Se pueden deshacer y rehacer.
+
 ### Cambiado
 - Ajustes > Actualizaciones: si abres una copia que no es la instalada (por ejemplo, una de desarrollo) y hay una versión nueva, el aviso ahora dice que la instalada sí se actualiza sola desde ahí, en vez de mandarte a la página de descarga.
 
