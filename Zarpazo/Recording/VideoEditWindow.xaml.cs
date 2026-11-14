@@ -191,7 +191,10 @@ public partial class VideoEditWindow : Window
             _track = CursorTrack.Load(_source);
             if (_track != null)
             {
-                _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration, _zoomStyle.Depth)); // like Recordly: the clicks come zoomed already
+                if (_settings?.Current.AutoZoomOnOpen ?? true)
+                {
+                    _timeline.StartWithZooms(ZoomSuggester.Suggest(_track, duration, _zoomStyle.Depth)); // like Recordly: the clicks come zoomed already
+                }
             }
             RebuildPointer();
             ShowCursorChoices();
@@ -957,7 +960,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _settings?.Current.ConnectZooms ?? true);
                 }
                 else
                 {
@@ -1549,7 +1552,7 @@ public partial class VideoEditWindow : Window
         {
             zooms = layout.ToScene(zooms);
         }
-        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion);
+        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion, _settings?.Current.ConnectZooms ?? true);
     }
 
     // ---------- crop

@@ -78,6 +78,18 @@ public sealed class VideoPresetTests : IDisposable
     }
 
     [Fact]
+    public void Close_zooms_stay_in_between_unless_connecting_is_off()
+    {
+        VideoSegment[] whole = [new VideoSegment(0, 20)];
+        ZoomRegion[] zooms = [new ZoomRegion(5, 7, 2, 0.5, 0.5), new ZoomRegion(8, 10, 2, 0.5, 0.5)]; // one second apart
+        var joined = new ZoomCamera(whole, zooms);
+        var apart = new ZoomCamera(whole, zooms, connect: false);
+
+        Assert.True(joined.ViewAt(7.5).Scale > 1.5); // the camera stays in and glides
+        Assert.Equal(1, apart.ViewAt(7.5).Scale, 2); // back out before the next one
+    }
+
+    [Fact]
     public void A_new_look_is_one_step_to_undo_gives_its_depth_to_every_zoom_and_is_no_change_to_discard()
     {
         var timeline = new EditTimeline(10);
