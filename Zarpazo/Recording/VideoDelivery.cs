@@ -26,13 +26,17 @@ internal sealed class VideoDelivery
     /// <param name="original">The clean recording the editor works on.</param>
     /// <param name="readyPath">Where the finished video is written; its name is the one people see when they paste it.</param>
     /// <param name="thumbnail">The picture for the history; without it nothing goes there.</param>
-    public VideoDelivery(string original, string readyPath, SettingsStore? settings = null, CaptureHistory? history = null, BitmapSource? thumbnail = null)
+    /// <param name="historyPath">The history entry being edited again: what is handed out replaces it, and closing without
+    /// handing out anything leaves its video alone and only updates its edit.</param>
+    public VideoDelivery(string original, string readyPath, SettingsStore? settings = null, CaptureHistory? history = null, BitmapSource? thumbnail = null,
+        string? historyPath = null)
     {
         Original = original;
         ReadyPath = readyPath;
         _settings = settings;
         _history = history;
         _thumbnail = thumbnail;
+        _historyPath = historyPath;
     }
 
     public string Original { get; }
@@ -50,8 +54,9 @@ internal sealed class VideoDelivery
     /// <paramref name="make"/> unless the one at hand was made with the same.
     /// </summary>
     /// <param name="make">Writes the video into the path it is given.</param>
+    /// <param name="project">The edit the video is made from, kept in the history with the clean recording to edit it again.</param>
     /// <exception cref="Exception">Whatever <paramref name="make"/> throws; the old file is kept in that case.</exception>
-    public async Task<string> PrepareAsync(string recipe, Func<string, Task> make)
+    public async Task<string> PrepareAsync(string recipe, Func<string, Task> make, VideoProject? project = null)
     {
         if (IsCurrent(recipe))
         {
@@ -72,7 +77,7 @@ internal sealed class VideoDelivery
         }
 
         _madeFor = recipe;
-        KeepInHistory(ReadyPath);
+        KeepInHistory(ReadyPath, project);
         if (!_autoSaved && _settings != null && new AutoSaver(_settings).IsEnabled)
         {
             _autoSaved = true; // once: a second version would only fill the folder
@@ -104,17 +109,41 @@ internal sealed class VideoDelivery
         }
     }
 
-    /// <summary>Called when the editor closes: a recording never handed out goes to the history as it was recorded.</summary>
-    public void Finish()
+    /// <summary>
+    /// Called when the editor closes with the edit as it was left. A recording never handed out goes to the history as it was
+    /// recorded, with that edit; one already in the history (handed out before, or opened from it) keeps its video and gets the
+    /// latest edit, so what was done after the last copy or save is not lost.
+    /// </summary>
+    public void Finish(VideoProject? project = null)
     {
-        if (!Delivered)
+        if (_historyPath != null)
         {
-            KeepInHistory(Original);
+            TryUpdateProject(_historyPath, project);
+        }
+        else if (!Delivered)
+        {
+            KeepInHistory(Original, project);
+        }
+    }
+
+    private void TryUpdateProject(string entry, VideoProject? project)
+    {
+        if (_history == null || project == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _history.UpdateProject(entry, project);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
     // The recording is already made, so a full disk or a locked folder must not turn that into an error.
-    private void KeepInHistory(string path)
+    private void KeepInHistory(string path, VideoProject? project = null)
     {
         if (_history == null || _thumbnail == null || _settings?.Current.KeepHistory != true)
         {
@@ -123,11 +152,17 @@ internal sealed class VideoDelivery
 
         try
         {
+            bool kept = _historyPath != null && _history.IsKept(_historyPath);
             if (_historyPath != null)
             {
-                _history.Delete(_historyPath); // replaced by the newer version
+                _history.Delete(_historyPath); // replaced by the newer version; the editor works on its own copy of the recording
             }
-            _historyPath = _history.AddRecording(path, _thumbnail);
+            // The clean recording goes along (with the edit) so the video can be edited again from the history.
+            _historyPath = _history.AddRecording(path, _thumbnail, original: Original, project: project);
+            if (kept)
+            {
+                _history.SetKept(_historyPath, true); // what the person marked to keep stays so
+            }
             _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

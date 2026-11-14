@@ -17,6 +17,8 @@ internal sealed class CaptureHistory
     private const string CleanExtension = ".clean";
     private const string TextExtension = ".txt";
     private const string KeepExtension = ".keep";
+    private const string SourceExtension = ".source.mp4";
+    private const string ProjectExtension = ".project.json";
     private const string NamePrefix = "Zarpazo_";
     private const string StampFormat = "yyyy-MM-dd_HH-mm-ss-fff";
     private const int StampLength = 8 + 23; // "Zarpazo_" and the time that follows it
@@ -68,9 +70,13 @@ internal sealed class CaptureHistory
     /// Keeps a finished GIF or video: a copy of the file, and a PNG with the same name (its first frame) that makes it show in the list.
     /// Drops the oldest recordings beyond <paramref name="recordingLimit"/>; captures are not counted.
     /// </summary>
+    /// <param name="original">The clean recording the editor worked on, with its pointer file: kept too (as <c>.source.mp4</c>), so
+    /// the video can be edited again. When it is <paramref name="mediaFile"/> itself it is kept once and is the video shown.</param>
+    /// <param name="project">The edit made on <paramref name="original"/>, written next to it (<c>.project.json</c>).</param>
     /// <exception cref="IOException">A file could not be written.</exception>
     /// <exception cref="UnauthorizedAccessException">The folder is not writable.</exception>
-    public string AddRecording(string mediaFile, BitmapSource firstFrame, int recordingLimit = RecordingLimit)
+    public string AddRecording(string mediaFile, BitmapSource firstFrame, int recordingLimit = RecordingLimit,
+        string? original = null, Recording.VideoProject? project = null)
     {
         Directory.CreateDirectory(_folder);
         string stamp = $"Zarpazo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
@@ -82,8 +88,19 @@ internal sealed class CaptureHistory
         }
 
         // The recording first: the picture is what makes the entry appear, so a half-made entry never shows.
-        File.Copy(mediaFile, Path.ChangeExtension(path, extension));
+        bool sameFile = original != null && Path.GetFullPath(original).Equals(Path.GetFullPath(mediaFile), StringComparison.OrdinalIgnoreCase);
+        if (!sameFile)
+        {
+            File.Copy(mediaFile, Path.ChangeExtension(path, extension));
+        }
         Recording.CursorTrack.CopyAlong(mediaFile, path); // for zooming in on the clicks if it is edited again
+        if (original != null)
+        {
+            string source = SourcePath(path);
+            File.Copy(original, source);
+            Recording.CursorTrack.CopyAlong(original, source);
+            project?.Save(ProjectPath(path));
+        }
         ImageOutput.Write(path, firstFrame);
 
         foreach (HistoryEntry old in List().Where(entry => entry.IsRecording && !entry.Kept).Skip(Math.Max(recordingLimit, 0)))
@@ -110,13 +127,43 @@ internal sealed class CaptureHistory
 
         return Directory.EnumerateFiles(_folder, "Zarpazo_*.png")
             .OrderByDescending(path => path, StringComparer.Ordinal)
-            .Select(path => new HistoryEntry(
-                path,
-                File.GetLastWriteTime(path),
-                File.Exists(Path.ChangeExtension(path, StateExtension)),
-                RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)).FirstOrDefault(File.Exists),
-                File.Exists(Path.ChangeExtension(path, KeepExtension))))
+            .Select(path =>
+            {
+                // A recording closed before it was ever saved is kept once, as its source, and that is the video shown.
+                string? media = RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)).FirstOrDefault(File.Exists)
+                    ?? (File.Exists(SourcePath(path)) ? SourcePath(path) : null);
+                bool editable = File.Exists(Path.ChangeExtension(path, StateExtension))
+                    || (media != null && File.Exists(SourcePath(path)) && File.Exists(ProjectPath(path)));
+                return new HistoryEntry(path, File.GetLastWriteTime(path), editable, media, File.Exists(Path.ChangeExtension(path, KeepExtension)));
+            })
             .ToList();
+    }
+
+    /// <summary>The clean recording kept for the entry at <paramref name="path"/> (the picture's path), if it has one.</summary>
+    public static string SourcePath(string path) => Path.ChangeExtension(path, SourceExtension);
+
+    /// <summary>Whether the entry at <paramref name="path"/> is a video with its clean recording kept, to be opened in the video editor.</summary>
+    public static bool IsRecordingEntry(string path) => File.Exists(SourcePath(path));
+
+    private static string ProjectPath(string path) => Path.ChangeExtension(path, ProjectExtension);
+
+    /// <summary>
+    /// The edit of a recording and the clean recording it was made on, to open it again. Null when the entry has none (it was
+    /// kept before this existed, or the file is damaged): it is still a video to copy and save.
+    /// </summary>
+    public (Recording.VideoProject Project, string Source)? LoadProject(string path)
+    {
+        string source = SourcePath(path);
+        return File.Exists(source) && Recording.VideoProject.Load(ProjectPath(path)) is { } project ? (project, source) : null;
+    }
+
+    /// <summary>Writes the latest edit of the recording at <paramref name="path"/>; nothing happens when the entry has no source.</summary>
+    public void UpdateProject(string path, Recording.VideoProject project)
+    {
+        if (File.Exists(SourcePath(path)))
+        {
+            project.Save(ProjectPath(path));
+        }
     }
 
     /// <summary>
@@ -161,6 +208,9 @@ internal sealed class CaptureHistory
             Path.ChangeExtension(path, TextExtension),
             Path.ChangeExtension(path, KeepExtension),
             Recording.CursorTrack.PathFor(path),
+            SourcePath(path),
+            Recording.CursorTrack.PathFor(SourcePath(path)),
+            ProjectPath(path),
         };
         files.AddRange(RecordingExtensions.Select(extension => Path.ChangeExtension(path, extension)));
         foreach (string file in files)

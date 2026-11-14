@@ -17,7 +17,12 @@ internal sealed class EditTimeline
     private VideoCrop _crop = VideoCrop.None;
     private VideoLook _look = VideoLook.Default;
     private VideoOverlay[] _overlays = [];
-    private ZoomRegion[] _startZooms = []; // the zooms the edit opened with, to tell whether anything changed
+    // What the edit opened with, to tell whether anything changed: the whole recording, the automatic zooms, no crop and no
+    // overlays; or, for a project opened again, what it was saved with.
+    private VideoSegment[] _startSegments;
+    private ZoomRegion[] _startZooms = [];
+    private VideoCrop _startCrop = VideoCrop.None;
+    private VideoOverlay[] _startOverlays = [];
     private bool _inGesture;
     private bool _gestureSaved;
 
@@ -25,7 +30,7 @@ internal sealed class EditTimeline
     public EditTimeline(double sourceDuration)
     {
         SourceDuration = Math.Max(0, sourceDuration);
-        _segments = new[] { new VideoSegment(0, SourceDuration) };
+        _segments = _startSegments = new[] { new VideoSegment(0, SourceDuration) };
     }
 
     /// <summary>Raised after any change, including undo and redo.</summary>
@@ -62,9 +67,9 @@ internal sealed class EditTimeline
     public bool IsEdited => _segments.Length != 1 || _segments[0].Start > 0 || _segments[0].End < SourceDuration || _segments[0].Muted
         || _segments[0].IsRetimed;
 
-    /// <summary>True when the edit is no longer as it opened: pieces changed, zooms other than the ones it started with, or a crop.</summary>
-    public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms) || !_crop.IsNone
-        || _overlays.Length > 0;
+    /// <summary>True when the edit is no longer as it opened: pieces, zooms, crop or overlays other than the ones it started with.</summary>
+    public bool HasChanges => !_segments.SequenceEqual(_startSegments) || !_zooms.SequenceEqual(_startZooms) || _crop != _startCrop
+        || !_overlays.SequenceEqual(_startOverlays);
 
     /// <summary>Where in the edited video a piece begins.</summary>
     public double StartOf(int index)
@@ -288,6 +293,37 @@ internal sealed class EditTimeline
 
     private void Restore(Snapshot snapshot) =>
         (_segments, _zooms, _crop, _look, _overlays) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop, snapshot.Look, snapshot.Overlays);
+
+    // ---- Project ----
+
+    /// <summary>
+    /// Opens an edit that was saved: its pieces, zooms, overlays, crop and look, tidied (a file can come from anywhere) and with
+    /// the times kept inside this recording. It is where the edit starts, so there is nothing to undo and no change to discard.
+    /// A piece that does not fit is left out; with none left the edit starts as the whole recording.
+    /// </summary>
+    public void Load(IEnumerable<VideoSegment> segments, IEnumerable<ZoomRegion> zooms, VideoCrop crop, IEnumerable<VideoOverlay> overlays, VideoLook look)
+    {
+        VideoSegment[] kept = [.. segments
+            .Where(segment => double.IsFinite(segment.Start) && double.IsFinite(segment.End))
+            .Select(segment => segment with
+            {
+                Start = Math.Clamp(segment.Start, 0, SourceDuration),
+                End = Math.Clamp(segment.End, 0, SourceDuration),
+                Speed = Array.IndexOf(VideoSegment.Speeds, segment.Speed) >= 0 ? segment.Speed : 1,
+            })
+            .Where(segment => segment.Length >= MinSeconds)];
+        _segments = _startSegments = kept.Length > 0 ? kept : [new VideoSegment(0, SourceDuration)];
+        _zooms = _startZooms = Tidy(zooms.Where(zoom => double.IsFinite(zoom.Start) && double.IsFinite(zoom.End))).ToArray();
+        _crop = _startCrop = crop.Tidied();
+        _overlays = _startOverlays = [.. overlays
+            .Where(overlay => double.IsFinite(overlay.Start) && double.IsFinite(overlay.End))
+            .Select(overlay => FitInTime(overlay, out VideoOverlay fitted) ? (VideoOverlay?)fitted : null)
+            .OfType<VideoOverlay>()];
+        _look = look.Tidied();
+        _undo.Clear();
+        _redo.Clear();
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
 
     // ---- Look ----
 

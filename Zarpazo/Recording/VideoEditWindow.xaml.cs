@@ -53,6 +53,7 @@ public partial class VideoEditWindow : Window
     private CursorMotion? _motion; // the drawn pointer's path; null when this video has none to draw
     private bool _showingCursor;
     private ZoomStyle _zoomStyle;
+    private readonly VideoProject? _project; // the saved edit this window carried on from
     private VideoExportOptions _export = VideoExportOptions.Default;
     private bool _showingExport;
     private bool _showingZoomStyle;
@@ -80,14 +81,22 @@ public partial class VideoEditWindow : Window
     /// <param name="settings">Where the frame chosen is remembered; none in tests.</param>
     /// <param name="delivery">Where the finished video goes when it is copied or saved; by default "name_editado.mp4" next to the source.</param>
     /// <param name="notice">A first line for the status, such as why the recording stopped.</param>
-    internal VideoEditWindow(string source, Settings.SettingsStore? settings = null, VideoDelivery? delivery = null, string? notice = null)
+    /// <param name="project">A saved edit of this recording to carry on from (cuts, zooms, layers, crop and look); null starts a new one.</param>
+    internal VideoEditWindow(string source, Settings.SettingsStore? settings = null, VideoDelivery? delivery = null, string? notice = null,
+        VideoProject? project = null)
     {
         InitializeComponent();
         Theme.TitleBarTheme.Follow(this);
         _settings = settings;
+        _project = project;
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
         _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
         _zoomStyle = settings?.Current.VideoZoom ?? ZoomStyle.Default;
+        if (project?.Look?.Tidied() is { } saved)
+        {
+            // The style the video was left with, not the one remembered for the next ones (that is not touched).
+            (_frame, _cursor, _zoomStyle) = (saved.Frame, saved.Cursor, saved.Zoom);
+        }
         _export = settings?.Current.VideoExport ?? VideoExportOptions.Default;
         _presets = settings?.Current.Presets ?? [];
         _frameSave.Tick += (_, _) =>
@@ -113,7 +122,7 @@ public partial class VideoEditWindow : Window
         {
             _closed = true;
             CompositionTarget.Rendering -= OnRendering;
-            _delivery.Finish();
+            _delivery.Finish(CurrentProject);
             if (_frameSave.IsEnabled)
             {
                 SaveCursorChoice(); // a slider let go just before closing
@@ -145,6 +154,9 @@ public partial class VideoEditWindow : Window
 
     /// <summary>The edit, once the video has opened.</summary>
     internal EditTimeline? Timeline => _timeline;
+
+    /// <summary>The edit as it is now, for the history to keep with the recording; null before the video has opened.</summary>
+    internal VideoProject? CurrentProject => _timeline == null ? null : VideoProject.Capture(_timeline, Look);
 
     private bool CanEdit => _timeline != null && !_busy;
 
@@ -187,13 +199,21 @@ public partial class VideoEditWindow : Window
             _sourceHeight = height & ~1;
 
             _timeline = new EditTimeline(duration);
-            _timeline.StartWithLook(Look); // the style remembered from the last video: undo goes back to it, not further
+            if (_project != null)
+            {
+                // Carrying on from a saved edit: it is where this one starts, with its own look.
+                _timeline.Load(_project.ToSegments(), _project.ToZooms(), _project.ToCrop(), _project.ToOverlays(), Look);
+            }
+            else
+            {
+                _timeline.StartWithLook(Look); // the style remembered from the last video: undo goes back to it, not further
+            }
             View.Timeline = _timeline;
             Lane.Timeline = _timeline; // before the window listens, so the zooms are placed again before the window looks at them
             OverlayLane.Timeline = _timeline;
             _timeline.Changed += OnTimelineChanged;
             _track = CursorTrack.Load(_source);
-            if (_track != null)
+            if (_track != null && _project == null)
             {
                 if (_settings?.Current.AutoZoomOnOpen ?? true)
                 {
@@ -970,7 +990,7 @@ public partial class VideoEditWindow : Window
                 {
                     File.Copy(_source, target, overwrite: true); // nothing to change: the recording as it is
                 }
-            });
+            }, CurrentProject);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {

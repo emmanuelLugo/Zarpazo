@@ -233,9 +233,57 @@ public partial class App : Application
         _historyWindow.Show();
     }
 
+    private readonly Dictionary<string, Recording.VideoEditWindow> _historyEditors = new(StringComparer.OrdinalIgnoreCase);
+
+    // Opens a video of the history in the editor, with the cuts, zooms and layers it was left with. The history stays on
+    // screen: the editor is a window of its own.
+    private async Task EditRecordingFromHistory(string path)
+    {
+        if (_historyEditors.TryGetValue(path, out Recording.VideoEditWindow? open))
+        {
+            open.Activate(); // already being edited
+            return;
+        }
+
+        Recording.VideoEditWindow? editor;
+        try
+        {
+            editor = await Recording.ProjectWorkspace.OpenAsync(_history, _settings, path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _tray!.ShowWarning($"No se pudo abrir el video para editar: {ex.Message}");
+            return;
+        }
+
+        if (editor == null)
+        {
+            _tray!.ShowWarning("Este video no se puede abrir para editar.");
+            return;
+        }
+
+        _historyEditors[path] = editor;
+        _openEditors++;
+        editor.Closed += (_, _) =>
+        {
+            _historyEditors.Remove(path);
+            _openEditors--;
+            _historyWindow?.Reload(); // what was copied or saved replaced the old entry
+            OnMaybeIdle();
+        };
+        editor.Show();
+        editor.Activate();
+    }
+
     // Opens an earlier capture in the overlay: the old image goes back where it was on a fresh picture of the screen.
     private async void EditFromHistory(string path)
     {
+        if (History.CaptureHistory.IsRecordingEntry(path))
+        {
+            await EditRecordingFromHistory(path);
+            return;
+        }
+
         if (_overlay != null)
         {
             return;
