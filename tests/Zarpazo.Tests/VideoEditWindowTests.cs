@@ -143,6 +143,10 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
             }
             finally
             {
+                while (window.Timeline?.CanUndo == true)
+                {
+                    window.Timeline.Undo(); // with the speed changed, closing would stop to ask whether to discard it
+                }
                 window.Close();
             }
         });
@@ -460,8 +464,10 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 window.ZoomStyleDepthSlider.Value = 2;
                 window.ZoomFocusedTile.IsChecked = true;
                 window.ZoomFocusedTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.ZoomConnectBox.IsChecked = false; // each zoom goes back out before the next
+                window.ZoomConnectBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 200);
-                Assert.Equal(new ZoomStyle(2, ZoomMotion.Focused), window.Look.Zoom);
+                Assert.Equal(new ZoomStyle(2, ZoomMotion.Focused, false), window.Look.Zoom);
                 Assert.Equal(2, timeline.Zooms[0].Scale); // the video's zooms follow the depth
                 Shot(window, folder, "editor-zoom-style.png");
 
@@ -475,6 +481,8 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 window.CursorSizeSlider.Value = 1.5;
                 window.ZoomStyleDepthSlider.Value = 1.5;
+                window.ZoomConnectBox.IsChecked = true;
+                window.ZoomConnectBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 200);
                 VideoLook plain = window.Look;
                 Assert.NotEqual(tutorial, plain);
@@ -485,6 +493,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal(Visibility.Visible, window.Backdrop.Visibility);
                 Assert.Equal(3, window.CursorSizeSlider.Value); // the panels show it
                 Assert.True(window.ZoomFocusedTile.IsChecked);
+                Assert.False(window.ZoomConnectBox.IsChecked); // joining zooms is part of the look
                 Assert.Equal(2, timeline.Zooms[0].Scale); // the depth went with the preset
 
                 window.UndoButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));

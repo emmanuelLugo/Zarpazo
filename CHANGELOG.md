@@ -10,6 +10,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Capas sobre el video en el editor (icono nuevo a la izquierda, «Desenfoque, texto y flechas»): **Desenfocar** oculta una zona (una contraseña, un correo, datos de un cliente) con un desenfoque fuerte que no se puede leer; **Texto** escribe unas palabras, con su color y tamaño; **Flecha** señala algo. Se eligen con un clic o arrastrando sobre el video, se mueven y se estiran desde la misma imagen, y cada una aparece solo durante su bloque en una fila nueva de la línea de tiempo (3 segundos al ponerla; se arrastra el bloque o sus bordes). Siguen al zoom, al marco y al recorte, y un corte las deja en su momento. Se pueden deshacer y rehacer.
 
 ### Cambiado
+- Zooms en el editor de video: el panel de Zoom tiene ahora «Conectar zooms seguidos». Con él apagado, la cámara vuelve a pantalla completa entre dos zooms cercanos en vez de deslizarse de uno al otro. Forma parte del estilo: se recuerda para el siguiente video, entra en los presets y se deshace con Ctrl+Z.
+- Ajustes > Video: «Poner zooms automáticamente al abrir una grabación». Apagado, el editor abre el video sin zooms (el botón «Zoom automático» sigue disponible).
 - Ajustes > Actualizaciones: si abres una copia que no es la instalada (por ejemplo, una de desarrollo) y hay una versión nueva, el aviso ahora dice que la instalada sí se actualiza sola desde ahí, en vez de mandarte a la página de descarga.
 
 ## [0.8.0] - 2026-11-13

@@ -925,7 +925,7 @@ public partial class VideoEditWindow : Window
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop, _timeline.Zooms.Count > 0 ? _zoomStyle.Motion : "", string.Join(";", _timeline.Overlays));
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}" : "", string.Join(";", _timeline.Overlays));
 
     private void SetBusy(bool busy)
     {
@@ -960,7 +960,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _settings?.Current.ConnectZooms ?? true);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect);
                 }
                 else
                 {
@@ -1552,7 +1552,7 @@ public partial class VideoEditWindow : Window
         {
             zooms = layout.ToScene(zooms);
         }
-        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion, _settings?.Current.ConnectZooms ?? true);
+        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion, _zoomStyle.Connect);
     }
 
     // ---------- crop
@@ -1790,6 +1790,7 @@ public partial class VideoEditWindow : Window
         ZoomStyleDepthSlider.Value = _zoomStyle.Depth;
         ZoomSmoothTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Smooth;
         ZoomFocusedTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Focused;
+        ZoomConnectBox.IsChecked = _zoomStyle.Connect;
         ShowZoomStyleValues();
         _showingZoomStyle = false;
     }
@@ -1809,7 +1810,8 @@ public partial class VideoEditWindow : Window
 
         var style = new ZoomStyle(
             Math.Round(ZoomStyleDepthSlider.Value * 20) / 20,
-            ZoomFocusedTile.IsChecked == true ? ZoomMotion.Focused : ZoomMotion.Smooth);
+            ZoomFocusedTile.IsChecked == true ? ZoomMotion.Focused : ZoomMotion.Smooth,
+            ZoomConnectBox.IsChecked == true);
         ChangeLook(Look with { Zoom = style });
         if (sender is Slider)
         {

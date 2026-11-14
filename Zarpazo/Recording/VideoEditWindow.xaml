@@ -646,7 +646,7 @@
                             <Grid Margin="0,4,0,0">
                                 <TextBlock Text="ESTILO" Style="{StaticResource SubHeader}" />
                                 <Button x:Name="ZoomStyleResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                        Margin="0,8,0,0" Click="OnZoomStyleReset" ToolTip="Vuelve a 1,5× y movimiento suave" />
+                                        Margin="0,8,0,0" Click="OnZoomStyleReset" ToolTip="Vuelve a 1,5×, movimiento suave y zooms conectados" />
                             </Grid>
                             <Grid Style="{StaticResource Row}">
                                 <Slider x:Name="ZoomStyleDepthSlider" Style="{StaticResource RowSlider}" Minimum="1.1" Maximum="3" SmallChange="0.05" LargeChange="0.25"
@@ -660,6 +660,8 @@
                                 <RadioButton x:Name="ZoomFocusedTile" Style="{StaticResource WordTile}" GroupName="zoomMotion" Content="Enfocado" Click="OnZoomStyleChanged"
                                              Margin="0" ToolTip="Entra y sale rápido (0,8 s): para tutoriales de clic en clic" />
                             </UniformGrid>
+                            <CheckBox x:Name="ZoomConnectBox" Content="Conectar zooms seguidos" Style="{StaticResource Switch}" Margin="0,10,0,0" Click="OnZoomStyleChanged"
+                                      ToolTip="Si dos zooms están cerca, la cámara se desliza del uno al otro sin volver a la pantalla completa" />
                             <StackPanel x:Name="ZoomDetails" Visibility="Collapsed" Margin="0,8,0,0">
                                 <TextBlock Text="Zoom elegido" Style="{StaticResource PanelTitle}" />
                                 <Grid>

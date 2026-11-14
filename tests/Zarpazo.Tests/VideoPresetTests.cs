@@ -116,13 +116,13 @@ public sealed class VideoPresetTests : IDisposable
     public void Presets_and_the_zoom_style_are_read_back_by_the_next_run()
     {
         var first = new SettingsStore(FilePath);
-        first.Current.VideoZoom = new ZoomStyle(2.5, ZoomMotion.Focused);
+        first.Current.VideoZoom = new ZoomStyle(2.5, ZoomMotion.Focused, false);
         first.Current.Presets = VideoPresetList.Save([], "Tutorial", Tutorial)!;
         first.Save();
 
         AppSettings second = new SettingsStore(FilePath).Current;
 
-        Assert.Equal(new ZoomStyle(2.5, ZoomMotion.Focused), second.VideoZoom);
+        Assert.Equal(new ZoomStyle(2.5, ZoomMotion.Focused, false), second.VideoZoom);
         Assert.Equal(Tutorial, Assert.Single(second.Presets).Look);
         Assert.Equal("Tutorial", second.Presets[0].Name);
     }

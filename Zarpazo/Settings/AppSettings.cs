@@ -185,25 +185,27 @@ internal sealed class AppSettings
     /// <summary>Open a video in the editor with the zooms of its clicks already placed.</summary>
     public bool AutoZoomOnOpen { get; set; } = true;
 
-    /// <summary>Zooms close to each other stay zoomed in and the camera glides between them, instead of zooming out and in again.</summary>
-    public bool ConnectZooms { get; set; } = true;
-
     /// <summary>The zooms' style on videos (see <see cref="Recording.ZoomStyle"/>); the last one chosen in the editor.</summary>
     public double VideoZoomDepth { get; set; } = Recording.ZoomStyle.Default.Depth;
 
     /// <summary>"Smooth" (Suave) or "Focused" (Enfocado).</summary>
     public string VideoZoomMotion { get; set; } = Recording.ZoomStyle.Default.Motion.ToString();
 
+    /// <summary>Whether zooms close to each other are joined (see <see cref="Recording.ZoomStyle.Connect"/>).</summary>
+    public bool VideoZoomConnect { get; set; } = Recording.ZoomStyle.Default.Connect;
+
     [JsonIgnore]
     public Recording.ZoomStyle VideoZoom
     {
         get => new Recording.ZoomStyle(
             VideoZoomDepth,
-            Enum.TryParse(VideoZoomMotion, out Recording.ZoomMotion motion) ? motion : Recording.ZoomStyle.Default.Motion).Tidied();
+            Enum.TryParse(VideoZoomMotion, out Recording.ZoomMotion motion) ? motion : Recording.ZoomStyle.Default.Motion,
+            VideoZoomConnect).Tidied();
         set
         {
             VideoZoomDepth = value.Depth;
             VideoZoomMotion = value.Motion.ToString();
+            VideoZoomConnect = value.Connect;
         }
     }
 

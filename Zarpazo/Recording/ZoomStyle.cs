@@ -5,7 +5,8 @@ namespace Zarpazo.Recording;
 /// and the pointer, so it is remembered for the next video and kept in presets; the zooms themselves belong to one video.
 /// </summary>
 /// <param name="Depth">How close every zoom goes (<see cref="ZoomRegion.MinScale"/> to <see cref="ZoomRegion.MaxScale"/>).</param>
-internal sealed record ZoomStyle(double Depth, ZoomMotion Motion)
+/// <param name="Connect">Zooms close to each other stay zoomed in and the camera glides between them; off, each one goes back out first.</param>
+internal sealed record ZoomStyle(double Depth, ZoomMotion Motion, bool Connect = true)
 {
     public static ZoomStyle Default { get; } = new(ZoomRegion.DefaultScale, ZoomMotion.Smooth);
 
