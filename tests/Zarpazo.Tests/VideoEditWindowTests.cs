@@ -300,6 +300,50 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [NeedsGpuFact]
+    public void The_frame_takes_a_look_and_a_background_of_ones_own_and_undo_brings_the_old_one_back()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.WithSound)
+            {
+                AskColor = _ => System.Windows.Media.Color.FromRgb(255, 0, 0),
+            };
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
+                window.FrameBox.IsChecked = true;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+
+                Assert.Equal(VideoFrameStyle.Looks.Count, window.FrameLooks.Children.Count);
+                var dark = (System.Windows.Controls.Button)window.FrameLooks.Children.OfType<System.Windows.Controls.Button>().Single(b => (string)b.Content == "Oscuro");
+                dark.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal("grafito", window.Look.Frame.Background);
+                Assert.True(window.Look.Frame.Enabled, "a look changes the shape and the background, not the switch");
+
+                window.FrameFromButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.StartsWith("custom:#FF0000:", window.Look.Frame.Background);
+                Assert.DoesNotContain(window.FrameBackgrounds.Children.OfType<System.Windows.Controls.RadioButton>(), swatch => swatch.IsChecked == true);
+                Assert.True(window.FrameAngleRow.IsEnabled, "two colours have a slant");
+                Shot(window, folder, "editor-frame-custom.png");
+
+                window.Timeline!.Undo();
+                Pump(() => false, 200);
+                Assert.Equal("grafito", window.Look.Frame.Background);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A copy of the sample with a pointer track: recorded without the pointer (as videos are now), or with it painted in.
     private string WithTrack(bool pointerInPicture)
     {

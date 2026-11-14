@@ -1425,7 +1425,127 @@ public partial class VideoEditWindow : Window
             swatch.Checked += OnFrameChanged;
             FrameBackgrounds.Children.Add(swatch);
         }
+
+        // Looks to start from: a click puts in the background, room, corners and shadow that go together (the switch is left as it is).
+        foreach ((string name, string tip, VideoFrameStyle look) in VideoFrameStyle.Looks)
+        {
+            var button = new Button { Content = name, ToolTip = tip, Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 6, 6), Focusable = false, Tag = look };
+            button.Click += OnFrameLook;
+            FrameLooks.Children.Add(button);
+        }
         ShowFrameChoices();
+    }
+
+    private void OnFrameLook(object sender, RoutedEventArgs e)
+    {
+        if (_ready && ((Button)sender).Tag is VideoFrameStyle look)
+        {
+            SetFrame(look with { Enabled = _frame.Enabled });
+            ShowFrameChoices();
+        }
+    }
+
+    // Colours and slant of the own background: the last ones shown, so a picture or a click on a built-in one does not lose them.
+    private System.Windows.Media.Color _customFrom = System.Windows.Media.Colors.White, _customTo = System.Windows.Media.Colors.Black;
+    private int _customAngle = FrameBackground.DefaultAngle;
+    private int[]? _customColors;
+
+    /// <summary>Asks for a colour, starting from the one given; the tests answer it themselves. Null means the person changed their mind.</summary>
+    internal Func<System.Windows.Media.Color, System.Windows.Media.Color?>? AskColor { get; set; }
+
+    /// <summary>Asks for a picture file for the background; the tests answer it themselves. Null means the person changed their mind.</summary>
+    internal Func<string?>? AskImagePath { get; set; }
+
+    private void SetBackground(string background)
+    {
+        SetFrame(_frame with { Background = FrameBackground.Tidy(background) });
+        ShowFrameChoices();
+    }
+
+    private void OnFrameFromColor(object sender, RoutedEventArgs e)
+    {
+        if (_ready && AskForColor(_customFrom) is { } color)
+        {
+            SetBackground(FrameBackground.Custom(color, _customTo, _customAngle));
+        }
+    }
+
+    private void OnFrameToColor(object sender, RoutedEventArgs e)
+    {
+        if (_ready && AskForColor(_customTo) is { } color)
+        {
+            SetBackground(FrameBackground.Custom(_customFrom, color, _customAngle));
+        }
+    }
+
+    private void OnFrameRandom(object sender, RoutedEventArgs e)
+    {
+        if (_ready)
+        {
+            SetBackground(FrameBackground.RandomGradient(Random.Shared));
+        }
+    }
+
+    private void OnFrameImage(object sender, RoutedEventArgs e)
+    {
+        if (_ready && AskForImage() is { } path)
+        {
+            SetBackground(FrameBackground.Image(path));
+        }
+    }
+
+    // The slant moves in steps of 15 degrees; from a built-in background it turns into the same colours of one's own.
+    private void OnFrameAngle(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        int angle = (int)Math.Round(FrameAngleSlider.Value);
+        if (!_ready || _showingFrame || angle == _customAngle)
+        {
+            return;
+        }
+        _customAngle = angle;
+        SetBackground(FrameBackground.Custom(_customFrom, _customTo, angle));
+    }
+
+    private System.Windows.Media.Color? AskForColor(System.Windows.Media.Color current)
+    {
+        if (AskColor != null)
+        {
+            return AskColor(current);
+        }
+
+        using var dialog = new System.Windows.Forms.ColorDialog
+        {
+            FullOpen = true,
+            Color = System.Drawing.Color.FromArgb(current.R, current.G, current.B),
+        };
+        if (_customColors != null)
+        {
+            dialog.CustomColors = _customColors;
+        }
+        var owner = new Editor.Win32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        if (dialog.ShowDialog(owner) != System.Windows.Forms.DialogResult.OK)
+        {
+            return null;
+        }
+        _customColors = dialog.CustomColors;
+        return System.Windows.Media.Color.FromRgb(dialog.Color.R, dialog.Color.G, dialog.Color.B);
+    }
+
+    private string? AskForImage()
+    {
+        if (AskImagePath != null)
+        {
+            return AskImagePath();
+        }
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Imagen de fondo",
+            Filter = "Imágenes (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
+            CheckFileExists = true,
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
     private void ShowFrameChoices()
@@ -1439,6 +1559,18 @@ public partial class VideoEditWindow : Window
         FramePaddingSlider.Value = _frame.Padding;
         FrameRadiusSlider.Value = _frame.Radius;
         FrameShadowSlider.Value = _frame.Shadow;
+
+        bool hasColors = FrameBackground.TryColors(_frame.Background, out System.Windows.Media.Color from, out System.Windows.Media.Color to, out int angle);
+        if (hasColors)
+        {
+            (_customFrom, _customTo, _customAngle) = (from, to, angle);
+        }
+        FrameFromFill.Background = new SolidColorBrush(_customFrom);
+        FrameToFill.Background = new SolidColorBrush(_customTo);
+        FrameAngleSlider.Value = _customAngle;
+        FrameAngleText.Text = $"{_customAngle}°";
+        FrameAngleRow.IsEnabled = hasColors && _customFrom != _customTo; // a picture or a plain colour has no slant
+        FrameAngleRow.Opacity = FrameAngleRow.IsEnabled ? 1 : 0.5;
         ShowFrameValues();
         FrameOptions.IsEnabled = _frame.Enabled;
         FrameOptions.Opacity = _frame.Enabled ? 1 : 0.5;
@@ -1562,9 +1694,9 @@ public partial class VideoEditWindow : Window
             double radius = Math.Min(layout.RadiusPixels, Math.Min(content.Width, content.Height) / 2);
             ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY) : cropClip;
 
-            if (!ReferenceEquals(BackdropFill.Tag, frame.Background))
+            if (!Equals(BackdropFill.Tag, frame.Background))
             {
-                BackdropFill.Background = Output.BeautifyBackground.Find(frame.Background).ToBrush();
+                BackdropFill.Background = FrameBackground.ToBrush(frame.Background);
                 BackdropFill.Tag = frame.Background;
             }
             ShadowCard.Margin = new Thickness(content.X, content.Y, 0, 0);

@@ -526,8 +526,31 @@
                             <CheckBox x:Name="FrameBox" Content="Poner marco" Style="{StaticResource Switch}" Click="OnFrameChanged"
                                       ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
                             <StackPanel x:Name="FrameOptions">
+                                <TextBlock Text="ESTILOS" Style="{StaticResource SubHeader}" />
+                                <WrapPanel x:Name="FrameLooks" />
                                 <TextBlock Text="FONDO" Style="{StaticResource SubHeader}" />
                                 <WrapPanel x:Name="FrameBackgrounds" />
+                                <TextBlock Text="PROPIO" Style="{StaticResource SubHeader}" />
+                                <WrapPanel Margin="0,0,0,8">
+                                    <Button x:Name="FrameFromButton" Width="34" Height="34" Margin="0,0,6,6" Padding="3" Focusable="False" Click="OnFrameFromColor"
+                                            ToolTip="Color inicial del fondo">
+                                        <Border x:Name="FrameFromFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="24" Height="24" />
+                                    </Button>
+                                    <Button x:Name="FrameToButton" Width="34" Height="34" Margin="0,0,6,6" Padding="3" Focusable="False" Click="OnFrameToColor"
+                                            ToolTip="Color final del fondo. Con el mismo color en los dos, el fondo es liso">
+                                        <Border x:Name="FrameToFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="24" Height="24" />
+                                    </Button>
+                                    <Button x:Name="FrameImageButton" Content="Imagen…" Height="34" Margin="0,0,6,6" Padding="12,0" Focusable="False" Click="OnFrameImage"
+                                            ToolTip="Usa una imagen de tu disco como fondo" />
+                                    <Button x:Name="FrameRandomButton" Content="Al azar" Height="34" Margin="0,0,6,6" Padding="12,0" Focusable="False" Click="OnFrameRandom"
+                                            ToolTip="Un degradado nuevo cada vez" />
+                                </WrapPanel>
+                                <Grid x:Name="FrameAngleRow" Style="{StaticResource Row}">
+                                    <Slider x:Name="FrameAngleSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="345" TickFrequency="15" IsSnapToTickEnabled="True"
+                                            SmallChange="15" LargeChange="45" ValueChanged="OnFrameAngle" ToolTip="Hacia dónde corre el degradado" />
+                                    <TextBlock Text="Ángulo" Style="{StaticResource RowLabel}" />
+                                    <TextBlock x:Name="FrameAngleText" Style="{StaticResource RowValue}" />
+                                </Grid>
                                 <TextBlock Text="FORMA" Style="{StaticResource SubHeader}" />
                                 <Grid Style="{StaticResource Row}">
                                     <Slider x:Name="FramePaddingSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.15" SmallChange="0.005" LargeChange="0.02"

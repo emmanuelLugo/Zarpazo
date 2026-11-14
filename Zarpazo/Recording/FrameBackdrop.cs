@@ -71,7 +71,7 @@ internal static class FrameBackdrop
         {
             Width = width,
             Height = height,
-            Background = BeautifyBackground.Find(style.Background).ToBrush(),
+            Background = FrameBackground.ToBrush(style.Background),
             ClipToBounds = true,
         };
 
