@@ -1559,6 +1559,15 @@ public partial class VideoEditWindow : Window
         FramePaddingSlider.Value = _frame.Padding;
         FrameRadiusSlider.Value = _frame.Radius;
         FrameShadowSlider.Value = _frame.Shadow;
+        FrameBorderSlider.Value = _frame.BorderWidth;
+        FrameBorderFill.Background = new SolidColorBrush(FrameBackground.TryHex(_frame.BorderColor, out System.Windows.Media.Color lineColor) ? lineColor : System.Windows.Media.Colors.White);
+        FrameBarNone.IsChecked = _frame.Bar == WindowBar.None;
+        FrameBarMac.IsChecked = _frame.Bar == WindowBar.Mac;
+        FrameBarWindows.IsChecked = _frame.Bar == WindowBar.Windows;
+        FrameBarDark.IsChecked = !_frame.LightBar;
+        FrameBarLight.IsChecked = _frame.LightBar;
+        FrameBarToneRow.IsEnabled = _frame.Bar != WindowBar.None; // the tone is of the bar
+        FrameBarToneRow.Opacity = FrameBarToneRow.IsEnabled ? 1 : 0.5;
 
         bool hasColors = FrameBackground.TryColors(_frame.Background, out System.Windows.Media.Color from, out System.Windows.Media.Color to, out int angle);
         if (hasColors)
@@ -1585,6 +1594,19 @@ public partial class VideoEditWindow : Window
         FramePaddingText.Text = $"{Math.Round(_frame.Padding * 100)} %";
         FrameRadiusText.Text = $"{Math.Round(_frame.Radius * height)} px";
         FrameShadowText.Text = $"{Math.Round(_frame.Shadow * 100)} %";
+        FrameBorderText.Text = _frame.BorderWidth > 0 ? $"{Math.Max(1, Math.Round(_frame.BorderWidth * height))} px" : "Sin borde";
+        FrameBorderColorButton.IsEnabled = _frame.BorderWidth > 0;
+        FrameBorderColorButton.Opacity = _frame.BorderWidth > 0 ? 1 : 0.5;
+    }
+
+    private void OnFrameBorderColor(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Media.Color current = FrameBackground.TryHex(_frame.BorderColor, out System.Windows.Media.Color parsed) ? parsed : System.Windows.Media.Colors.White;
+        if (_ready && AskForColor(current) is { } color)
+        {
+            SetFrame((_frame with { BorderColor = FrameBackground.Hex(color) }).Tidied());
+            ShowFrameChoices();
+        }
     }
 
     private void OnFrameSlider(object sender, RoutedPropertyChangedEventArgs<double> e) => OnFrameChanged(sender, e);
@@ -1604,12 +1626,18 @@ public partial class VideoEditWindow : Window
 
         string background = FrameBackgrounds.Children.OfType<RadioButton>().FirstOrDefault(swatch => swatch.IsChecked == true)?.Tag as string
             ?? _frame.Background;
-        SetFrame(new VideoFrameStyle(
-            FrameBox.IsChecked == true,
-            background,
-            Math.Round(FramePaddingSlider.Value, 3),
-            Math.Round(FrameRadiusSlider.Value, 4),
-            Math.Round(FrameShadowSlider.Value * 20) / 20).Tidied());
+        WindowBar bar = FrameBarMac.IsChecked == true ? WindowBar.Mac : FrameBarWindows.IsChecked == true ? WindowBar.Windows : WindowBar.None;
+        SetFrame((_frame with
+        {
+            Enabled = FrameBox.IsChecked == true,
+            Background = background,
+            Padding = Math.Round(FramePaddingSlider.Value, 3),
+            Radius = Math.Round(FrameRadiusSlider.Value, 4),
+            Shadow = Math.Round(FrameShadowSlider.Value * 20) / 20,
+            BorderWidth = Math.Round(FrameBorderSlider.Value, 4),
+            Bar = bar,
+            LightBar = FrameBarLight.IsChecked == true,
+        }).Tidied());
         if (sender is Slider)
         {
             ShowFrameValues(); // a slider is left alone while it is dragged
@@ -1691,31 +1719,80 @@ public partial class VideoEditWindow : Window
             Int32Rect content = layout.Content;
             double scaleX = content.Width / width, scaleY = content.Height / height;
             ContentHost.RenderTransform = new MatrixTransform(scaleX, 0, 0, scaleY, content.X, content.Y);
-            double radius = Math.Min(layout.RadiusPixels, Math.Min(content.Width, content.Height) / 2);
-            ContentHost.Clip = radius > 0 ? new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY) : cropClip;
+            Int32Rect card = layout.Card; // the recording and the title bar above it
+            double radius = Math.Min(layout.RadiusPixels, Math.Min(card.Width, card.Height) / 2);
+            // With a bar the recording's top corners are square (the bar has the round ones).
+            ContentHost.Clip = radius <= 0 ? cropClip
+                : layout.BarHeight > 0 ? RoundedBottom(width, height, radius / scaleX, radius / scaleY)
+                : new RectangleGeometry(new Rect(0, 0, width, height), radius / scaleX, radius / scaleY);
 
             if (!Equals(BackdropFill.Tag, frame.Background))
             {
                 BackdropFill.Background = FrameBackground.ToBrush(frame.Background);
                 BackdropFill.Tag = frame.Background;
             }
-            ShadowCard.Margin = new Thickness(content.X, content.Y, 0, 0);
-            ShadowCard.Width = content.Width;
-            ShadowCard.Height = content.Height;
+            ShadowCard.Margin = new Thickness(card.X, card.Y, 0, 0);
+            ShadowCard.Width = card.Width;
+            ShadowCard.Height = card.Height;
             ShadowCard.CornerRadius = new CornerRadius(radius);
             ShadowCard.Visibility = frame.Shadow > 0 ? Visibility.Visible : Visibility.Collapsed;
             ShadowCard.Effect = frame.Shadow > 0 ? FrameBackdrop.Shadow(frame, layout, 1) : null;
             Backdrop.Visibility = Visibility.Visible;
+
+            // The title bar over the card's top, and the line along its edge over everything of the recording.
+            if (layout.BarHeight > 0)
+            {
+                FrameBackdrop.FillBar(BarHost, frame, layout, 1, roundedTop: true);
+                BarHost.Margin = new Thickness(card.X, card.Y, 0, 0);
+                BarHost.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                BarHost.Visibility = Visibility.Collapsed;
+            }
+            if (layout.BorderPixels > 0 && FrameBackground.TryHex(frame.BorderColor, out System.Windows.Media.Color lineColor))
+            {
+                FrameRing.Margin = new Thickness(card.X, card.Y, 0, 0);
+                FrameRing.Width = card.Width;
+                FrameRing.Height = card.Height;
+                FrameRing.CornerRadius = new CornerRadius(radius);
+                FrameRing.BorderThickness = new Thickness(layout.BorderPixels);
+                FrameRing.BorderBrush = new SolidColorBrush(lineColor);
+                FrameRing.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                FrameRing.Visibility = Visibility.Collapsed;
+            }
         }
         else
         {
             _layout = null;
+            BarHost.Visibility = Visibility.Collapsed;
+            FrameRing.Visibility = Visibility.Collapsed;
             Backdrop.Visibility = Visibility.Collapsed;
             ContentHost.RenderTransform = Transform.Identity;
             ContentHost.Clip = cropClip;
         }
         RebuildPreviewCamera();
         RebuildOverlayShapes();
+    }
+
+    // A rectangle with only its two bottom corners round.
+    private static StreamGeometry RoundedBottom(double width, double height, double radiusX, double radiusY)
+    {
+        var geometry = new StreamGeometry();
+        using (StreamGeometryContext context = geometry.Open())
+        {
+            context.BeginFigure(new Point(0, 0), isFilled: true, isClosed: true);
+            context.LineTo(new Point(width, 0), true, false);
+            context.LineTo(new Point(width, height - radiusY), true, false);
+            context.ArcTo(new Point(width - radiusX, height), new Size(radiusX, radiusY), 0, false, SweepDirection.Clockwise, true, false);
+            context.LineTo(new Point(radiusX, height), true, false);
+            context.ArcTo(new Point(0, height - radiusY), new Size(radiusX, radiusY), 0, false, SweepDirection.Clockwise, true, false);
+        }
+        geometry.Freeze();
+        return geometry;
     }
 
     // The camera of the preview: the timeline's zooms (on the original recording), with their points moved into the crop

@@ -570,6 +570,45 @@
                                     <TextBlock Text="Sombra" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="FrameShadowText" Style="{StaticResource RowValue}" />
                                 </Grid>
+
+                                <TextBlock Text="BORDE" Style="{StaticResource SubHeader}" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid>
+                                        <Slider x:Name="FrameBorderSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.008" SmallChange="0.0005" LargeChange="0.002"
+                                                ValueChanged="OnFrameSlider" ToolTip="El grosor de la línea que rodea el video. En 0 no hay borde" />
+                                        <TextBlock Text="Grosor" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="FrameBorderText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                    <Button x:Name="FrameBorderColorButton" Grid.Column="1" Width="38" Height="38" Margin="8,0,0,0" Padding="4" Focusable="False" Click="OnFrameBorderColor"
+                                            ToolTip="Color del borde">
+                                        <Border x:Name="FrameBorderFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="26" Height="26" />
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock Text="BARRA DE VENTANA" Style="{StaticResource SubHeader}" />
+                                <WrapPanel Margin="0,0,0,6">
+                                    <RadioButton x:Name="FrameBarNone" Style="{StaticResource Tile}" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Sin barra: solo el video">
+                                        <TextBlock Text="Ninguna" FontSize="12" />
+                                    </RadioButton>
+                                    <RadioButton x:Name="FrameBarMac" Style="{StaticResource Tile}" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Una barra con tres botones redondos a la izquierda, como en macOS">
+                                        <TextBlock Text="Mac" FontSize="12" />
+                                    </RadioButton>
+                                    <RadioButton x:Name="FrameBarWindows" Style="{StaticResource Tile}" GroupName="frameBar" Checked="OnFrameChanged" ToolTip="Una barra con minimizar, maximizar y cerrar a la derecha, como en Windows">
+                                        <TextBlock Text="Windows" FontSize="12" />
+                                    </RadioButton>
+                                </WrapPanel>
+                                <WrapPanel x:Name="FrameBarToneRow" Margin="0,0,0,8">
+                                    <RadioButton x:Name="FrameBarDark" Style="{StaticResource Tile}" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos oscuros">
+                                        <TextBlock Text="Oscura" FontSize="12" />
+                                    </RadioButton>
+                                    <RadioButton x:Name="FrameBarLight" Style="{StaticResource Tile}" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos claros">
+                                        <TextBlock Text="Clara" FontSize="12" />
+                                    </RadioButton>
+                                </WrapPanel>
                             </StackPanel>
                         </StackPanel>
 
@@ -848,6 +887,10 @@
                                     <!-- The blurs, texts and arrows, in the recording's pixels, so the zoom and the frame carry them along. -->
                                     <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
                                 </Grid>
+                                <!-- The frame's title bar above the recording, and the line along the card's edge over it. -->
+                                <Border x:Name="BarHost" HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" />
+                                <Border x:Name="FrameRing" HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" />
+
                             </Grid>
                             <!-- The pointer the saved video will have, drawn over the scene where the camera shows it (not zoomed with
                                  the picture, so it stays sharp), with the effects of the clicks under it. -->

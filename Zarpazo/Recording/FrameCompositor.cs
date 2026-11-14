@@ -11,16 +11,23 @@ internal sealed class FrameCompositor
 {
     private readonly FrameLayout _layout;
     private readonly byte[] _backdrop;
+    private readonly byte[]? _bar;
+    private readonly (byte B, byte G, byte R)? _border;
     private readonly int _sourceWidth;
     private readonly Int32Rect _area;
 
     /// <param name="backdrop">From <see cref="FrameBackdrop.Render"/>, the scene's size.</param>
     /// <param name="sourceWidth">The size of the recorded pictures.</param>
     /// <param name="area">The rectangle of them that is kept (the crop), which fills the recording's place; null for all of it.</param>
-    public FrameCompositor(FrameLayout layout, byte[] backdrop, int sourceWidth, int sourceHeight, Int32Rect? area = null)
+    /// <param name="bar">From <see cref="FrameBackdrop.RenderBar"/>: the title bar above the recording; null without one.</param>
+    /// <param name="borderColor">The colour of the line along the card's edge (as wide as the layout says); null for none.</param>
+    public FrameCompositor(FrameLayout layout, byte[] backdrop, int sourceWidth, int sourceHeight, Int32Rect? area = null,
+        byte[]? bar = null, System.Windows.Media.Color? borderColor = null)
     {
         _layout = layout;
         _backdrop = backdrop;
+        _bar = layout.BarHeight > 0 ? bar : null;
+        _border = borderColor is { } color && layout.BorderPixels > 0 ? (color.B, color.G, color.R) : null;
         _sourceWidth = sourceWidth;
         _area = area ?? new Int32Rect(0, 0, sourceWidth, sourceHeight);
     }
@@ -36,24 +43,31 @@ internal sealed class FrameCompositor
     {
         int width = _layout.Width;
         int height = _layout.Height;
-        double left = _layout.Content.X;
-        double top = _layout.Content.Y;
-        double contentWidth = _layout.Content.Width;
-        double contentHeight = _layout.Content.Height;
-        double radius = Math.Min(_layout.RadiusPixels, Math.Min(contentWidth, contentHeight) / 2);
-        double centerX = left + contentWidth / 2;
-        double centerY = top + contentHeight / 2;
-        double halfInnerX = contentWidth / 2 - radius;
-        double halfInnerY = contentHeight / 2 - radius;
-        double toSourceX = _area.Width / contentWidth;
-        double toSourceY = _area.Height / contentHeight;
+        Int32Rect card = _layout.Card; // the recording and the bar above it: the rounded rectangle
+        double left = card.X;
+        double top = card.Y;
+        double cardWidth = card.Width;
+        double cardHeight = card.Height;
+        double contentTop = _layout.Content.Y;
+        double radius = Math.Min(_layout.RadiusPixels, Math.Min(cardWidth, cardHeight) / 2);
+        double centerX = left + cardWidth / 2;
+        double centerY = top + cardHeight / 2;
+        double halfInnerX = cardWidth / 2 - radius;
+        double halfInnerY = cardHeight / 2 - radius;
+        double toSourceX = _area.Width / (double)_layout.Content.Width;
+        double toSourceY = _area.Height / (double)_layout.Content.Height;
         Int32Rect area = _area;
         var whole = new Int32Rect(0, 0, width, height);
+        var barRect = new Int32Rect(0, 0, card.Width, Math.Max(1, _layout.BarHeight));
+        byte[]? bar = _bar;
+        double line = _border is null ? 0 : _layout.BorderPixels;
+        (byte B, byte G, byte R) lineColor = _border ?? default;
         double pixel = view.Width; // how much of the scene one pixel of the result covers, for the soft edge
-        // With the whole scene in view each pixel of the result is the same pixel of the backdrop, so what the recording does not
+        // With the whole scene in view each pixel of the result is the same pixel of the backdrop, so what the card does not
         // reach is copied as it is. That is most of a tall or square video, and looking each one up cost more than the rest together.
         bool fullView = view.IsFull;
-        double bottom = top + contentHeight, right = left + contentWidth;
+        double bottom = top + cardHeight, right = left + cardWidth;
+        double margin = pixel + line; // deeper inside than this, the edge and the line are out of reach
 
         Parallel.For(0, height, y =>
         {
@@ -76,41 +90,59 @@ internal sealed class FrameCompositor
                     continue;
                 }
 
-                // How far the point is outside the rounded rectangle (negative inside), turned into how much of the pixel it covers.
+                // How far the point is outside the rounded rectangle (negative inside), turned into how much of the pixel it
+                // covers, and into how much of it the line along the edge covers.
                 double qx = Math.Abs(sceneX - centerX) - halfInnerX;
                 double qy = Math.Abs(sceneY - centerY) - halfInnerY;
-                double cover;
-                if (qx <= -pixel && qy <= -pixel)
+                double cover, ring = 0;
+                if (qx <= -margin && qy <= -margin)
                 {
-                    cover = 1; // well inside the straight part: no corner to work out
+                    cover = 1; // well inside the straight part: no corner or line to work out
                 }
                 else
                 {
                     double outside = Math.Sqrt(Math.Max(qx, 0) * Math.Max(qx, 0) + Math.Max(qy, 0) * Math.Max(qy, 0))
                         + Math.Min(Math.Max(qx, qy), 0) - radius;
                     cover = Math.Clamp(0.5 - outside / pixel, 0, 1);
+                    if (line > 0)
+                    {
+                        ring = Math.Clamp(0.5 + (outside + line) / pixel, 0, 1);
+                    }
                 }
 
-                double sourceX = area.X + (sceneX - left) * toSourceX - 0.5;
-                double sourceY = area.Y + (sceneY - top) * toSourceY - 0.5;
-                if (cover >= 1)
-                {
-                    Sample(source, _sourceWidth, area, sourceX, sourceY, target.AsSpan(o, 4));
-                }
-                else if (cover <= 0)
+                if (cover <= 0)
                 {
                     Sample(_backdrop, width, whole, sceneX - 0.5, sceneY - 0.5, target.AsSpan(o, 4));
+                    continue;
+                }
+
+                // What the card shows here: the bar's pixel above the recording, the recorded picture's below.
+                if (bar != null && sceneY < contentTop)
+                {
+                    Sample(bar, card.Width, barRect, sceneX - left - 0.5, sceneY - top - 0.5, inside);
                 }
                 else
                 {
-                    Sample(source, _sourceWidth, area, sourceX, sourceY, inside);
-                    Sample(_backdrop, width, whole, sceneX - 0.5, sceneY - 0.5, behind);
-                    for (int c = 0; c < 3; c++)
-                    {
-                        target[o + c] = (byte)(inside[c] * cover + behind[c] * (1 - cover) + 0.5);
-                    }
-                    target[o + 3] = 255;
+                    Sample(source, _sourceWidth, area, area.X + (sceneX - left) * toSourceX - 0.5, area.Y + (sceneY - contentTop) * toSourceY - 0.5, inside);
                 }
+                if (ring > 0)
+                {
+                    inside[0] = (byte)(inside[0] * (1 - ring) + lineColor.B * ring + 0.5);
+                    inside[1] = (byte)(inside[1] * (1 - ring) + lineColor.G * ring + 0.5);
+                    inside[2] = (byte)(inside[2] * (1 - ring) + lineColor.R * ring + 0.5);
+                }
+
+                if (cover >= 1)
+                {
+                    inside.CopyTo(target.AsSpan(o, 4));
+                    continue;
+                }
+                Sample(_backdrop, width, whole, sceneX - 0.5, sceneY - 0.5, behind);
+                for (int c = 0; c < 3; c++)
+                {
+                    target[o + c] = (byte)(inside[c] * cover + behind[c] * (1 - cover) + 0.5);
+                }
+                target[o + 3] = 255;
             }
         });
     }

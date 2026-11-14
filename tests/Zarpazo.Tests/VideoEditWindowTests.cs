@@ -344,6 +344,64 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [NeedsGpuFact]
+    public void The_frame_puts_a_title_bar_and_a_line_round_the_recording_and_undo_takes_them_away()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.WithSound)
+            {
+                AskColor = _ => System.Windows.Media.Color.FromRgb(0, 200, 255),
+            };
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
+                window.FrameBox.IsChecked = true;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(Visibility.Collapsed, window.BarHost.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.FrameRing.Visibility);
+                Assert.False(window.FrameBarToneRow.IsEnabled, "the tone is of the bar: nothing to choose without one");
+                double plainScale = window.ContentHost.RenderTransform.Value.M11;
+
+                window.FrameBarMac.IsChecked = true; // a click on the Mac tile
+                Pump(() => false, 200);
+                Assert.Equal(WindowBar.Mac, window.Look.Frame.Bar);
+                Assert.Equal(Visibility.Visible, window.BarHost.Visibility);
+                Assert.True(window.FrameBarToneRow.IsEnabled);
+                Assert.True(window.ContentHost.RenderTransform.Value.M11 < plainScale, "the recording makes room for the bar");
+                Assert.True(window.BarHost.Margin.Top < window.ContentHost.RenderTransform.Value.OffsetY, "the bar is above the recording");
+
+                window.FrameBarLight.IsChecked = true;
+                window.FrameBorderSlider.Value = 0.004;
+                Pump(() => false, 200);
+                Assert.True(window.Look.Frame.LightBar);
+                Assert.Equal(Visibility.Visible, window.FrameRing.Visibility);
+
+                window.FrameBorderColorButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal("#00C8FF", window.Look.Frame.BorderColor);
+                Shot(window, folder, "editor-frame-bar.png");
+
+                window.FrameBarNone.IsChecked = true;
+                Pump(() => false, 200);
+                Assert.Equal(Visibility.Collapsed, window.BarHost.Visibility);
+                Assert.Equal(plainScale, window.ContentHost.RenderTransform.Value.M11, 6);
+
+                window.Timeline!.Undo();
+                Pump(() => false, 200);
+                Assert.Equal(WindowBar.Mac, window.Look.Frame.Bar);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A copy of the sample with a pointer track: recorded without the pointer (as videos are now), or with it painted in.
     private string WithTrack(bool pointerInPicture)
     {

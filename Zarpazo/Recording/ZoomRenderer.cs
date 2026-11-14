@@ -69,7 +69,9 @@ internal static class ZoomRenderer
         if (frame is { Enabled: true })
         {
             layout = FrameLayout.For(frame, width, height, area.Width, area.Height);
-            compositor = new FrameCompositor(layout.Value, FrameBackdrop.Render(frame, layout.Value), sourceWidth, sourceHeight, area.Pixels);
+            System.Windows.Media.Color? border = frame.BorderWidth > 0 && FrameBackground.TryHex(frame.BorderColor, out System.Windows.Media.Color line) ? line : null;
+            compositor = new FrameCompositor(layout.Value, FrameBackdrop.Render(frame, layout.Value), sourceWidth, sourceHeight, area.Pixels,
+                FrameBackdrop.RenderBar(frame, layout.Value), border);
         }
 
         var writer = new Mp4Writer(target, outWidth, outHeight, fps, withAudio, bitsPerPixel, live: false);

@@ -136,10 +136,23 @@ internal sealed class AppSettings
     public double VideoFrameRadius { get; set; } = Recording.VideoFrameStyle.Default.Radius;
     public double VideoFrameShadowStrength { get; set; } = Recording.VideoFrameStyle.Default.Shadow;
 
+    public double VideoFrameBorderWidth { get; set; } = Recording.VideoFrameStyle.Default.BorderWidth;
+    public string VideoFrameBorderColor { get; set; } = Recording.VideoFrameStyle.Default.BorderColor;
+
+    /// <summary>"None", "Mac" or "Windows" (see <see cref="Recording.WindowBar"/>).</summary>
+    public string VideoFrameBar { get; set; } = Recording.VideoFrameStyle.Default.Bar.ToString();
+    public bool VideoFrameLightBar { get; set; } = Recording.VideoFrameStyle.Default.LightBar;
+
     [JsonIgnore]
     public Recording.VideoFrameStyle VideoFrame
     {
-        get => new Recording.VideoFrameStyle(VideoFrameEnabled, VideoFrameBackground ?? "", VideoFramePadding, VideoFrameRadius, VideoFrameShadowStrength).Tidied();
+        get => new Recording.VideoFrameStyle(VideoFrameEnabled, VideoFrameBackground ?? "", VideoFramePadding, VideoFrameRadius, VideoFrameShadowStrength)
+        {
+            BorderWidth = VideoFrameBorderWidth,
+            BorderColor = VideoFrameBorderColor ?? "",
+            Bar = Enum.TryParse(VideoFrameBar, out Recording.WindowBar bar) ? bar : Recording.WindowBar.None,
+            LightBar = VideoFrameLightBar,
+        }.Tidied();
         set
         {
             VideoFrameEnabled = value.Enabled;
@@ -147,6 +160,10 @@ internal sealed class AppSettings
             VideoFramePadding = value.Padding;
             VideoFrameRadius = value.Radius;
             VideoFrameShadowStrength = value.Shadow;
+            VideoFrameBorderWidth = value.BorderWidth;
+            VideoFrameBorderColor = value.BorderColor;
+            VideoFrameBar = value.Bar.ToString();
+            VideoFrameLightBar = value.LightBar;
         }
     }
 

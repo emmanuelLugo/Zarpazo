@@ -141,12 +141,14 @@ internal static class FrameBackground
 
     private static int NormalAngle(int angle) => ((angle % 360) + 360) % 360;
 
-    private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+    /// <summary>A colour as "#RRGGBB".</summary>
+    public static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
-    private static bool TryHex(string text, out Color color)
+    /// <summary>Reads "#RRGGBB" (any case).</summary>
+    public static bool TryHex(string? text, out Color color)
     {
         color = default;
-        if (text.Length != 7 || text[0] != '#' || !int.TryParse(text.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int rgb))
+        if (text == null || text.Length != 7 || text[0] != '#' || !int.TryParse(text.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int rgb))
         {
             return false;
         }

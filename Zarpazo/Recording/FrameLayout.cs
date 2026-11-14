@@ -12,19 +12,36 @@ namespace Zarpazo.Recording;
 /// <param name="ContentScale">How many pixels of the scene one pixel of the recording (cropped) takes.</param>
 internal readonly record struct FrameLayout(int Width, int Height, Int32Rect Content, double RadiusPixels, double ContentScale)
 {
+    /// <summary>How tall the title bar is, as a share of the scene's height.</summary>
+    public const double BarShare = 0.036;
+
+    /// <summary>The title bar's height in pixels of the scene; 0 without one. The bar sits right above <see cref="Content"/>.</summary>
+    public int BarHeight { get; init; }
+
+    /// <summary>The width of the line along the card's edge, in pixels of the scene.</summary>
+    public double BorderPixels { get; init; }
+
+    /// <summary>The whole card the frame draws: the recording and, above it, the bar. Its corners are the rounded ones.</summary>
+    public Int32Rect Card => new(Content.X, Content.Y - BarHeight, Content.Width, Content.Height + BarHeight);
+
     /// <summary>A scene of the same shape as the recording: the frame only shrinks it to leave room around.</summary>
     public static FrameLayout For(VideoFrameStyle style, int width, int height) => For(style, width, height, width, height);
 
     /// <param name="width">The scene's size, which is the video's.</param>
-    /// <param name="contentWidth">The size of the recording as it is, cropped; it is fitted inside the scene, with the room the style leaves.</param>
+    /// <param name="contentWidth">The size of the recording as it is, cropped; it is fitted inside the scene, with the room the style leaves (and the bar's height, if it has one).</param>
     public static FrameLayout For(VideoFrameStyle style, int width, int height, int contentWidth, int contentHeight)
     {
         int room = (int)Math.Round(style.Padding * height);
-        double scale = Math.Min((width - 2.0 * room) / contentWidth, (height - 2.0 * room) / contentHeight);
+        int bar = style.Bar == WindowBar.None ? 0 : Math.Max(8, (int)Math.Round(BarShare * height)) & ~1;
+        double scale = Math.Min((width - 2.0 * room) / contentWidth, (height - 2.0 * room - bar) / contentHeight);
         int fittedWidth = Math.Max(2, (int)Math.Round(contentWidth * scale));
         int fittedHeight = Math.Max(2, (int)Math.Round(contentHeight * scale));
-        var content = new Int32Rect((width - fittedWidth) / 2, (height - fittedHeight) / 2, fittedWidth, fittedHeight);
-        return new FrameLayout(width, height, content, style.Radius * height, fittedWidth / (double)contentWidth);
+        var content = new Int32Rect((width - fittedWidth) / 2, (height - fittedHeight - bar) / 2 + bar, fittedWidth, fittedHeight);
+        return new FrameLayout(width, height, content, style.Radius * height, fittedWidth / (double)contentWidth)
+        {
+            BarHeight = bar,
+            BorderPixels = style.BorderWidth * height,
+        };
     }
 
     /// <summary>A point of the recording (shares of it, 0 to 1) as shares of the whole scene.</summary>
