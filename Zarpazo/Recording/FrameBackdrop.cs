@@ -15,8 +15,6 @@ namespace Zarpazo.Recording;
 internal static class FrameBackdrop
 {
     private const double ShadowOpacity = 0.8; // at full strength
-    private const double ShadowBlurPerHeight = 0.035;
-    private const double ShadowDepthPerBlur = 0.3;
     private const double ShadowDown = 270;
 
     /// <summary>The backdrop as BGRA pixels, top row first, the scene's size. Callable from any thread: it draws on one of its own.</summary>
@@ -145,14 +143,13 @@ internal static class FrameBackdrop
     /// </summary>
     public static DropShadowEffect Shadow(VideoFrameStyle style, FrameLayout layout, double scale)
     {
-        double blur = Math.Max(4, layout.Height * ShadowBlurPerHeight * scale);
         return new DropShadowEffect
         {
-            BlurRadius = blur,
-            ShadowDepth = blur * ShadowDepthPerBlur,
+            BlurRadius = layout.Height * style.ShadowBlur * scale,
+            ShadowDepth = layout.Height * style.ShadowOffset * scale,
             Direction = ShadowDown,
             Opacity = ShadowOpacity * style.Shadow,
-            Color = Colors.Black,
+            Color = FrameBackground.TryHex(style.ShadowColor, out Color color) ? color : Colors.Black,
         };
     }
 

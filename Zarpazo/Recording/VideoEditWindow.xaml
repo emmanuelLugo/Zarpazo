@@ -552,12 +552,40 @@
                                     <TextBlock x:Name="FrameAngleText" Style="{StaticResource RowValue}" />
                                 </Grid>
                                 <TextBlock Text="FORMA" Style="{StaticResource SubHeader}" />
-                                <Grid Style="{StaticResource Row}">
+                                <Grid x:Name="FramePaddingRow" Style="{StaticResource Row}">
                                     <Slider x:Name="FramePaddingSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.15" SmallChange="0.005" LargeChange="0.02"
                                             ValueChanged="OnFrameSlider" ToolTip="El espacio de fondo alrededor del video" />
                                     <TextBlock Text="Relleno" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="FramePaddingText" Style="{StaticResource RowValue}" />
                                 </Grid>
+                                <CheckBox x:Name="FrameSidesBox" Content="Relleno por lado" Style="{StaticResource Switch}" Click="OnFrameChanged" Margin="0,0,0,8"
+                                          ToolTip="Da a cada lado su propio espacio: por ejemplo, más abajo para poner subtítulos" />
+                                <StackPanel x:Name="FrameSidesPanel" Visibility="Collapsed">
+                                    <Grid Style="{StaticResource Row}">
+                                        <Slider x:Name="FrameTopSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.3" SmallChange="0.005" LargeChange="0.02"
+                                                ValueChanged="OnFrameSlider" ToolTip="El espacio sobre el video" />
+                                        <TextBlock Text="Arriba" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="FrameTopText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                    <Grid Style="{StaticResource Row}">
+                                        <Slider x:Name="FrameBottomSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.3" SmallChange="0.005" LargeChange="0.02"
+                                                ValueChanged="OnFrameSlider" ToolTip="El espacio bajo el video" />
+                                        <TextBlock Text="Abajo" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="FrameBottomText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                    <Grid Style="{StaticResource Row}">
+                                        <Slider x:Name="FrameLeftSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.3" SmallChange="0.005" LargeChange="0.02"
+                                                ValueChanged="OnFrameSlider" ToolTip="El espacio a la izquierda del video" />
+                                        <TextBlock Text="Izquierda" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="FrameLeftText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                    <Grid Style="{StaticResource Row}">
+                                        <Slider x:Name="FrameRightSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.3" SmallChange="0.005" LargeChange="0.02"
+                                                ValueChanged="OnFrameSlider" ToolTip="El espacio a la derecha del video" />
+                                        <TextBlock Text="Derecha" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="FrameRightText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                </StackPanel>
                                 <Grid Style="{StaticResource Row}">
                                     <Slider x:Name="FrameRadiusSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.05" SmallChange="0.002" LargeChange="0.01"
                                             ValueChanged="OnFrameSlider" ToolTip="Cuán redondeadas son las esquinas del video" />
@@ -570,6 +598,30 @@
                                     <TextBlock Text="Sombra" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="FrameShadowText" Style="{StaticResource RowValue}" />
                                 </Grid>
+                                <StackPanel x:Name="FrameShadowDetails">
+                                    <Grid Style="{StaticResource Row}">
+                                        <Slider x:Name="FrameShadowBlurSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.08" SmallChange="0.002" LargeChange="0.01"
+                                                ValueChanged="OnFrameSlider" ToolTip="Cuán difusa es la sombra: poco es un borde marcado, mucho un resplandor" />
+                                        <TextBlock Text="Desenfoque" Style="{StaticResource RowLabel}" />
+                                        <TextBlock x:Name="FrameShadowBlurText" Style="{StaticResource RowValue}" />
+                                    </Grid>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid>
+                                            <Slider x:Name="FrameShadowOffsetSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.04" SmallChange="0.001" LargeChange="0.005"
+                                                    ValueChanged="OnFrameSlider" ToolTip="Cuánto se desplaza la sombra hacia abajo" />
+                                            <TextBlock Text="Distancia" Style="{StaticResource RowLabel}" />
+                                            <TextBlock x:Name="FrameShadowOffsetText" Style="{StaticResource RowValue}" />
+                                        </Grid>
+                                        <Button x:Name="FrameShadowColorButton" Grid.Column="1" Width="38" Height="38" Margin="8,0,0,0" Padding="4" Focusable="False" Click="OnFrameShadowColor"
+                                                ToolTip="Color de la sombra">
+                                            <Border x:Name="FrameShadowFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="26" Height="26" />
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
 
                                 <TextBlock Text="BORDE" Style="{StaticResource SubHeader}" />
                                 <Grid Margin="0,0,0,8">

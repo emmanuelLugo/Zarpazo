@@ -143,6 +143,15 @@ internal sealed class AppSettings
     public string VideoFrameBar { get; set; } = Recording.VideoFrameStyle.Default.Bar.ToString();
     public bool VideoFrameLightBar { get; set; } = Recording.VideoFrameStyle.Default.LightBar;
 
+    public double VideoFrameShadowBlur { get; set; } = Recording.VideoFrameStyle.Default.ShadowBlur;
+    public double VideoFrameShadowOffset { get; set; } = Recording.VideoFrameStyle.Default.ShadowOffset;
+    public string VideoFrameShadowColor { get; set; } = Recording.VideoFrameStyle.Default.ShadowColor;
+    public bool VideoFramePaddingBySide { get; set; } = Recording.VideoFrameStyle.Default.PaddingBySide;
+    public double VideoFramePaddingTop { get; set; } = Recording.VideoFrameStyle.Default.PaddingTop;
+    public double VideoFramePaddingBottom { get; set; } = Recording.VideoFrameStyle.Default.PaddingBottom;
+    public double VideoFramePaddingLeft { get; set; } = Recording.VideoFrameStyle.Default.PaddingLeft;
+    public double VideoFramePaddingRight { get; set; } = Recording.VideoFrameStyle.Default.PaddingRight;
+
     [JsonIgnore]
     public Recording.VideoFrameStyle VideoFrame
     {
@@ -152,6 +161,14 @@ internal sealed class AppSettings
             BorderColor = VideoFrameBorderColor ?? "",
             Bar = Enum.TryParse(VideoFrameBar, out Recording.WindowBar bar) ? bar : Recording.WindowBar.None,
             LightBar = VideoFrameLightBar,
+            ShadowBlur = VideoFrameShadowBlur,
+            ShadowOffset = VideoFrameShadowOffset,
+            ShadowColor = VideoFrameShadowColor ?? "",
+            PaddingBySide = VideoFramePaddingBySide,
+            PaddingTop = VideoFramePaddingTop,
+            PaddingBottom = VideoFramePaddingBottom,
+            PaddingLeft = VideoFramePaddingLeft,
+            PaddingRight = VideoFramePaddingRight,
         }.Tidied();
         set
         {
@@ -164,6 +181,14 @@ internal sealed class AppSettings
             VideoFrameBorderColor = value.BorderColor;
             VideoFrameBar = value.Bar.ToString();
             VideoFrameLightBar = value.LightBar;
+            VideoFrameShadowBlur = value.ShadowBlur;
+            VideoFrameShadowOffset = value.ShadowOffset;
+            VideoFrameShadowColor = value.ShadowColor;
+            VideoFramePaddingBySide = value.PaddingBySide;
+            VideoFramePaddingTop = value.PaddingTop;
+            VideoFramePaddingBottom = value.PaddingBottom;
+            VideoFramePaddingLeft = value.PaddingLeft;
+            VideoFramePaddingRight = value.PaddingRight;
         }
     }
 

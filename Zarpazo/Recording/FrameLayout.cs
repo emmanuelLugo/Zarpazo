@@ -31,12 +31,20 @@ internal readonly record struct FrameLayout(int Width, int Height, Int32Rect Con
     /// <param name="contentWidth">The size of the recording as it is, cropped; it is fitted inside the scene, with the room the style leaves (and the bar's height, if it has one).</param>
     public static FrameLayout For(VideoFrameStyle style, int width, int height, int contentWidth, int contentHeight)
     {
-        int room = (int)Math.Round(style.Padding * height);
+        (double roomLeft, double roomTop, double roomRight, double roomBottom) = style.Room;
+        int left = (int)Math.Round(roomLeft * height), top = (int)Math.Round(roomTop * height);
+        int right = (int)Math.Round(roomRight * height), bottom = (int)Math.Round(roomBottom * height);
         int bar = style.Bar == WindowBar.None ? 0 : Math.Max(8, (int)Math.Round(BarShare * height)) & ~1;
-        double scale = Math.Min((width - 2.0 * room) / contentWidth, (height - 2.0 * room - bar) / contentHeight);
+        // However much room is asked for, a fifth of the scene is always left for the recording.
+        double freeWidth = Math.Max(width * 0.2, width - left - right);
+        double freeHeight = Math.Max(height * 0.2, height - top - bottom - bar);
+        double scale = Math.Min(freeWidth / contentWidth, freeHeight / contentHeight);
         int fittedWidth = Math.Max(2, (int)Math.Round(contentWidth * scale));
         int fittedHeight = Math.Max(2, (int)Math.Round(contentHeight * scale));
-        var content = new Int32Rect((width - fittedWidth) / 2, (height - fittedHeight - bar) / 2 + bar, fittedWidth, fittedHeight);
+        // The recording (and its bar) is centred in the space the room leaves.
+        int x = (int)Math.Floor(left + (width - left - right - fittedWidth) / 2.0);
+        int y = (int)Math.Floor(top + (height - top - bottom - bar - fittedHeight) / 2.0) + bar;
+        var content = new Int32Rect(Math.Clamp(x, 0, Math.Max(0, width - fittedWidth)), Math.Clamp(y, bar, Math.Max(bar, height - fittedHeight)), fittedWidth, fittedHeight);
         return new FrameLayout(width, height, content, style.Radius * height, fittedWidth / (double)contentWidth)
         {
             BarHeight = bar,

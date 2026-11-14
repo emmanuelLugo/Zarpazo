@@ -404,6 +404,66 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [NeedsGpuFact]
+    public void The_frame_gives_each_side_its_own_room_and_tunes_the_shadow()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.WithSound)
+            {
+                AskColor = _ => System.Windows.Media.Color.FromRgb(255, 80, 0),
+            };
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
+                window.FrameBox.IsChecked = true;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(Visibility.Visible, window.FramePaddingRow.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.FrameSidesPanel.Visibility);
+                double middle = window.ContentHost.RenderTransform.Value.OffsetY;
+
+                window.FrameSidesBox.IsChecked = true;
+                window.FrameSidesBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.True(window.Look.Frame.PaddingBySide);
+                Assert.Equal(window.Look.Frame.Padding, window.Look.Frame.PaddingBottom);
+                Assert.Equal(Visibility.Visible, window.FrameSidesPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.FramePaddingRow.Visibility);
+                Assert.Equal(middle, window.ContentHost.RenderTransform.Value.OffsetY, 3); // nothing jumps when switching
+
+                window.FrameBottomSlider.Value = 0.25;
+                Pump(() => false, 200);
+                Assert.Equal(0.25, window.Look.Frame.PaddingBottom, 3);
+                Matrix placed = window.ContentHost.RenderTransform.Value;
+                double bottomEdge = placed.OffsetY + window.ContentHost.Height * placed.M22;
+                Assert.True(bottomEdge <= window.Scene.Height * (1 - 0.25) + 1, "the room asked for below is left free");
+                Assert.True(placed.M11 < 0.9, "the recording is smaller to leave it");
+
+                window.FrameShadowBlurSlider.Value = 0.06;
+                window.FrameShadowColorButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(0.06, window.Look.Frame.ShadowBlur, 3);
+                Assert.Equal("#FF5000", window.Look.Frame.ShadowColor);
+                Assert.Equal(System.Windows.Media.Color.FromRgb(255, 80, 0), ((System.Windows.Media.Effects.DropShadowEffect)window.ShadowCard.Effect).Color);
+                window.FrameShadowColorButton.BringIntoView();
+                Pump(() => false, 200);
+                Shot(window, folder, "editor-frame-sides.png");
+
+                window.Timeline!.Undo();
+                Pump(() => false, 200);
+                Assert.Equal("#000000", window.Look.Frame.ShadowColor);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A copy of the sample with a pointer track: recorded without the pointer (as videos are now), or with it painted in.
     private string WithTrack(bool pointerInPicture)
     {

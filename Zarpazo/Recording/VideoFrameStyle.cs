@@ -32,6 +32,34 @@ internal sealed record VideoFrameStyle(bool Enabled, string Background, double P
 
     public const string DefaultBorderColor = "#FFFFFF";
 
+    public const double MaxSidePadding = 0.3;
+    public const double MaxShadowBlur = 0.08;
+    public const double MaxShadowOffset = 0.04;
+    public const double DefaultShadowBlur = 0.035;
+    public const double DefaultShadowOffset = 0.0105;
+    public const double DefaultSidePadding = 0.07;
+
+    /// <summary>How soft the shadow's edge is, as a share of the picture's height (0 to <see cref="MaxShadowBlur"/>).</summary>
+    public double ShadowBlur { get; init; } = DefaultShadowBlur;
+
+    /// <summary>How far the shadow falls below the recording, as a share of the picture's height (0 to <see cref="MaxShadowOffset"/>).</summary>
+    public double ShadowOffset { get; init; } = DefaultShadowOffset;
+
+    /// <summary>The shadow's colour, as "#RRGGBB"; how strong it is comes from <see cref="Shadow"/>.</summary>
+    public string ShadowColor { get; init; } = "#000000";
+
+    /// <summary>Each side has its own room (the four values below) instead of <see cref="Padding"/> all round.</summary>
+    public bool PaddingBySide { get; init; }
+
+    public double PaddingTop { get; init; } = DefaultSidePadding;
+    public double PaddingBottom { get; init; } = DefaultSidePadding;
+    public double PaddingLeft { get; init; } = DefaultSidePadding;
+    public double PaddingRight { get; init; } = DefaultSidePadding;
+
+    /// <summary>The room on each side, as shares of the picture's height.</summary>
+    public (double Left, double Top, double Right, double Bottom) Room =>
+        PaddingBySide ? (PaddingLeft, PaddingTop, PaddingRight, PaddingBottom) : (Padding, Padding, Padding, Padding);
+
     public static VideoFrameStyle Default { get; } = new(false, BeautifyBackground.Default.Key, 0.07, 0.012, 0.6);
 
     /// <summary>Looks to start from, one click each: a background with the room, corners and shadow that go with it.</summary>
@@ -50,7 +78,7 @@ internal sealed record VideoFrameStyle(bool Enabled, string Background, double P
     /// frame was switched on or not, so with it off the background is there but nothing else (no room, corners, shadow, line or bar).
     /// </summary>
     public VideoFrameStyle ForScene(bool letterboxed) =>
-        letterboxed && !Enabled ? this with { Enabled = true, Padding = 0, Radius = 0, Shadow = 0, BorderWidth = 0, Bar = WindowBar.None } : this;
+        letterboxed && !Enabled ? this with { Enabled = true, Padding = 0, PaddingBySide = false, Radius = 0, Shadow = 0, BorderWidth = 0, Bar = WindowBar.None } : this;
 
     /// <summary>The same style with its values brought inside what is offered (a hand-edited settings file).</summary>
     public VideoFrameStyle Tidied() => this with
@@ -59,6 +87,13 @@ internal sealed record VideoFrameStyle(bool Enabled, string Background, double P
         Padding = Clamp(Padding, MaxPadding, Default.Padding),
         Radius = Clamp(Radius, MaxRadius, Default.Radius),
         Shadow = Clamp(Shadow, 1, Default.Shadow),
+        ShadowBlur = Clamp(ShadowBlur, MaxShadowBlur, DefaultShadowBlur),
+        ShadowOffset = Clamp(ShadowOffset, MaxShadowOffset, DefaultShadowOffset),
+        ShadowColor = FrameBackground.TryHex(ShadowColor, out System.Windows.Media.Color shadow) ? FrameBackground.Hex(shadow) : "#000000",
+        PaddingTop = Clamp(PaddingTop, MaxSidePadding, DefaultSidePadding),
+        PaddingBottom = Clamp(PaddingBottom, MaxSidePadding, DefaultSidePadding),
+        PaddingLeft = Clamp(PaddingLeft, MaxSidePadding, DefaultSidePadding),
+        PaddingRight = Clamp(PaddingRight, MaxSidePadding, DefaultSidePadding),
         BorderWidth = Clamp(BorderWidth, MaxBorder, 0),
         BorderColor = FrameBackground.TryHex(BorderColor, out System.Windows.Media.Color border) ? FrameBackground.Hex(border) : DefaultBorderColor,
         Bar = Enum.IsDefined(Bar) ? Bar : WindowBar.None,

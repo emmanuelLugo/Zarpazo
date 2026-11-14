@@ -1560,6 +1560,16 @@ public partial class VideoEditWindow : Window
         FrameRadiusSlider.Value = _frame.Radius;
         FrameShadowSlider.Value = _frame.Shadow;
         FrameBorderSlider.Value = _frame.BorderWidth;
+        FrameShadowBlurSlider.Value = _frame.ShadowBlur;
+        FrameShadowOffsetSlider.Value = _frame.ShadowOffset;
+        FrameShadowFill.Background = new SolidColorBrush(FrameBackground.TryHex(_frame.ShadowColor, out System.Windows.Media.Color shadowColor) ? shadowColor : System.Windows.Media.Colors.Black);
+        FrameSidesBox.IsChecked = _frame.PaddingBySide;
+        FramePaddingRow.Visibility = _frame.PaddingBySide ? Visibility.Collapsed : Visibility.Visible;
+        FrameSidesPanel.Visibility = _frame.PaddingBySide ? Visibility.Visible : Visibility.Collapsed;
+        FrameTopSlider.Value = _frame.PaddingTop;
+        FrameBottomSlider.Value = _frame.PaddingBottom;
+        FrameLeftSlider.Value = _frame.PaddingLeft;
+        FrameRightSlider.Value = _frame.PaddingRight;
         FrameBorderFill.Background = new SolidColorBrush(FrameBackground.TryHex(_frame.BorderColor, out System.Windows.Media.Color lineColor) ? lineColor : System.Windows.Media.Colors.White);
         FrameBarNone.IsChecked = _frame.Bar == WindowBar.None;
         FrameBarMac.IsChecked = _frame.Bar == WindowBar.Mac;
@@ -1594,6 +1604,14 @@ public partial class VideoEditWindow : Window
         FramePaddingText.Text = $"{Math.Round(_frame.Padding * 100)} %";
         FrameRadiusText.Text = $"{Math.Round(_frame.Radius * height)} px";
         FrameShadowText.Text = $"{Math.Round(_frame.Shadow * 100)} %";
+        FrameShadowBlurText.Text = $"{Math.Round(_frame.ShadowBlur * height)} px";
+        FrameShadowOffsetText.Text = $"{Math.Round(_frame.ShadowOffset * height)} px";
+        FrameShadowDetails.IsEnabled = _frame.Shadow > 0; // no shadow, nothing to tune
+        FrameShadowDetails.Opacity = _frame.Shadow > 0 ? 1 : 0.5;
+        FrameTopText.Text = $"{Math.Round(_frame.PaddingTop * 100)} %";
+        FrameBottomText.Text = $"{Math.Round(_frame.PaddingBottom * 100)} %";
+        FrameLeftText.Text = $"{Math.Round(_frame.PaddingLeft * 100)} %";
+        FrameRightText.Text = $"{Math.Round(_frame.PaddingRight * 100)} %";
         FrameBorderText.Text = _frame.BorderWidth > 0 ? $"{Math.Max(1, Math.Round(_frame.BorderWidth * height))} px" : "Sin borde";
         FrameBorderColorButton.IsEnabled = _frame.BorderWidth > 0;
         FrameBorderColorButton.Opacity = _frame.BorderWidth > 0 ? 1 : 0.5;
@@ -1605,6 +1623,16 @@ public partial class VideoEditWindow : Window
         if (_ready && AskForColor(current) is { } color)
         {
             SetFrame((_frame with { BorderColor = FrameBackground.Hex(color) }).Tidied());
+            ShowFrameChoices();
+        }
+    }
+
+    private void OnFrameShadowColor(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Media.Color current = FrameBackground.TryHex(_frame.ShadowColor, out System.Windows.Media.Color parsed) ? parsed : System.Windows.Media.Colors.Black;
+        if (_ready && AskForColor(current) is { } color)
+        {
+            SetFrame((_frame with { ShadowColor = FrameBackground.Hex(color) }).Tidied());
             ShowFrameChoices();
         }
     }
@@ -1626,12 +1654,23 @@ public partial class VideoEditWindow : Window
 
         string background = FrameBackgrounds.Children.OfType<RadioButton>().FirstOrDefault(swatch => swatch.IsChecked == true)?.Tag as string
             ?? _frame.Background;
+        bool bySide = FrameSidesBox.IsChecked == true;
+        double all = Math.Round(FramePaddingSlider.Value, 3);
+        // Switching to a room for each side starts every side at the room there is now, so nothing jumps.
+        bool starting = bySide && !_frame.PaddingBySide;
         WindowBar bar = FrameBarMac.IsChecked == true ? WindowBar.Mac : FrameBarWindows.IsChecked == true ? WindowBar.Windows : WindowBar.None;
         SetFrame((_frame with
         {
             Enabled = FrameBox.IsChecked == true,
             Background = background,
-            Padding = Math.Round(FramePaddingSlider.Value, 3),
+            Padding = all,
+            PaddingBySide = bySide,
+            PaddingTop = starting ? _frame.Padding : Math.Round(FrameTopSlider.Value, 3),
+            PaddingBottom = starting ? _frame.Padding : Math.Round(FrameBottomSlider.Value, 3),
+            PaddingLeft = starting ? _frame.Padding : Math.Round(FrameLeftSlider.Value, 3),
+            PaddingRight = starting ? _frame.Padding : Math.Round(FrameRightSlider.Value, 3),
+            ShadowBlur = Math.Round(FrameShadowBlurSlider.Value, 4),
+            ShadowOffset = Math.Round(FrameShadowOffsetSlider.Value, 4),
             Radius = Math.Round(FrameRadiusSlider.Value, 4),
             Shadow = Math.Round(FrameShadowSlider.Value * 20) / 20,
             BorderWidth = Math.Round(FrameBorderSlider.Value, 4),
