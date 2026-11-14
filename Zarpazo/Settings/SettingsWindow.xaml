@@ -260,6 +260,14 @@
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Más calidad y más cuadros por segundo dan un video más nítido y más pesado. El equipo también tiene que poder con ello: a pantalla completa, 30 cuadros ya es mucho para algunos." />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Zoom en el editor de video" />
+                    <CheckBox x:Name="AutoZoomBox" Content="Poner zooms automáticamente al abrir una grabación" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Al abrir un video en el editor, cada clic ya viene con su zoom. Apagado, el video se abre sin zooms; el botón «Zoom automático» del editor sigue disponible." />
+                    <CheckBox x:Name="ConnectZoomsBox" Content="Conectar zooms seguidos" Margin="0,10,0,0" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Si dos zooms están cerca, la cámara se desliza del uno al otro en un solo movimiento. Apagado, vuelve a la pantalla completa entre uno y otro." />
                 </StackPanel>
 
                 <!-- Guardado -->

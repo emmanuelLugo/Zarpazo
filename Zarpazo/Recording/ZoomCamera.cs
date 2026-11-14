@@ -15,13 +15,14 @@ internal sealed class ZoomCamera
     private readonly List<List<ZoomSpan>> _chains = [];
     private readonly ZoomTiming _timing;
 
-    public ZoomCamera(IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms, ZoomMotion motion = ZoomMotion.Smooth)
+    /// <param name="connect">False: every zoom goes back out before the next one, however close they are.</param>
+    public ZoomCamera(IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms, ZoomMotion motion = ZoomMotion.Smooth, bool connect = true)
     {
         _timing = ZoomTiming.For(motion);
         Spans = Place(segments, zooms);
         foreach (ZoomSpan span in Spans)
         {
-            if (_chains.Count > 0 && span.Start - _chains[^1][^1].End <= _timing.JoinGapSeconds)
+            if (connect && _chains.Count > 0 && span.Start - _chains[^1][^1].End <= _timing.JoinGapSeconds)
             {
                 _chains[^1].Add(span);
             }

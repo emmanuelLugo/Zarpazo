@@ -25,9 +25,10 @@ internal static class VideoExporter
     /// <param name="crop">The part of the picture kept; the video takes its size.</param>
     /// <param name="motion">How fast the camera moves into and out of the zooms.</param>
     /// <param name="overlays">The blurs, texts and arrows drawn over the video.</param>
+    /// <param name="connectZooms">Whether zooms close to each other are joined (see <see cref="ZoomCamera"/>).</param>
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
         double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null,
-        VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null)
+        VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null, bool connectZooms = true)
     {
         bool framed = frame is { Enabled: true };
         CropArea? area = null;
@@ -44,7 +45,7 @@ internal static class VideoExporter
             }
         }
 
-        var camera = new ZoomCamera(segments, zooms, motion);
+        var camera = new ZoomCamera(segments, zooms, motion, connectZooms);
         CursorLayer? pointer = CursorLayer.For(track, cursor, segments, area);
         OverlayLayer? drawn = OverlayLayer.For(overlays, segments, area);
         bool cropped = area is { IsWhole: false };

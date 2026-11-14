@@ -107,6 +107,8 @@ public partial class SettingsWindow : Window
         VideoFpsBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoFramesPerSecondChoices, quality.VideoFramesPerSecond));
         VideoQualityBox.SelectedIndex = (int)quality.VideoQuality;
         VideoMaxBox.SelectedIndex = Math.Max(0, Array.IndexOf(RecordingQuality.VideoMaxMinutesChoices, quality.VideoMaxMinutes));
+        AutoZoomBox.IsChecked = settings.AutoZoomOnOpen;
+        ConnectZoomsBox.IsChecked = settings.ConnectZooms;
     }
 
     private void LoadSaving(AppSettings settings)
@@ -388,6 +390,8 @@ public partial class SettingsWindow : Window
             RecordingQuality.VideoFramesPerSecondChoices[Math.Max(0, VideoFpsBox.SelectedIndex)],
             (VideoQuality)Math.Max(0, VideoQualityBox.SelectedIndex),
             RecordingQuality.VideoMaxMinutesChoices[Math.Max(0, VideoMaxBox.SelectedIndex)]);
+        settings.AutoZoomOnOpen = AutoZoomBox.IsChecked == true;
+        settings.ConnectZooms = ConnectZoomsBox.IsChecked == true;
         settings.CopyAsFile = CopyAsFileBox.IsChecked == true;
         settings.SaveFolder = FolderBox.Text.Trim();
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";

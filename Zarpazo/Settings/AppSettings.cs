@@ -182,6 +182,12 @@ internal sealed class AppSettings
         }
     }
 
+    /// <summary>Open a video in the editor with the zooms of its clicks already placed.</summary>
+    public bool AutoZoomOnOpen { get; set; } = true;
+
+    /// <summary>Zooms close to each other stay zoomed in and the camera glides between them, instead of zooming out and in again.</summary>
+    public bool ConnectZooms { get; set; } = true;
+
     /// <summary>The zooms' style on videos (see <see cref="Recording.ZoomStyle"/>); the last one chosen in the editor.</summary>
     public double VideoZoomDepth { get; set; } = Recording.ZoomStyle.Default.Depth;
 
