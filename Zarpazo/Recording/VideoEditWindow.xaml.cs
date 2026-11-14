@@ -53,6 +53,8 @@ public partial class VideoEditWindow : Window
     private CursorMotion? _motion; // the drawn pointer's path; null when this video has none to draw
     private bool _showingCursor;
     private ZoomStyle _zoomStyle;
+    private VideoExportOptions _export = VideoExportOptions.Default;
+    private bool _showingExport;
     private bool _showingZoomStyle;
     private bool _lookFromControls; // the look is being changed by a panel, which shows the change itself
     private IReadOnlyList<VideoSegment>? _seenSegments; // what the window last saw of the edit, to tell a change of look alone
@@ -86,6 +88,7 @@ public partial class VideoEditWindow : Window
         _frame = settings?.Current.VideoFrame ?? VideoFrameStyle.Default;
         _cursor = settings?.Current.VideoCursor ?? CursorStyle.Default;
         _zoomStyle = settings?.Current.VideoZoom ?? ZoomStyle.Default;
+        _export = settings?.Current.VideoExport ?? VideoExportOptions.Default;
         _presets = settings?.Current.Presets ?? [];
         _frameSave.Tick += (_, _) =>
         {
@@ -96,6 +99,7 @@ public partial class VideoEditWindow : Window
         BuildCursorChoices();
         BuildOverlayInks();
         ShowZoomStyle();
+        ShowExport();
         BuildPresetRows();
         _ready = true;
         _source = source;
@@ -919,13 +923,13 @@ public partial class VideoEditWindow : Window
     // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, a pointer to draw,
     // or a crop. Otherwise the finished video is the recording itself.
     internal bool NeedsRendering => _timeline != null
-        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _timeline.Overlays.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone
+        && (_timeline.IsEdited || _timeline.Zooms.Count > 0 || _timeline.Overlays.Count > 0 || _frame.Enabled || !_timeline.Crop.IsNone || !_export.IsDefault
             || CursorLayer.For(_track, _cursor, _timeline.Segments) != null);
 
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}" : "", string.Join(";", _timeline.Overlays));
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}" : "", string.Join(";", _timeline.Overlays), _export);
 
     private void SetBusy(bool busy)
     {
@@ -960,7 +964,7 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect, _export);
                 }
                 else
                 {
@@ -1583,7 +1587,79 @@ public partial class VideoEditWindow : Window
         CropSizeText.Text = OutputArea() is { } area
             ? crop.IsNone ? $"Imagen completa · {area.Width} × {area.Height} px" : $"El video quedará de {area.Width} × {area.Height} px"
             : "";
+        ShowExportSize(); // the size saved follows the crop
         _showingCrop = false;
+    }
+
+    // ---------- export
+
+    // What the finished video is written like. Not an edit (nothing to undo, no "unsaved changes"); remembered for the next video.
+    private void ShowExport()
+    {
+        _showingExport = true;
+        ResolutionOriginalTile.IsChecked = _export.Resolution == ExportResolution.Original;
+        ResolutionHighTile.IsChecked = _export.Resolution == ExportResolution.High;
+        ResolutionMediumTile.IsChecked = _export.Resolution == ExportResolution.Medium;
+        ResolutionLowTile.IsChecked = _export.Resolution == ExportResolution.Low;
+        QualityLightTile.IsChecked = _export.Quality == ExportQuality.Light;
+        QualityBalancedTile.IsChecked = _export.Quality == ExportQuality.Balanced;
+        QualityHighTile.IsChecked = _export.Quality == ExportQuality.High;
+        FpsAutoTile.IsChecked = _export.Fps == 0;
+        Fps24Tile.IsChecked = _export.Fps == 24;
+        Fps30Tile.IsChecked = _export.Fps == 30;
+        Fps60Tile.IsChecked = _export.Fps == 60;
+        ExportResetButton.IsEnabled = !_export.IsDefault;
+        ShowExportSize();
+        _showingExport = false;
+    }
+
+    private void ShowExportSize()
+    {
+        if (OutputArea() is not { } area)
+        {
+            ExportSizeText.Text = "";
+            return;
+        }
+        (int width, int height) = _export.SizeFor(area.Width, area.Height);
+        ExportSizeText.Text = _export.Resolution == ExportResolution.Original
+            ? $"Saldrá de {width} × {height} px, el tamaño de la grabación"
+            : $"Saldrá de {width} × {height} px (la grabación es de {area.Width} × {area.Height})";
+    }
+
+    private void OnExportChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || _showingExport)
+        {
+            return;
+        }
+
+        ExportResolution resolution = ResolutionHighTile.IsChecked == true ? ExportResolution.High
+            : ResolutionMediumTile.IsChecked == true ? ExportResolution.Medium
+            : ResolutionLowTile.IsChecked == true ? ExportResolution.Low
+            : ExportResolution.Original;
+        ExportQuality quality = QualityLightTile.IsChecked == true ? ExportQuality.Light
+            : QualityHighTile.IsChecked == true ? ExportQuality.High
+            : ExportQuality.Balanced;
+        int fps = Fps24Tile.IsChecked == true ? 24 : Fps30Tile.IsChecked == true ? 30 : Fps60Tile.IsChecked == true ? 60 : 0;
+        TakeExport(new VideoExportOptions(resolution, quality, fps));
+    }
+
+    /// <summary>How the finished video will be written.</summary>
+    internal VideoExportOptions Export => _export;
+
+    private void OnExportReset(object sender, RoutedEventArgs e) => TakeExport(VideoExportOptions.Default);
+
+    private void TakeExport(VideoExportOptions options)
+    {
+        _export = options;
+        if (_settings != null)
+        {
+            _settings.Current.VideoExport = options;
+            _frameSave.Stop();
+            _frameSave.Start(); // written a moment after the last change, like the look
+        }
+        ShowExport();
+        RefreshState(); // a video already made for other choices is made again when saved
     }
 
     private static string Percent(double share) => $"{(share * 100).ToString("0.#", CultureInfo.CurrentCulture)} %";
@@ -2058,10 +2134,11 @@ public partial class VideoEditWindow : Window
     // The side column shows one panel at a time, the frame's or the pointer's.
     private void OnPanelTab(object sender, RoutedEventArgs e)
     {
-        if (FramePanel == null || CursorPanel == null || ZoomPanel == null || CropPanel == null || OverlayPanel == null || OverlayLane == null)
+        if (FramePanel == null || CursorPanel == null || ZoomPanel == null || CropPanel == null || OverlayPanel == null || ExportPanel == null || OverlayLane == null)
         {
             return; // the first tab is checked while the XAML loads
         }
+        ExportPanel.Visibility = ExportTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         FramePanel.Visibility = FrameTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         CursorPanel.Visibility = CursorTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         ZoomPanel.Visibility = ZoomTab.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;

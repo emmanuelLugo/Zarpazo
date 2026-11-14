@@ -440,6 +440,55 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [Fact]
+    public void The_export_panel_sets_size_quality_and_rate_without_being_an_edit_and_is_remembered()
+    {
+        var store = new Zarpazo.Settings.SettingsStore(Path.Combine(_folder, "settings.json"));
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.Silent, store);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                window.ExportTab.IsChecked = true;
+                Assert.Equal(Visibility.Visible, window.ExportPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.FramePanel.Visibility);
+                Assert.True(window.ResolutionOriginalTile.IsChecked);
+                Assert.True(window.FpsAutoTile.IsChecked);
+                Assert.False(window.NeedsRendering, "the recording is saved as it is until something changes");
+                Assert.False(window.ExportResetButton.IsEnabled);
+
+                window.ResolutionLowTile.IsChecked = true;
+                window.ResolutionLowTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.QualityLightTile.IsChecked = true;
+                window.QualityLightTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.Fps24Tile.IsChecked = true;
+                window.Fps24Tile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+                Assert.Equal(new VideoExportOptions(ExportResolution.Low, ExportQuality.Light, 24), window.Export);
+                Assert.True(window.NeedsRendering, "a smaller video is drawn again when saved");
+                Assert.False(window.Timeline!.HasChanges, "it is no edit: nothing to discard, nothing to undo");
+                Assert.False(window.Timeline.CanUndo);
+                Assert.True(window.ExportResetButton.IsEnabled);
+                Assert.Contains("px", window.ExportSizeText.Text);
+                Pump(() => false, 200);
+                Shot(window, Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS"), "editor-export.png");
+                Assert.Equal(new VideoExportOptions(ExportResolution.Low, ExportQuality.Light, 24), store.Current.VideoExport); // for the next video
+
+                window.ExportResetButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Assert.Equal(VideoExportOptions.Default, window.Export);
+                Assert.True(window.ResolutionOriginalTile.IsChecked);
+                Assert.False(window.NeedsRendering);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     [NeedsGpuFact]
     public void A_preset_brings_back_frame_cursor_and_zoom_style_at_once_and_one_undo_takes_it_away()
     {

@@ -167,6 +167,59 @@ public sealed class ZoomRendererTests : IClassFixture<SampleVideos>, IDisposable
         Assert.Equal((320u, 180u), (clip.GetVideoEncodingProperties().Width, clip.GetVideoEncodingProperties().Height));
     }
 
+    private static async Task<(uint Width, uint Height, double Fps)> ProfileAsync(string path)
+    {
+        Windows.Media.MediaProperties.MediaEncodingProfile profile =
+            await Windows.Media.MediaProperties.MediaEncodingProfile.CreateFromFileAsync(await StorageFile.GetFileFromPathAsync(path));
+        return (profile.Video.Width, profile.Video.Height, profile.Video.FrameRate.Numerator / (double)profile.Video.FrameRate.Denominator);
+    }
+
+    [Fact]
+    public async Task A_smaller_size_and_rate_make_a_lighter_video_that_shows_the_same_picture()
+    {
+        string source = await QuarterVideoAsync();
+        var camera = new ZoomCamera([new VideoSegment(0, 3)], [new ZoomRegion(0, 3, 2, 0.25, 0.25)]);
+        string normal = Path.Combine(_folder, "normal.mp4");
+        string small = Path.Combine(_folder, "small.mp4");
+
+        await ZoomRenderer.RenderAsync(source, normal, camera, frame: null);
+        await ZoomRenderer.RenderAsync(source, small, camera, frame: null,
+            output: new VideoExportOptions(ExportResolution.Low, ExportQuality.Light, 24));
+
+        (uint width, uint height, double fps) = await ProfileAsync(small);
+        Assert.Equal((160u, 90u), (width, height)); // half of each side
+        Assert.Equal(24, fps, 1);
+        Assert.Equal((320u, 180u, 30d), await ProfileAsync(normal)); // the default is untouched
+        Assert.True(new FileInfo(small).Length < new FileInfo(normal).Length, "a smaller, lighter video weighs less");
+        Assert.InRange(await PixelAsync(small, 1.5, 0.75, 0.75), 215, 255); // still the zoomed-in white quarter
+        Assert.InRange((await OpenAsync(small)).OriginalDuration.TotalSeconds, 2.8, 3.2);
+    }
+
+    [Fact]
+    public async Task A_rate_higher_than_the_recordings_is_not_made_up()
+    {
+        string source = await QuarterVideoAsync(); // 30 fps
+        string target = Path.Combine(_folder, "sixty.mp4");
+
+        await ZoomRenderer.RenderAsync(source, target, new ZoomCamera([new VideoSegment(0, 3)], [new ZoomRegion(0, 3, 2, 0.25, 0.25)]), frame: null,
+            output: VideoExportOptions.Default with { Fps = 60 });
+
+        Assert.Equal(30, (await ProfileAsync(target)).Fps, 1);
+    }
+
+    [Fact]
+    public async Task Exporting_with_a_smaller_size_draws_the_video_again_even_with_nothing_else_to_apply()
+    {
+        string source = await QuarterVideoAsync();
+        string target = Path.Combine(_folder, "only-size.mp4");
+
+        await VideoExporter.ExportAsync(source, target, [new VideoSegment(0, 3)], [], 3, frame: null,
+            output: new VideoExportOptions(ExportResolution.Medium, ExportQuality.Balanced, 0));
+
+        (uint width, uint height, _) = await ProfileAsync(target);
+        Assert.Equal((240u, 134u), (width, height)); // 75 % of 320 x 180, even
+    }
+
     [Fact]
     public async Task Pictures_recorded_unevenly_come_out_evenly_spaced_so_the_camera_moves_smoothly()
     {

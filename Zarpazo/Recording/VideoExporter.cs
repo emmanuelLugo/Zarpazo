@@ -26,10 +26,13 @@ internal static class VideoExporter
     /// <param name="motion">How fast the camera moves into and out of the zooms.</param>
     /// <param name="overlays">The blurs, texts and arrows drawn over the video.</param>
     /// <param name="connectZooms">Whether zooms close to each other are joined (see <see cref="ZoomCamera"/>).</param>
+    /// <param name="output">The size, quality and frame rate to write; anything but the default makes the video be drawn again.</param>
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
         double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null,
-        VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null, bool connectZooms = true)
+        VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null, bool connectZooms = true,
+        VideoExportOptions? output = null)
     {
+        output ??= VideoExportOptions.Default;
         bool framed = frame is { Enabled: true };
         CropArea? area = null;
         if (framed || !crop.IsNone)
@@ -51,7 +54,7 @@ internal static class VideoExporter
         bool cropped = area is { IsWhole: false };
         // Windows' editing engine cannot change speed: retimed pieces are joined as recorded and the renderer plays them faster or slower.
         bool retimed = segments.Any(segment => segment.IsRetimed);
-        if (camera.IsEmpty && !framed && pointer == null && drawn == null && !cropped && !retimed)
+        if (camera.IsEmpty && !framed && pointer == null && drawn == null && !cropped && !retimed && output.IsDefault)
         {
             await ExportAsync(source, target, segments, progress);
             return;
@@ -60,7 +63,7 @@ internal static class VideoExporter
         bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].IsSilent;
         if (whole)
         {
-            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn);
+            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn, output: output);
             return;
         }
 
@@ -70,7 +73,7 @@ internal static class VideoExporter
         {
             await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
             await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)), pointer, crop,
-                retimed ? new PlayClock(segments) : null, drawn);
+                retimed ? new PlayClock(segments) : null, drawn, output);
         }
         finally
         {

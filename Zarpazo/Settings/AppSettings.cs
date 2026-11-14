@@ -209,6 +209,31 @@ internal sealed class AppSettings
         }
     }
 
+    /// <summary>How big the saved video is: "Original", "High", "Medium" or "Low" (see <see cref="Recording.ExportResolution"/>).</summary>
+    public string VideoExportResolution { get; set; } = Recording.VideoExportOptions.Default.Resolution.ToString();
+
+    /// <summary>How much data each picture of the saved video gets: "Light", "Balanced" or "High".</summary>
+    public string VideoExportQuality { get; set; } = Recording.VideoExportOptions.Default.Quality.ToString();
+
+    /// <summary>Pictures a second of the saved video; 0 keeps the recording's own.</summary>
+    public int VideoExportFps { get; set; } = Recording.VideoExportOptions.Default.Fps;
+
+    /// <summary>How the finished video is written, as chosen last in the editor's Exportar panel.</summary>
+    [JsonIgnore]
+    public Recording.VideoExportOptions VideoExport
+    {
+        get => new Recording.VideoExportOptions(
+            Enum.TryParse(VideoExportResolution, out Recording.ExportResolution resolution) ? resolution : Recording.VideoExportOptions.Default.Resolution,
+            Enum.TryParse(VideoExportQuality, out Recording.ExportQuality quality) ? quality : Recording.VideoExportOptions.Default.Quality,
+            VideoExportFps).Tidied();
+        set
+        {
+            VideoExportResolution = value.Resolution.ToString();
+            VideoExportQuality = value.Quality.ToString();
+            VideoExportFps = value.Fps;
+        }
+    }
+
     /// <summary>The frame, pointer and zoom style chosen last, together.</summary>
     [JsonIgnore]
     public Recording.VideoLook VideoLook
