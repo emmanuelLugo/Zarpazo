@@ -29,8 +29,9 @@ internal static class ZoomRenderer
     /// <param name="clock">When pieces of <paramref name="source"/> play faster or slower: which moment of it each moment of the
     /// result shows. The camera and the pointer are then on the result's clock, and those pieces lose their sound. Null plays
     /// the source as it is.</param>
+    /// <param name="overlays">The blurs, texts and arrows to draw over every picture, under the pointer; null for none.</param>
     public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null,
-        CursorLayer? cursor = null, VideoCrop crop = default, PlayClock? clock = null)
+        CursorLayer? cursor = null, VideoCrop crop = default, PlayClock? clock = null, OverlayLayer? overlays = null)
     {
         StorageFile file = await StorageFile.GetFileFromPathAsync(source);
         MediaEncodingProfile profile = await MediaEncodingProfile.CreateFromFileAsync(file);
@@ -113,6 +114,7 @@ internal static class ZoomRenderer
                     {
                         ZoomResampler.Render(current, sourceWidth, sourceHeight, area.Pixels, picture, width, height, view);
                     }
+                    overlays?.Draw(picture, width, height, t, view, layout);
                     cursor?.Draw(picture, width, height, t, view, layout);
                     await writer.AddVideoAsync(picture, TimeSpan.FromSeconds(t), cancel.Token);
                     progress?.Report(Math.Clamp(t / duration, 0, 1));

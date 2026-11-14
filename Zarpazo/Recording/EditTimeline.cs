@@ -16,6 +16,7 @@ internal sealed class EditTimeline
     private ZoomRegion[] _zooms = [];
     private VideoCrop _crop = VideoCrop.None;
     private VideoLook _look = VideoLook.Default;
+    private VideoOverlay[] _overlays = [];
     private ZoomRegion[] _startZooms = []; // the zooms the edit opened with, to tell whether anything changed
     private bool _inGesture;
     private bool _gestureSaved;
@@ -38,6 +39,9 @@ internal sealed class EditTimeline
     /// <summary>The zooms, on the original's clock, in order and never overlapping.</summary>
     public IReadOnlyList<ZoomRegion> Zooms => _zooms;
 
+    /// <summary>The blurs, texts and arrows over the video, on the original's clock; they may overlap, and the later one is drawn over the earlier.</summary>
+    public IReadOnlyList<VideoOverlay> Overlays => _overlays;
+
     /// <summary>How much of each side of the picture is cut away; <see cref="VideoCrop.None"/> keeps it whole.</summary>
     public VideoCrop Crop => _crop;
 
@@ -59,7 +63,8 @@ internal sealed class EditTimeline
         || _segments[0].IsRetimed;
 
     /// <summary>True when the edit is no longer as it opened: pieces changed, zooms other than the ones it started with, or a crop.</summary>
-    public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms) || !_crop.IsNone;
+    public bool HasChanges => IsEdited || !_zooms.SequenceEqual(_startZooms) || !_crop.IsNone
+        || _overlays.Length > 0;
 
     /// <summary>Where in the edited video a piece begins.</summary>
     public double StartOf(int index)
@@ -263,7 +268,7 @@ internal sealed class EditTimeline
 
     private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop) => Apply(segments, zooms, crop, _look);
 
-    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop, VideoLook look)
+    private void Apply(VideoSegment[] segments, ZoomRegion[] zooms, VideoCrop crop, VideoLook look, VideoOverlay[]? overlays = null)
     {
         if (!_inGesture || !_gestureSaved)
         {
@@ -275,13 +280,14 @@ internal sealed class EditTimeline
         _zooms = zooms;
         _crop = crop;
         _look = look;
+        _overlays = overlays ?? _overlays;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private Snapshot Current => new(_segments, _zooms, _crop, _look);
+    private Snapshot Current => new(_segments, _zooms, _crop, _look, _overlays);
 
     private void Restore(Snapshot snapshot) =>
-        (_segments, _zooms, _crop, _look) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop, snapshot.Look);
+        (_segments, _zooms, _crop, _look, _overlays) = (snapshot.Segments, snapshot.Zooms, snapshot.Crop, snapshot.Look, snapshot.Overlays);
 
     // ---- Look ----
 
@@ -483,6 +489,85 @@ internal sealed class EditTimeline
         return (lower, upper);
     }
 
+    // ---- Overlays ----
+
+    /// <summary>
+    /// Adds a blur, text or arrow, tidied and kept inside the recording (never shorter than <see cref="VideoOverlay.MinSeconds"/>).
+    /// Returns its place in <see cref="Overlays"/>, or -1 when it falls outside the recording.
+    /// </summary>
+    public int AddOverlay(VideoOverlay overlay)
+    {
+        if (!FitInTime(overlay, out overlay))
+        {
+            return -1;
+        }
+        Apply(_segments, _zooms, _crop, _look, _overlays.Append(overlay).ToArray());
+        return _overlays.Length - 1;
+    }
+
+    public bool DeleteOverlay(int index)
+    {
+        if (!IsValidOverlay(index))
+        {
+            return false;
+        }
+        Apply(_segments, _zooms, _crop, _look, _overlays.Where((_, i) => i != index).ToArray());
+        return true;
+    }
+
+    /// <summary>Changes an overlay (its words, colour, size or points), tidied. Returns false when nothing changed.</summary>
+    public bool SetOverlay(int index, VideoOverlay overlay) =>
+        IsValidOverlay(index) && FitInTime(overlay, out overlay) && ReplaceOverlay(index, overlay);
+
+    /// <summary>Slides an overlay to start at <paramref name="start"/>, keeping its length, inside the recording.</summary>
+    public bool MoveOverlay(int index, double start)
+    {
+        if (!IsValidOverlay(index))
+        {
+            return false;
+        }
+        VideoOverlay overlay = _overlays[index];
+        start = Math.Clamp(start, 0, Math.Max(0, SourceDuration - overlay.Length));
+        return ReplaceOverlay(index, overlay with { Start = start, End = start + overlay.Length });
+    }
+
+    /// <summary>Moves where an overlay starts, not too close to its own end.</summary>
+    public bool SetOverlayStart(int index, double start) =>
+        IsValidOverlay(index) && ReplaceOverlay(index, _overlays[index] with { Start = Math.Clamp(start, 0, _overlays[index].End - VideoOverlay.MinSeconds) });
+
+    /// <summary>Moves where an overlay ends, not too close to its own start.</summary>
+    public bool SetOverlayEnd(int index, double end) =>
+        IsValidOverlay(index) && ReplaceOverlay(index, _overlays[index] with { End = Math.Clamp(end, _overlays[index].Start + VideoOverlay.MinSeconds, SourceDuration) });
+
+    private bool IsValidOverlay(int index) => index >= 0 && index < _overlays.Length;
+
+    private bool ReplaceOverlay(int index, VideoOverlay overlay)
+    {
+        if (overlay == _overlays[index])
+        {
+            return false;
+        }
+
+        VideoOverlay[] list = (VideoOverlay[])_overlays.Clone();
+        list[index] = overlay;
+        Apply(_segments, _zooms, _crop, _look, list);
+        return true;
+    }
+
+    // Tidies the values and puts the times inside the recording; false when no stretch of at least the minimum fits there.
+    private bool FitInTime(VideoOverlay overlay, out VideoOverlay fitted)
+    {
+        fitted = overlay.Tidied();
+        double start = Math.Clamp(fitted.Start, 0, SourceDuration);
+        double end = Math.Clamp(fitted.End, 0, SourceDuration);
+        if (end - start < VideoOverlay.MinSeconds)
+        {
+            return false;
+        }
+        fitted = fitted with { Start = start, End = end };
+        return true;
+    }
+
     /// <summary>Everything that can be undone, as it was at one moment.</summary>
-    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop, VideoLook Look);
+    private sealed record Snapshot(VideoSegment[] Segments, ZoomRegion[] Zooms, VideoCrop Crop, VideoLook Look, VideoOverlay[] Overlays);
 }
