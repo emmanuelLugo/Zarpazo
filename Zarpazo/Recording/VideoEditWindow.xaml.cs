@@ -123,7 +123,7 @@ public partial class VideoEditWindow : Window
         {
             _closed = true;
             CompositionTarget.Rendering -= OnRendering;
-            _delivery.Finish(CurrentProject);
+            HistoryWork = _delivery.FinishAsync(CurrentProject); // copying a long recording must not hold the window open
             if (_frameSave.IsEnabled)
             {
                 SaveCursorChoice(); // a slider let go just before closing
@@ -152,6 +152,9 @@ public partial class VideoEditWindow : Window
 
     /// <summary>Asks where to save; the tests answer it themselves. Null means the person changed their mind.</summary>
     internal Func<string?>? AskSavePath { get; set; }
+
+    /// <summary>What is still being written to the history once the window has closed; null before that.</summary>
+    internal Task? HistoryWork { get; private set; }
 
     /// <summary>The edit, once the video has opened.</summary>
     internal EditTimeline? Timeline => _timeline;

@@ -37,7 +37,8 @@ public partial class App : Application
 
     // Anything a restart would cut short: choosing an area or editing a capture (the overlay), a recording from the countdown until its
     // bar is closed (which covers encoding the video and the video editor), and the moments in between.
-    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting || _openEditors > 0;
+    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting || _openEditors > 0
+        || Recording.VideoDelivery.HasPendingWrites; // a video still being copied into the history
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
@@ -82,6 +83,7 @@ public partial class App : Application
         _updates = new UpdateService(_settings, new UpdateChecker(http, AppVersion.Current),
             new UpdateDownloader(http, UpdateDownloader.DefaultFolder), LaunchInstaller, isBusy: () => IsBusy);
         _updates.Changed += OnUpdateChanged;
+        Recording.VideoDelivery.WritesFinished += () => Dispatcher.BeginInvoke(OnMaybeIdle); // the app may rest (or update) once the history has it all
         _tray.UpdateRequested += () => ShowSettings(showAbout: true);
         _tray.RestartForUpdateRequested += ApplyUpdateNow;
         _tray.CheckUpdatesRequested += async () => await CheckForUpdatesNowAsync();

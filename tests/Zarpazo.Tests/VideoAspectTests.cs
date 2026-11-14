@@ -98,6 +98,36 @@ public sealed class VideoAspectTests : IDisposable
         Assert.Same(chosen, chosen.ForScene(letterboxed: true)); // a frame the person chose is kept as it is
     }
 
+    [Fact]
+    public void Copying_the_backdrop_where_the_recording_does_not_reach_gives_the_same_picture_as_looking_every_pixel_up()
+    {
+        // A tall scene with the recording in the middle, rounded corners and a shadow, over a gradient; the source has a bright patch.
+        var style = VideoFrameStyle.Default with { Enabled = true, Padding = 0.04, Radius = 0.02, Shadow = 0.6 };
+        FrameLayout layout = FrameLayout.For(style, 160, 284, 320, 180);
+        byte[] backdrop = FrameBackdrop.Render(style, layout);
+        var source = new byte[Width * Height * 4];
+        for (int i = 0; i < source.Length; i += 4)
+        {
+            int pixel = i / 4;
+            bool patch = pixel % Width < 100 && pixel / Width < 60;
+            source[i] = source[i + 1] = source[i + 2] = patch ? (byte)240 : (byte)70;
+            source[i + 3] = 255;
+        }
+        var compositor = new FrameCompositor(layout, backdrop, Width, Height);
+        var fast = new byte[160 * 284 * 4];
+        var slow = new byte[160 * 284 * 4];
+
+        compositor.Render(source, fast, ZoomView.Full); // the whole scene in view: the shortcut
+        compositor.Render(source, slow, new ZoomView(0, 0, 0.99999, 0.99999)); // a hair short of whole: every pixel looked up
+
+        int worst = 0;
+        for (int i = 0; i < fast.Length; i++)
+        {
+            worst = Math.Max(worst, Math.Abs(fast[i] - slow[i]));
+        }
+        Assert.InRange(worst, 0, 2); // the same picture, up to the hair's worth of shift
+    }
+
     // ---------- the edit
 
     [Fact]

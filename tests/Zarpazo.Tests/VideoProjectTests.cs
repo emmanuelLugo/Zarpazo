@@ -216,11 +216,13 @@ public sealed class VideoProjectTests : IClassFixture<SampleVideos>, IDisposable
         VideoDelivery delivery = Delivery(original);
 
         await delivery.PrepareAsync("one", Make, Project());
+        await delivery.HistoryWork; // the copy into the history goes on in the background
         string first = Assert.Single(_history.List()).Path;
         Assert.True(_history.LoadProject(first) != null);
         _history.SetKept(first, true); // the person marked it to keep
 
         await delivery.PrepareAsync("two", Make, Project());
+        await delivery.HistoryWork;
 
         HistoryEntry entry = Assert.Single(_history.List()); // replaced, not added
         Assert.NotEqual(first, entry.Path);
@@ -230,26 +232,27 @@ public sealed class VideoProjectTests : IClassFixture<SampleVideos>, IDisposable
     }
 
     [Fact]
-    public void Closing_without_handing_anything_out_keeps_the_recording_with_the_edit()
+    public async Task Closing_without_handing_anything_out_keeps_the_recording_with_the_edit()
     {
         VideoDelivery delivery = Delivery(Media("rec.original.mp4", "clean recording"));
 
-        delivery.Finish(Project());
+        await delivery.FinishAsync(Project()); // in the background: closing does not wait for the copy
 
         HistoryEntry entry = Assert.Single(_history.List());
         Assert.True(entry.CanEdit);
+        Assert.False(VideoDelivery.HasPendingWrites, "nothing is left to write");
         Assert.Equal(Project().ToZooms(), _history.LoadProject(entry.Path)!.Value.Project.ToZooms());
     }
 
     [Fact]
-    public void Carrying_on_and_closing_without_handing_out_keeps_the_entrys_video_and_only_updates_its_edit()
+    public async Task Carrying_on_and_closing_without_handing_out_keeps_the_entrys_video_and_only_updates_its_edit()
     {
         string path = _history.AddRecording(Media("done.mp4", "finished"), Picture(), original: Media("done.original.mp4", "clean"), project: Project());
         VideoDelivery delivery = Delivery(Media("work.original.mp4", "work copy"), path);
         var timeline = new EditTimeline(10);
         timeline.Load([new VideoSegment(0, 10)], [new ZoomRegion(1, 3, 3, 0.5, 0.5)], VideoCrop.None, [], VideoLook.Default);
 
-        delivery.Finish(VideoProject.Capture(timeline, VideoLook.Default));
+        await delivery.FinishAsync(VideoProject.Capture(timeline, VideoLook.Default));
 
         HistoryEntry entry = Assert.Single(_history.List());
         Assert.Equal(path, entry.Path); // the same entry, not a new one
@@ -264,7 +267,7 @@ public sealed class VideoProjectTests : IClassFixture<SampleVideos>, IDisposable
         VideoDelivery delivery = Delivery(Media("work.original.mp4", "work copy"), path);
 
         await delivery.PrepareAsync("new", Make, Project());
-        delivery.Finish(Project());
+        await delivery.FinishAsync(Project());
 
         HistoryEntry entry = Assert.Single(_history.List());
         Assert.NotEqual(path, entry.Path);
@@ -329,6 +332,7 @@ public sealed class VideoProjectTests : IClassFixture<SampleVideos>, IDisposable
         ZoomStyle remembered = _settings.Current.VideoZoom;
         ProjectWorkspace.Prepared prepared = (await ProjectWorkspace.PrepareAsync(_history, _settings, path, Path.Combine(_folder, "work")))!;
 
+        Task? written = null;
         Sta.Run(() =>
         {
             var window = new VideoEditWindow(prepared.Work, _settings, prepared.Delivery, project: prepared.Project);
@@ -350,8 +354,11 @@ public sealed class VideoProjectTests : IClassFixture<SampleVideos>, IDisposable
             finally
             {
                 window.Close(); // would stop to ask about changes if there were any
+                written = window.HistoryWork;
             }
         });
+        Assert.NotNull(written); // closing does not wait for the history: it goes on in the background
+        await written;
 
         HistoryEntry entry = Assert.Single(_history.List());
         Assert.Equal(path, entry.Path); // closed without handing anything out: the entry is as it was

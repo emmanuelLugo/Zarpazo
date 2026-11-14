@@ -13,6 +13,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Editor de video, pestaña «Exportar»: elige el tamaño del video guardado (Original, Alta 90 %, Media 75 % o Baja 50 %), su calidad (Ligera, Normal o Alta) y los cuadros por segundo (como la grabación, 24, 30 o 60). El panel dice a cuántos píxeles saldrá, también con un recorte. La elección se aplica al guardar o copiar, se recuerda para el siguiente video y no cuenta como un cambio que deshacer. No se inventan cuadros: con 60 sobre una grabación de 30, el video sigue a 30.
 
 ### Cambiado
+- Editor de video: copiar o guardar ya no congela la ventana. La copia de la grabación y del video al histórico se hace en segundo plano, y cerrar el editor tampoco la espera. La app no se considera libre (ni se reinicia para actualizar) mientras la copia sigue.
+- Guardar un video con marco, 9:16 o 1:1 es más rápido (alrededor de un 20 %): donde la grabación no llega, el fondo se copia tal cual en vez de calcularlo píxel por píxel.
 - Zooms en el editor de video: el panel de Zoom tiene ahora «Conectar zooms seguidos». Con él apagado, la cámara vuelve a pantalla completa entre dos zooms cercanos en vez de deslizarse de uno al otro. Forma parte del estilo: se recuerda para el siguiente video, entra en los presets y se deshace con Ctrl+Z.
 - Ajustes > Video: «Poner zooms automáticamente al abrir una grabación». Apagado, el editor abre el video sin zooms (el botón «Zoom automático» sigue disponible).
 - Ajustes > Actualizaciones: si abres una copia que no es la instalada (por ejemplo, una de desarrollo) y hay una versión nueva, el aviso ahora dice que la instalada sí se actualiza sola desde ahí, en vez de mandarte a la página de descarga.

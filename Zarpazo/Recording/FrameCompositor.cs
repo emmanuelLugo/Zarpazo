@@ -50,23 +50,46 @@ internal sealed class FrameCompositor
         Int32Rect area = _area;
         var whole = new Int32Rect(0, 0, width, height);
         double pixel = view.Width; // how much of the scene one pixel of the result covers, for the soft edge
+        // With the whole scene in view each pixel of the result is the same pixel of the backdrop, so what the recording does not
+        // reach is copied as it is. That is most of a tall or square video, and looking each one up cost more than the rest together.
+        bool fullView = view.IsFull;
+        double bottom = top + contentHeight, right = left + contentWidth;
 
         Parallel.For(0, height, y =>
         {
             double sceneY = view.Y * height + (y + 0.5) * view.Height;
             int o = y * width * 4;
+            if (fullView && (sceneY < top - 1 || sceneY > bottom + 1))
+            {
+                Buffer.BlockCopy(_backdrop, o, target, o, width * 4);
+                return;
+            }
+
             Span<byte> inside = stackalloc byte[4];
             Span<byte> behind = stackalloc byte[4];
             for (int x = 0; x < width; x++, o += 4)
             {
                 double sceneX = view.X * width + (x + 0.5) * view.Width;
+                if (fullView && (sceneX < left - 1 || sceneX > right + 1))
+                {
+                    Buffer.BlockCopy(_backdrop, o, target, o, 4);
+                    continue;
+                }
 
                 // How far the point is outside the rounded rectangle (negative inside), turned into how much of the pixel it covers.
                 double qx = Math.Abs(sceneX - centerX) - halfInnerX;
                 double qy = Math.Abs(sceneY - centerY) - halfInnerY;
-                double outside = Math.Sqrt(Math.Max(qx, 0) * Math.Max(qx, 0) + Math.Max(qy, 0) * Math.Max(qy, 0))
-                    + Math.Min(Math.Max(qx, qy), 0) - radius;
-                double cover = Math.Clamp(0.5 - outside / pixel, 0, 1);
+                double cover;
+                if (qx <= -pixel && qy <= -pixel)
+                {
+                    cover = 1; // well inside the straight part: no corner to work out
+                }
+                else
+                {
+                    double outside = Math.Sqrt(Math.Max(qx, 0) * Math.Max(qx, 0) + Math.Max(qy, 0) * Math.Max(qy, 0))
+                        + Math.Min(Math.Max(qx, qy), 0) - radius;
+                    cover = Math.Clamp(0.5 - outside / pixel, 0, 1);
+                }
 
                 double sourceX = area.X + (sceneX - left) * toSourceX - 0.5;
                 double sourceY = area.Y + (sceneY - top) * toSourceY - 0.5;

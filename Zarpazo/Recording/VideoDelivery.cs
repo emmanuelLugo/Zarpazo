@@ -20,8 +20,19 @@ internal sealed class VideoDelivery
     private readonly CaptureHistory? _history;
     private readonly BitmapSource? _thumbnail;
     private string? _madeFor; // what the file at ReadyPath was made with; null while there is none
-    private string? _historyPath;
+    private string? _historyPath; // only touched by the history work below, one piece at a time
     private bool _autoSaved;
+    private Task _historyWork = Task.CompletedTask;
+    private static int _pendingWrites;
+
+    /// <summary>True while any delivery is still writing to the history (a recording can be hundreds of megabytes): the app is not idle yet.</summary>
+    public static bool HasPendingWrites => Volatile.Read(ref _pendingWrites) > 0;
+
+    /// <summary>Raised, from a background thread, when the last of the writes to the history has finished.</summary>
+    public static event Action? WritesFinished;
+
+    /// <summary>What is being written to the history; finished when there is nothing left to write.</summary>
+    public Task HistoryWork => _historyWork;
 
     /// <param name="original">The clean recording the editor works on.</param>
     /// <param name="readyPath">Where the finished video is written; its name is the one people see when they paste it.</param>
@@ -36,6 +47,10 @@ internal sealed class VideoDelivery
         _settings = settings;
         _history = history;
         _thumbnail = thumbnail;
+        if (_thumbnail is { IsFrozen: false, CanFreeze: true })
+        {
+            _thumbnail.Freeze(); // the history is written from a background thread, which may only read a frozen picture
+        }
         _historyPath = historyPath;
     }
 
@@ -63,6 +78,8 @@ internal sealed class VideoDelivery
             return ReadyPath;
         }
 
+        await _historyWork; // the video of before may still be on its way to the history, from this very file
+
         // Made next to it first: if it fails half-way, the finished video of before is still whole.
         string making = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(ReadyPath))!, Path.GetFileNameWithoutExtension(ReadyPath) + ".haciendo" + Path.GetExtension(ReadyPath));
         try
@@ -77,7 +94,10 @@ internal sealed class VideoDelivery
         }
 
         _madeFor = recipe;
-        KeepInHistory(ReadyPath, project);
+        // Copying the video and the clean recording into the history is slow for a long recording, and nobody waits for it: the
+        // video is ready to paste. It goes on in the background, one piece after another.
+        string ready = ReadyPath;
+        QueueHistoryWork(() => KeepInHistory(ready, project));
         if (!_autoSaved && _settings != null && new AutoSaver(_settings).IsEnabled)
         {
             _autoSaved = true; // once: a second version would only fill the folder
@@ -107,6 +127,41 @@ internal sealed class VideoDelivery
         {
             return false;
         }
+    }
+
+    // Runs the work after the earlier work has finished, off the window's thread. The app counts it as busy until the last one is done.
+    private void QueueHistoryWork(Action work)
+    {
+        Interlocked.Increment(ref _pendingWrites);
+        _historyWork = _historyWork.ContinueWith(_ =>
+        {
+            try
+            {
+                work();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // The history is a convenience on top of a video that is already made: whatever went wrong, it must not
+                // fail the next copy or save, which waits for this work.
+            }
+            finally
+            {
+                if (Interlocked.Decrement(ref _pendingWrites) == 0)
+                {
+                    WritesFinished?.Invoke();
+                }
+            }
+        }, TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// <see cref="Finish"/> in the background, after the writes already under way: closing the editor does not wait for the copy.
+    /// Returns what is being written, which is done when the history has everything.
+    /// </summary>
+    public Task FinishAsync(VideoProject? project = null)
+    {
+        QueueHistoryWork(() => Finish(project));
+        return _historyWork;
     }
 
     /// <summary>
