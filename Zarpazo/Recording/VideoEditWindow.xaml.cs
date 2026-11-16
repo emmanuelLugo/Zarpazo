@@ -117,7 +117,6 @@ public partial class VideoEditWindow : Window
         _delivery = delivery ?? new VideoDelivery(source, NewFileName(), settings);
         DeliveryText.Text = notice ?? "";
         TitleText.Text = Path.GetFileName(_delivery.ReadyPath);
-        FitToScreen();
         _timer.Tick += (_, _) => FollowPlayback();
         CompositionTarget.Rendering += OnRendering;
         Closed += (_, _) =>
@@ -136,13 +135,25 @@ public partial class VideoEditWindow : Window
         Player.Play(); // a first picture only shows once it has started; it is paused as soon as it opens
     }
 
-    // As big as it was designed, but never bigger than the screen it opens on (a laptop at 125 % has 1536 x 824 to give).
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        FitToScreen();
+    }
+
+    // As big as it was designed, but never bigger than the screen it opens on: the one the pointer is on, which may be
+    // neither the main one nor at its scaling. WPF's own centring measures the window with the main screen's scaling:
+    // coming from a laptop at 150 % it is 1980 x 1320 pixels, and centred on a 1080p monitor its title bar is above the screen.
     private void FitToScreen()
     {
-        Rect work = SystemParameters.WorkArea;
-        Width = Math.Max(MinWidth, Math.Min(Width, work.Width * 0.94));
-        Height = Math.Max(MinHeight, Math.Min(Height, work.Height * 0.94));
-        if (work.Width < MinWidth + 40 || work.Height < MinHeight + 40)
+        System.Drawing.Rectangle work = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).WorkingArea;
+        (System.Drawing.Rectangle bounds, bool maximize) =
+            WindowFit.Centered(work, WindowNative.ScreenScale(work), new Size(Width, Height), new Size(MinWidth, MinHeight));
+
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        WindowNative.Place(hwnd, bounds); // onto that screen: as it crosses to another scaling, WPF resizes it by the difference
+        WindowNative.Place(hwnd, bounds); // now that it has that screen's scaling, the size stays
+        if (maximize)
         {
             WindowState = WindowState.Maximized;
         }

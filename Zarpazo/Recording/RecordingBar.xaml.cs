@@ -22,7 +22,6 @@ namespace Zarpazo.Recording;
 /// </summary>
 public partial class RecordingBar : Window
 {
-    private const int WmDpiChanged = 0x02E0;
     private const int GapPixels = 10; // between the recorded area's frame and the pill
 
     private const double MeterWidth = 56;
@@ -53,7 +52,7 @@ public partial class RecordingBar : Window
         InitializeComponent();
         IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
         HwndSource source = HwndSource.FromHwnd(hwnd);
-        source.AddHook(IgnoreDpiChange);
+        WindowNative.KeepPixelSize(hwnd);
         // See-through around the pill (its round corners and soft shadow) without making it a layered window: Windows
         // refuses to keep a layered window out of screen copies, and in a full-screen recording the bar is over the picture.
         source.CompositionTarget.BackgroundColor = Colors.Transparent;
@@ -304,13 +303,4 @@ public partial class RecordingBar : Window
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
-
-    private static IntPtr IgnoreDpiChange(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-    {
-        if (msg == WmDpiChanged)
-        {
-            handled = true;
-        }
-        return IntPtr.Zero;
-    }
 }

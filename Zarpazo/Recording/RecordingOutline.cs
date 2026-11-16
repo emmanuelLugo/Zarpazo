@@ -22,7 +22,7 @@ internal sealed class RecordingOutline : Window
         Background = Brushes.Transparent;
 
         // A thin white line under the red one, so the frame shows on both light and dark content.
-        Content = new Grid
+        var frame = new Grid
         {
             Children =
             {
@@ -36,9 +36,14 @@ internal sealed class RecordingOutline : Window
                 },
             },
         };
+        Content = frame;
 
         IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
         WindowNative.MakeClickThrough(hwnd);
+        WindowNative.KeepPixelSize(hwnd);
+        // Drawn in pixels whatever the scaling, so the lines stay within the ring and out of the recording.
+        double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        frame.LayoutTransform = new ScaleTransform(1 / scale, 1 / scale);
         WindowNative.Place(hwnd, Rectangle.Inflate(region, RingPixels, RingPixels));
     }
 }

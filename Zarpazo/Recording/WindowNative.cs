@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace Zarpazo.Recording;
 
@@ -13,6 +14,7 @@ internal static class WindowNative
     private const uint ExcludeFromCapture = 0x11;
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
+    private const int WmDpiChanged = 0x02E0;
 
     /// <summary>Clicks go through it and it never takes the focus: it is only there to be looked at.</summary>
     public static void MakeClickThrough(IntPtr hwnd) =>
@@ -55,6 +57,22 @@ internal static class WindowNative
     /// <summary>Places a window in physical pixels, which WPF's own Left/Top can't do across monitors with different scaling.</summary>
     public static void Place(IntPtr hwnd, Rectangle bounds) =>
         SetWindowPos(hwnd, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, SwpNoZOrder | SwpNoActivate);
+
+    /// <summary>
+    /// Keeps the size the window is given in pixels. A window is born on the main screen; placed on one with another scaling,
+    /// Windows asks for it to be rescaled and WPF would resize it by the difference (a frame around a 1080p screen shrinks
+    /// to two thirds when the main screen is at 150 %).
+    /// </summary>
+    public static void KeepPixelSize(IntPtr hwnd) => HwndSource.FromHwnd(hwnd)?.AddHook(IgnoreDpiChange);
+
+    private static IntPtr IgnoreDpiChange(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WmDpiChanged)
+        {
+            handled = true;
+        }
+        return IntPtr.Zero;
+    }
 
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);

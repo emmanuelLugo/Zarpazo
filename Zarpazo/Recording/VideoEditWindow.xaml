@@ -7,7 +7,6 @@
         Height="880"
         MinWidth="1040"
         MinHeight="700"
-        WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Background="{DynamicResource WindowBackground}"
         UseLayoutRounding="True"
