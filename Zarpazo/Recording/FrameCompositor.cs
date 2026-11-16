@@ -69,26 +69,107 @@ internal sealed class FrameCompositor
         double bottom = top + cardHeight, right = left + cardWidth;
         double margin = pixel + line; // deeper inside than this, the edge and the line are out of reach
 
+        // The recorded picture's column for each column of the result, worked out once: it does not change from row to row.
+        int maxX = area.X + area.Width - 1, maxY = area.Y + area.Height - 1;
+        int[] columnA = new int[width], columnB = new int[width], columnWeight = new int[width];
+        for (int x = 0; x < width; x++)
+        {
+            double sceneX = view.X * width + (x + 0.5) * view.Width;
+            double sx = Math.Clamp(area.X + (sceneX - left) * toSourceX - 0.5, area.X, maxX);
+            int x0 = (int)sx;
+            columnA[x] = x0 * 4;
+            columnB[x] = Math.Min(x0 + 1, maxX) * 4;
+            columnWeight[x] = (int)((sx - x0) * 256);
+        }
+
         Parallel.For(0, height, y =>
         {
             double sceneY = view.Y * height + (y + 0.5) * view.Height;
-            int o = y * width * 4;
+            int rowStart = y * width * 4;
             if (fullView && (sceneY < top - 1 || sceneY > bottom + 1))
             {
-                Buffer.BlockCopy(_backdrop, o, target, o, width * 4);
+                Buffer.BlockCopy(_backdrop, rowStart, target, rowStart, width * 4);
                 return;
             }
 
+            // The columns the card does not reach (with the whole scene in view) are copied from the backdrop in one go.
+            int first = 0, end = width;
+            if (fullView)
+            {
+                while (first < width && view.X * width + (first + 0.5) * view.Width < left - 1)
+                {
+                    first++;
+                }
+                while (end > first && view.X * width + (end - 0.5) * view.Width > right + 1)
+                {
+                    end--;
+                }
+                Buffer.BlockCopy(_backdrop, rowStart, target, rowStart, first * 4);
+                Buffer.BlockCopy(_backdrop, rowStart + end * 4, target, rowStart + end * 4, (width - end) * 4);
+            }
+
+            // Rows well inside the card's straight part and below its bar: most pixels need no edge, line or corner, only the
+            // recorded picture's colour, so they go through a short loop and the general one handles what is left at the ends.
+            double qy = Math.Abs(sceneY - centerY) - halfInnerY;
+            int from = first, to = first; // with no plain stretch, everything goes through the general loop
+            bool plain = qy <= -margin && (bar == null || sceneY >= contentTop);
+            if (plain)
+            {
+                to = end;
+                while (from < end && Math.Abs(view.X * width + (from + 0.5) * view.Width - centerX) - halfInnerX > -margin)
+                {
+                    from++;
+                }
+                while (to > from && Math.Abs(view.X * width + (to - 0.5) * view.Width - centerX) - halfInnerX > -margin)
+                {
+                    to--;
+                }
+                FillPlain(source, target, y, sceneY, from, to);
+            }
+
+            General(first, from, y, sceneY, rowStart + first * 4);
+            General(to, end, y, sceneY, rowStart + to * 4);
+        });
+
+        // The short loop: the recorded picture sampled as Sample does, with the columns already worked out.
+        void FillPlain(byte[] picture, byte[] result, int y, double sceneY, int from, int to)
+        {
+            double sy = Math.Clamp(area.Y + (sceneY - contentTop) * toSourceY - 0.5, area.Y, maxY);
+            int y0 = (int)sy;
+            int y1 = Math.Min(y0 + 1, maxY);
+            int wy = (int)((sy - y0) * 256);
+            int iy = 256 - wy;
+            ReadOnlySpan<byte> upperRow = picture.AsSpan(y0 * _sourceWidth * 4, _sourceWidth * 4);
+            ReadOnlySpan<byte> lowerRow = picture.AsSpan(y1 * _sourceWidth * 4, _sourceWidth * 4);
+            ReadOnlySpan<int> starts = columnA, ends = columnB, weights = columnWeight;
+            Span<byte> row = result.AsSpan(y * width * 4, width * 4);
+            for (int x = from; x < to; x++)
+            {
+                int a = starts[x], b = ends[x], wx = weights[x];
+                int ix = 256 - wx;
+                int o = x * 4;
+                // Blue, green and red are blended across the row first, then between the two rows.
+                int upper0 = upperRow[a] * ix + upperRow[b] * wx;
+                int lower0 = lowerRow[a] * ix + lowerRow[b] * wx;
+                int upper1 = upperRow[a + 1] * ix + upperRow[b + 1] * wx;
+                int lower1 = lowerRow[a + 1] * ix + lowerRow[b + 1] * wx;
+                int upper2 = upperRow[a + 2] * ix + upperRow[b + 2] * wx;
+                int lower2 = lowerRow[a + 2] * ix + lowerRow[b + 2] * wx;
+                row[o] = (byte)((upper0 * iy + lower0 * wy + (1 << 15)) >> 16);
+                row[o + 1] = (byte)((upper1 * iy + lower1 * wy + (1 << 15)) >> 16);
+                row[o + 2] = (byte)((upper2 * iy + lower2 * wy + (1 << 15)) >> 16);
+                row[o + 3] = 255;
+            }
+        }
+
+        // Every pixel the long way: the edge, the line, the corners, the bar and what is behind the card.
+        void General(int from, int to, int y, double sceneY, int o)
+        {
             Span<byte> inside = stackalloc byte[4];
             Span<byte> behind = stackalloc byte[4];
-            for (int x = 0; x < width; x++, o += 4)
+            for (int x = from; x < to; x++, o += 4)
             {
                 double sceneX = view.X * width + (x + 0.5) * view.Width;
-                if (fullView && (sceneX < left - 1 || sceneX > right + 1))
-                {
-                    Buffer.BlockCopy(_backdrop, o, target, o, 4);
-                    continue;
-                }
 
                 // How far the point is outside the rounded rectangle (negative inside), turned into how much of the pixel it
                 // covers, and into how much of it the line along the edge covers.
@@ -144,7 +225,7 @@ internal sealed class FrameCompositor
                 }
                 target[o + 3] = 255;
             }
-        });
+        }
     }
 
     // Bilinear: the four pixels around the point, weighted by how close it is to each, never from outside the rectangle given

@@ -89,15 +89,14 @@ internal static class ZoomRenderer
                 // for each picture, so some come late), and a camera moved by their times moved in uneven steps. The result
                 // has a picture exactly every 1/fps seconds instead: the camera where it is at that instant, over the latest
                 // recorded picture.
-                using var reader = new VideoFrameReader(source, sourceWidth, sourceHeight);
-                var current = new byte[sourceWidth * sourceHeight * 4];
-                var next = new byte[sourceWidth * sourceHeight * 4];
+                // The next pictures are decoded on another thread while this one draws the current one.
+                using var reader = new FrameReadAhead(source, sourceWidth, sourceHeight);
                 byte[]? full = shrunk ? new byte[width * height * 4] : null;
-                if (!reader.TryRead(current, out TimeSpan currentTime))
+                if (!reader.TryTake(out byte[] current, out TimeSpan currentTime))
                 {
                     return;
                 }
-                bool hasNext = reader.TryRead(next, out TimeSpan nextTime);
+                bool hasNext = reader.TryTake(out byte[] next, out TimeSpan nextTime);
                 double frame = 1.0 / fps;
                 for (long n = 0; ; n++)
                 {
@@ -109,9 +108,10 @@ internal static class ZoomRenderer
                     double at = clock?.ToInput(t) ?? t; // the moment of the source to show
                     while (hasNext && nextTime.TotalSeconds <= at + frame / 2)
                     {
-                        (current, next) = (next, current);
+                        reader.Give(current);
+                        current = next;
                         currentTime = nextTime;
-                        hasNext = reader.TryRead(next, out nextTime);
+                        hasNext = reader.TryTake(out next, out nextTime);
                     }
                     if (!hasNext && at >= currentTime.TotalSeconds + frame / 2)
                     {
