@@ -6,6 +6,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.9.1] - 2026-11-16
+
 ### Corregido
 - Dos monitores con distinta escala (por ejemplo, una notebook al 150 % y un monitor externo al 100 %): al grabar en el monitor que no es el principal, el marco rojo que señala la zona salía más chico que la zona, y el número de la cuenta regresiva, descentrado. Ahora miden lo que deben en cualquier monitor.
 - El editor de video se abría más grande que el monitor secundario, con la barra de título (cerrar, minimizar) fuera de la pantalla. Ahora toma el tamaño y la escala del monitor donde se abre.
@@ -154,7 +156,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.6.0...v0.7.0
