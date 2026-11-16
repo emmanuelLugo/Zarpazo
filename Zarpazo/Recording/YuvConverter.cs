@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 
 namespace Zarpazo.Recording;
 
@@ -35,12 +37,30 @@ internal sealed class YuvConverter
     public void ToBgra(byte[] nv12, int pitch, int chromaStart, byte[] into, int width, int height)
     {
         int stride = width * 4;
+        // Four pixels at a time with the same whole-number arithmetic as the one-at-a-time tail below, so both give the same bytes.
+        Vector128<int> luma = Vector128.Create(_luma), black = Vector128.Create(_black), centre = Vector128.Create(128);
+        Vector128<int> blueFromU = Vector128.Create(_blueFromU), greenFromU = Vector128.Create(_greenFromU);
+        Vector128<int> greenFromV = Vector128.Create(_greenFromV), redFromV = Vector128.Create(_redFromV);
+        Vector128<int> round = Vector128.Create(128), top = Vector128.Create(255), alpha = Vector128.Create(unchecked((int)0xFF000000));
         Parallel.For(0, height, row =>
         {
             int y = row * pitch;
             int uv = chromaStart + row / 2 * pitch;
             int o = row * stride;
-            for (int x = 0; x < width; x++, o += 4)
+            int x = 0;
+            for (; x + 4 <= width; x += 4, o += 16)
+            {
+                Vector128<int> c = (Widen(MemoryMarshal.Read<uint>(nv12.AsSpan(y + x, 4))) - black) * luma;
+                Vector128<int> pairs = Widen(MemoryMarshal.Read<uint>(nv12.AsSpan(uv + x, 4))); // u0 v0 u1 v1
+                Vector128<int> d = Vector128.Shuffle(pairs, Vector128.Create(0, 0, 2, 2)) - centre;
+                Vector128<int> e = Vector128.Shuffle(pairs, Vector128.Create(1, 1, 3, 3)) - centre;
+                Vector128<int> b = Clamp(Vector128.ShiftRightArithmetic(c + blueFromU * d + round, 8), top);
+                Vector128<int> g = Clamp(Vector128.ShiftRightArithmetic(c - greenFromU * d - greenFromV * e + round, 8), top);
+                Vector128<int> r = Clamp(Vector128.ShiftRightArithmetic(c + redFromV * e + round, 8), top);
+                Vector128<int> pixels = b | Vector128.ShiftLeft(g, 8) | Vector128.ShiftLeft(r, 16) | alpha;
+                pixels.AsByte().CopyTo(into.AsSpan(o, 16));
+            }
+            for (; x < width; x++, o += 4)
             {
                 int c = (nv12[y + x] - _black) * _luma;
                 int pair = uv + (x & ~1);
@@ -53,6 +73,14 @@ internal sealed class YuvConverter
             }
         });
     }
+
+    // Four bytes (as one number) to four whole numbers.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<int> Widen(uint four) =>
+        Vector128.WidenLower(Vector128.WidenLower(Vector128.CreateScalar(four).AsByte())).AsInt32();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<int> Clamp(Vector128<int> value, Vector128<int> top) => Vector128.Min(Vector128.Max(value, Vector128<int>.Zero), top);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static byte Clamp(int value) => (byte)(value < 0 ? 0 : value > 255 ? 255 : value);

@@ -1,3 +1,6 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 using System.Windows;
 
 namespace Zarpazo.Recording;
@@ -143,24 +146,26 @@ internal sealed class FrameCompositor
             ReadOnlySpan<byte> lowerRow = picture.AsSpan(y1 * _sourceWidth * 4, _sourceWidth * 4);
             ReadOnlySpan<int> starts = columnA, ends = columnB, weights = columnWeight;
             Span<byte> row = result.AsSpan(y * width * 4, width * 4);
+            Vector128<int> belowWeight = Vector128.Create(wy), aboveWeight = Vector128.Create(iy), round = Vector128.Create(1 << 15);
             for (int x = from; x < to; x++)
             {
-                int a = starts[x], b = ends[x], wx = weights[x];
-                int ix = 256 - wx;
-                int o = x * 4;
-                // Blue, green and red are blended across the row first, then between the two rows.
-                int upper0 = upperRow[a] * ix + upperRow[b] * wx;
-                int lower0 = lowerRow[a] * ix + lowerRow[b] * wx;
-                int upper1 = upperRow[a + 1] * ix + upperRow[b + 1] * wx;
-                int lower1 = lowerRow[a + 1] * ix + lowerRow[b + 1] * wx;
-                int upper2 = upperRow[a + 2] * ix + upperRow[b + 2] * wx;
-                int lower2 = lowerRow[a + 2] * ix + lowerRow[b + 2] * wx;
-                row[o] = (byte)((upper0 * iy + lower0 * wy + (1 << 15)) >> 16);
-                row[o + 1] = (byte)((upper1 * iy + lower1 * wy + (1 << 15)) >> 16);
-                row[o + 2] = (byte)((upper2 * iy + lower2 * wy + (1 << 15)) >> 16);
-                row[o + 3] = 255;
+                int a = starts[x], b = ends[x];
+                Vector128<int> right = Vector128.Create(weights[x]), left = Vector128.Create(256 - weights[x]);
+                // The four channels at once: blended across the row first, then between the two rows, as Sample does.
+                Vector128<int> upper = Widen(upperRow, a) * left + Widen(upperRow, b) * right;
+                Vector128<int> lower = Widen(lowerRow, a) * left + Widen(lowerRow, b) * right;
+                Vector128<int> blended = Vector128.ShiftRightLogical(upper * aboveWeight + lower * belowWeight + round, 16);
+                // Each channel is 0 to 255 now: one byte each, and the picture is opaque.
+                Vector128<short> narrow = Vector128.Narrow(blended, blended);
+                uint pixel = Vector128.Narrow(narrow.AsUInt16(), narrow.AsUInt16()).AsUInt32().ToScalar() | 0xFF000000u;
+                MemoryMarshal.Write(row.Slice(x * 4, 4), in pixel);
             }
         }
+
+        // One recorded pixel's four bytes as four whole numbers.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Vector128<int> Widen(ReadOnlySpan<byte> pixels, int at) =>
+            Vector128.WidenLower(Vector128.WidenLower(Vector128.CreateScalar(MemoryMarshal.Read<uint>(pixels.Slice(at, 4))).AsByte())).AsInt32();
 
         // Every pixel the long way: the edge, the line, the corners, the bar and what is behind the card.
         void General(int from, int to, int y, double sceneY, int o)
