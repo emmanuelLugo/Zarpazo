@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Ellipse = System.Windows.Shapes.Ellipse;
+using ToggleButton = System.Windows.Controls.Primitives.ToggleButton;
 using ShapePath = System.Windows.Shapes.Path;
 using Shape = System.Windows.Shapes.Shape;
 using System.Windows.Threading;
@@ -1433,7 +1434,72 @@ public partial class VideoEditWindow : Window
             button.Click += OnFrameLook;
             FrameLooks.Children.Add(button);
         }
+
+        // The sections folded away the last time stay folded.
+        foreach (ToggleButton toggle in FrameSectionToggles())
+        {
+            toggle.IsChecked = !FoldedFrameSections.Contains((string)toggle.Tag);
+        }
         ShowFrameChoices();
+    }
+
+    // Which sections of the frame panel are folded away; kept while the app runs, so the next video opens the same way.
+    private static readonly HashSet<string> FoldedFrameSections = [];
+
+    private IEnumerable<ToggleButton> FrameSectionToggles() =>
+        [FrameLooksToggle, FrameBackgroundToggle, FrameShapeToggle, FrameShadowToggle, FrameBorderToggle, FrameBarToggle];
+
+    private void OnFrameSection(object sender, RoutedEventArgs e)
+    {
+        var toggle = (ToggleButton)sender;
+        if (toggle.IsChecked == true)
+        {
+            FoldedFrameSections.Remove((string)toggle.Tag);
+        }
+        else
+        {
+            FoldedFrameSections.Add((string)toggle.Tag);
+        }
+    }
+
+    // Puts one section back to the factory values, leaving the rest of the frame as it is.
+    private void OnFrameSectionReset(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+        VideoFrameStyle factory = VideoFrameStyle.Default, now = _frame;
+        SetFrame(((string)((Button)sender).Tag) switch
+        {
+            "background" => now with { Background = factory.Background },
+            "shape" => now with
+            {
+                Padding = factory.Padding, PaddingBySide = factory.PaddingBySide, PaddingTop = factory.PaddingTop, PaddingBottom = factory.PaddingBottom,
+                PaddingLeft = factory.PaddingLeft, PaddingRight = factory.PaddingRight, Radius = factory.Radius,
+            },
+            "shadow" => now with { Shadow = factory.Shadow, ShadowBlur = factory.ShadowBlur, ShadowOffset = factory.ShadowOffset, ShadowColor = factory.ShadowColor },
+            "border" => now with { BorderWidth = factory.BorderWidth, BorderColor = factory.BorderColor },
+            "bar" => now with { Bar = factory.Bar, LightBar = factory.LightBar },
+            _ => now,
+        });
+        ShowFrameChoices();
+    }
+
+    // A section's "Restablecer" is there only while the section differs from the factory values.
+    private void ShowFrameResets()
+    {
+        VideoFrameStyle d = VideoFrameStyle.Default, f = _frame;
+        FrameBackgroundReset.IsEnabled = f.Background != d.Background;
+        FrameShapeReset.IsEnabled = f.Padding != d.Padding || f.PaddingBySide != d.PaddingBySide || f.PaddingTop != d.PaddingTop || f.PaddingBottom != d.PaddingBottom
+            || f.PaddingLeft != d.PaddingLeft || f.PaddingRight != d.PaddingRight || f.Radius != d.Radius;
+        FrameShadowReset.IsEnabled = f.Shadow != d.Shadow || f.ShadowBlur != d.ShadowBlur || f.ShadowOffset != d.ShadowOffset || f.ShadowColor != d.ShadowColor;
+        FrameBorderReset.IsEnabled = f.BorderWidth != d.BorderWidth || f.BorderColor != d.BorderColor;
+        FrameBarReset.IsEnabled = f.Bar != d.Bar || f.LightBar != d.LightBar;
+        foreach (Button reset in new[] { FrameBackgroundReset, FrameShapeReset, FrameShadowReset, FrameBorderReset, FrameBarReset })
+        {
+            reset.Visibility = reset.IsEnabled ? Visibility.Visible : Visibility.Hidden;
+        }
     }
 
     private void OnFrameLook(object sender, RoutedEventArgs e)
@@ -1615,6 +1681,7 @@ public partial class VideoEditWindow : Window
         FrameBorderText.Text = _frame.BorderWidth > 0 ? $"{Math.Max(1, Math.Round(_frame.BorderWidth * height))} px" : "Sin borde";
         FrameBorderColorButton.IsEnabled = _frame.BorderWidth > 0;
         FrameBorderColorButton.Opacity = _frame.BorderWidth > 0 ? 1 : 0.5;
+        ShowFrameResets();
     }
 
     private void OnFrameBorderColor(object sender, RoutedEventArgs e)

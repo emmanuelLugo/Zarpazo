@@ -464,6 +464,71 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [NeedsGpuFact]
+    public void The_frame_panel_folds_by_section_and_each_section_puts_back_only_its_own_values()
+    {
+        string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.WithSound)
+            {
+                AskColor = _ => System.Windows.Media.Color.FromRgb(10, 200, 90),
+            };
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Zarpazo;component/Theme/Dark.xaml", UriKind.Relative) });
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), $"the video should open: {window.KeptText.Text}");
+                window.FrameBox.IsChecked = true;
+                window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+
+                // Nothing differs from the factory values: no section offers to be put back.
+                foreach (System.Windows.Controls.Button reset in new[] { window.FrameBackgroundReset, window.FrameShapeReset, window.FrameShadowReset, window.FrameBorderReset, window.FrameBarReset })
+                {
+                    Assert.Equal(Visibility.Hidden, reset.Visibility);
+                }
+
+                // A section folds away and opens again.
+                Assert.Equal(Visibility.Visible, window.FrameShadowBody.Visibility);
+                window.FrameShadowToggle.IsChecked = false;
+                window.FrameShadowToggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 100);
+                Assert.Equal(Visibility.Collapsed, window.FrameShadowBody.Visibility);
+                window.FrameShadowToggle.IsChecked = true;
+                window.FrameShadowToggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 100);
+                Assert.Equal(Visibility.Visible, window.FrameShadowBody.Visibility);
+
+                // Change a shadow value and a border value: only those sections offer to be put back.
+                window.FrameShadowColorButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.FrameBarMac.IsChecked = true;
+                Pump(() => false, 200);
+                Assert.Equal(Visibility.Visible, window.FrameShadowReset.Visibility);
+                Assert.Equal(Visibility.Visible, window.FrameBarReset.Visibility);
+                Assert.Equal(Visibility.Hidden, window.FrameShapeReset.Visibility);
+                window.FrameBarToneRow.BringIntoView();
+                Shot(window, folder, "editor-frame-sections.png");
+
+                window.FrameShadowReset.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal("#000000", window.Look.Frame.ShadowColor);
+                Assert.Equal(WindowBar.Mac, window.Look.Frame.Bar);
+                Assert.Equal(Visibility.Hidden, window.FrameShadowReset.Visibility);
+                Assert.Equal(Visibility.Visible, window.FrameBarReset.Visibility);
+
+                window.FrameBarReset.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 200);
+                Assert.Equal(WindowBar.None, window.Look.Frame.Bar);
+                Assert.Equal(Visibility.Hidden, window.FrameBarReset.Visibility);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     // A copy of the sample with a pointer track: recorded without the pointer (as videos are now), or with it painted in.
     private string WithTrack(bool pointerInPicture)
     {
