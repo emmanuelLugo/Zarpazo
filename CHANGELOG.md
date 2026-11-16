@@ -6,15 +6,18 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.9.0] - 2026-11-16
+
 ### Añadido
 - Capas sobre el video en el editor (icono nuevo a la izquierda, «Desenfoque, texto y flechas»): **Desenfocar** oculta una zona (una contraseña, un correo, datos de un cliente) con un desenfoque fuerte que no se puede leer; **Texto** escribe unas palabras, con su color y tamaño; **Flecha** señala algo. Se eligen con un clic o arrastrando sobre el video, se mueven y se estiran desde la misma imagen, y cada una aparece solo durante su bloque en una fila nueva de la línea de tiempo (3 segundos al ponerla; se arrastra el bloque o sus bordes). Siguen al zoom, al marco y al recorte, y un corte las deja en su momento. Se pueden deshacer y rehacer.
 - Proyectos de video: el histórico guarda con cada grabación el video limpio y todo lo que hiciste en el editor (cortes, velocidad, zooms, capas, recorte y estilo). «Editar» sobre un video del histórico lo vuelve a abrir como lo dejaste, para retocar un zoom o un texto sin empezar de cero; al copiar o guardar de nuevo, el video nuevo reemplaza al anterior en el histórico. Si cierras el editor sin copiar ni guardar, igual se guardan tus cambios. Los videos de antes de esto siguen en el histórico para copiar y guardar, pero no se pueden editar. Solo funciona con el historial activado (Ajustes > Guardado), y la grabación limpia pesa más que el video final, así que cada video ocupa más espacio en el historial.
 - Formato del video (16:9, 9:16 o 1:1) en la pestaña «Exportar» del editor: la grabación queda en el centro de un lienzo de esa forma, sobre el fondo del Marco (aunque no tengas el marco encendido, el fondo se ve; con el marco encendido se respeta su espacio, esquinas y sombra). Sirve para sacar un video vertical para historias, reels o shorts, o uno cuadrado para una publicación, desde la misma grabación. Los zooms, el cursor, los desenfoques, los textos y las flechas siguen a la grabación. Es de cada video, se puede deshacer y se guarda en el proyecto. Un 9:16 sale de 1080 × 1920 desde una grabación de 1920 × 1080.
+- Marco del video, mucho más completo: fondo propio (un color, un degradado con ángulo, una imagen tuya o uno al azar) y looks de un clic; una línea alrededor de la grabación; una barra de ventana arriba, estilo Mac o Windows, clara u oscura; la sombra con su suavidad, distancia y color; y espacio propio en cada lado. Se ve igual en la vista previa y en el video guardado. El panel se pliega en secciones, cada una con su «Restablecer».
 - Editor de video, pestaña «Exportar»: elige el tamaño del video guardado (Original, Alta 90 %, Media 75 % o Baja 50 %), su calidad (Ligera, Normal o Alta) y los cuadros por segundo (como la grabación, 24, 30 o 60). El panel dice a cuántos píxeles saldrá, también con un recorte. La elección se aplica al guardar o copiar, se recuerda para el siguiente video y no cuenta como un cambio que deshacer. No se inventan cuadros: con 60 sobre una grabación de 30, el video sigue a 30.
 
 ### Cambiado
 - Editor de video: copiar o guardar ya no congela la ventana. La copia de la grabación y del video al histórico se hace en segundo plano, y cerrar el editor tampoco la espera. La app no se considera libre (ni se reinicia para actualizar) mientras la copia sigue.
-- Guardar un video con marco, 9:16 o 1:1 es más rápido (alrededor de un 20 %): donde la grabación no llega, el fondo se copia tal cual en vez de calcularlo píxel por píxel.
+- Guardar un video es bastante más rápido: donde la grabación no llega, el fondo se copia tal cual; el marco se compone en la mitad de tiempo, la conversión de color es unas 7 veces más rápida y el siguiente cuadro se lee mientras se dibuja el actual. En una prueba de 20 s a 1080p con marco, la versión de uso diario (Release) pasó de unos 21 s a 15-18 s. El resultado es idéntico píxel a píxel.
 - Zooms en el editor de video: el panel de Zoom tiene ahora «Conectar zooms seguidos». Con él apagado, la cámara vuelve a pantalla completa entre dos zooms cercanos en vez de deslizarse de uno al otro. Forma parte del estilo: se recuerda para el siguiente video, entra en los presets y se deshace con Ctrl+Z.
 - Ajustes > Video: «Poner zooms automáticamente al abrir una grabación». Apagado, el editor abre el video sin zooms (el botón «Zoom automático» sigue disponible).
 - Ajustes > Actualizaciones: si abres una copia que no es la instalada (por ejemplo, una de desarrollo) y hay una versión nueva, el aviso ahora dice que la instalada sí se actualiza sola desde ahí, en vez de mandarte a la página de descarga.
@@ -147,7 +150,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.8.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.5.1...v0.6.0
