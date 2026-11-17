@@ -616,10 +616,10 @@ public partial class VideoEditWindow : Window
         EnsurePlayheadVisible();
     }
 
-    // A piece plays at its speed, and without sound when muted or played faster or slower (as in the saved video).
+    // A piece plays at its speed, and without sound when muted. (Whether the preview keeps the pitch at another speed is up to Windows' player; the saved video does.)
     private void ApplyPieceSound(VideoSegment piece)
     {
-        Player.IsMuted = piece.IsSilent;
+        Player.IsMuted = piece.Muted;
         Player.SpeedRatio = piece.Rate;
     }
 
@@ -723,7 +723,7 @@ public partial class VideoEditWindow : Window
 
     private void OnSpeedMenuOpened(object sender, RoutedEventArgs e) => FillSpeedMenu(SpeedMenu.Items);
 
-    // The speeds offered, the selected piece's checked. Faster or slower pieces play without sound, as in the saved video.
+    // The speeds offered, the selected piece's checked.
     private void FillSpeedMenu(ItemCollection items)
     {
         items.Clear();
@@ -740,8 +740,6 @@ public partial class VideoEditWindow : Window
             item.Click += (_, _) => SetSelectedSpeed(speed);
             items.Add(item);
         }
-        items.Add(new Separator());
-        items.Add(new MenuItem { Header = "A otra velocidad, la parte va sin sonido", IsEnabled = false });
     }
 
     private void SetSelectedSpeed(double speed)

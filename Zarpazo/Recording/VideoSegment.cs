@@ -2,7 +2,7 @@ namespace Zarpazo.Recording;
 
 /// <summary>One piece of the recording that goes into the edited video: where it starts and ends in the original, in seconds.</summary>
 /// <param name="Muted">The piece plays without its sound.</param>
-/// <param name="Speed">How fast the piece plays: 2 takes half the time, 0.5 twice as long. Anything but 1 plays without sound.</param>
+/// <param name="Speed">How fast the piece plays: 2 takes half the time, 0.5 twice as long. Its sound keeps its pitch (see <see cref="TimeStretcher"/>).</param>
 internal readonly record struct VideoSegment(double Start, double End, bool Muted = false, double Speed = 1)
 {
     /// <summary>The speeds offered in the editor.</summary>
@@ -19,9 +19,6 @@ internal readonly record struct VideoSegment(double Start, double End, bool Mute
 
     /// <summary>Plays faster or slower than it was recorded.</summary>
     public bool IsRetimed => Rate != 1;
-
-    /// <summary>No sound comes out of it: muted, or played at another speed.</summary>
-    public bool IsSilent => Muted || IsRetimed;
 
     /// <summary>The moment of the original that plays <paramref name="seconds"/> after the piece begins in the edited video.</summary>
     public double ToOriginal(double seconds) => Start + Math.Clamp(seconds, 0, PlayLength) * Rate;

@@ -5,14 +5,13 @@ namespace Zarpazo.Tests;
 public sealed class SegmentSpeedTests
 {
     [Fact]
-    public void A_piece_played_twice_as_fast_takes_half_the_time_and_has_no_sound()
+    public void A_piece_played_twice_as_fast_takes_half_the_time()
     {
         var piece = new VideoSegment(2, 8, Speed: 2);
 
         Assert.Equal(6, piece.Length);
         Assert.Equal(3, piece.PlayLength);
         Assert.True(piece.IsRetimed);
-        Assert.True(piece.IsSilent);
         Assert.Equal(6, piece.ToOriginal(2)); // 2 s into the piece is 4 s of the original
         Assert.Equal(2, piece.ToPlay(6));
     }
@@ -24,7 +23,7 @@ public sealed class SegmentSpeedTests
 
         Assert.Equal(1, piece.Rate);
         Assert.Equal(4, piece.PlayLength);
-        Assert.False(piece.IsSilent);
+        Assert.False(piece.IsRetimed);
     }
 
     [Fact]
@@ -128,6 +127,10 @@ public sealed class SegmentSpeedTests
         Assert.Equal(3, clock.ToPlay(4));
         Assert.False(clock.IsRetimedAt(1));
         Assert.True(clock.IsRetimedAt(3));
+        Assert.Equal(2, clock.Count);
+        Assert.Equal(1, clock.PieceAt(3));
+        Assert.Equal(2, clock.InputEnd(0));
+        Assert.Equal(2, clock.PlayStart(1));
     }
 
     [Theory]

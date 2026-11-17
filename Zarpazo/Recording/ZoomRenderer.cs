@@ -27,7 +27,7 @@ internal static class ZoomRenderer
     /// <param name="crop">The part of each picture that is kept; the video takes its size. The camera's views and the
     /// frame are then in shares of the cropped picture (see <see cref="CropArea"/>).</param>
     /// <param name="clock">When pieces of <paramref name="source"/> play faster or slower: which moment of it each moment of the
-    /// result shows. The camera and the pointer are then on the result's clock, and those pieces lose their sound. Null plays
+    /// result shows. The camera and the pointer are then on the result's clock, and the sound of those pieces is stretched to match. Null plays
     /// the source as it is.</param>
     /// <param name="overlays">The blurs, texts and arrows to draw over every picture, under the pointer; null for none.</param>
     /// <param name="output">The size, quality and frame rate to write; null for the recording's own (see <see cref="VideoExportOptions"/>).
@@ -151,28 +151,15 @@ internal static class ZoomRenderer
             try
             {
                 using var reader = new AudioChunkReader(source);
-                double written = 0; // where the sound written so far ends, on the result's clock
-                while (reader.Read(out TimeSpan time) is { } pcm)
+                if (clock == null)
                 {
-                    double at = Math.Max(0, time.TotalSeconds);
-                    if (clock == null)
+                    while (reader.Read(out TimeSpan time) is { } pcm)
                     {
-                        await writer.AddAudioAsync(pcm, TimeSpan.FromSeconds(at), cancel.Token);
-                        continue;
+                        await writer.AddAudioAsync(pcm, TimeSpan.FromSeconds(Math.Max(0, time.TotalSeconds)), cancel.Token);
                     }
-                    if (clock.IsRetimedAt(at))
-                    {
-                        continue; // a faster or slower piece plays in silence, filled in below
-                    }
-                    double play = clock.ToPlay(at);
-                    written = await AddSilenceAsync(writer, written, play, cancel.Token);
-                    await writer.AddAudioAsync(pcm, TimeSpan.FromSeconds(play), cancel.Token);
-                    written = Math.Max(written, play + SecondsOf(pcm.Length));
+                    return;
                 }
-                if (clock != null)
-                {
-                    await AddSilenceAsync(writer, written, clock.Duration, cancel.Token);
-                }
+                await WriteRetimedSoundAsync(reader, clock, new SoundLine(writer, cancel.Token));
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -206,27 +193,80 @@ internal static class ZoomRenderer
         progress?.Report(1);
     }
 
-    private static double SecondsOf(int bytes) => bytes / (double)(Mp4Writer.AudioChannels * 2 * Mp4Writer.AudioSampleRate);
-
     /// <summary>
-    /// Fills the sound from <paramref name="from"/> to <paramref name="to"/> with silence, so a piece without sound is quiet
-    /// for as long as it plays. Returns where the sound now ends.
+    /// Writes the sound of the joined file on the finished video's clock: each piece at its own place, the faster or slower ones
+    /// stretched to their new length without changing their pitch, and quiet where a piece is muted.
     /// </summary>
-    private static async Task<double> AddSilenceAsync(Mp4Writer writer, double from, double to, CancellationToken cancel)
+    private static async Task WriteRetimedSoundAsync(AudioChunkReader reader, PlayClock clock, SoundLine line)
     {
-        const double Chunk = 0.02;
         const int BytesPerFrame = Mp4Writer.AudioChannels * 2;
-        while (to - from > 0.001)
+        TimeStretcher? stretcher = null;
+        int stretching = -1;
+        long stretched = 0; // samples of stretched sound written for the piece being stretched
+
+        async Task WriteStretchedAsync(byte[] pcm)
         {
-            int frames = (int)Math.Round(Math.Min(Chunk, to - from) * Mp4Writer.AudioSampleRate);
-            if (frames <= 0)
+            if (pcm.Length > 0)
             {
-                break;
+                await line.AddAsync(pcm, clock.PlayStart(stretching) + stretched / (double)Mp4Writer.AudioSampleRate);
+                stretched += pcm.Length / BytesPerFrame;
             }
-            await writer.AddAudioAsync(new byte[frames * BytesPerFrame], TimeSpan.FromSeconds(from), cancel);
-            from += frames / (double)Mp4Writer.AudioSampleRate;
         }
-        return Math.Max(from, to);
+
+        async Task EndStretchAsync()
+        {
+            if (stretcher != null)
+            {
+                await WriteStretchedAsync(stretcher.Flush());
+                stretcher = null;
+                stretching = -1;
+            }
+        }
+
+        while (reader.Read(out TimeSpan time) is { } pcm)
+        {
+            double at = Math.Max(0, time.TotalSeconds);
+            int frames = pcm.Length / BytesPerFrame;
+            // A piece of sound can run over the end of one piece into the next: it is split where they meet.
+            for (int offset = 0; offset < frames;)
+            {
+                double now = at + offset / (double)Mp4Writer.AudioSampleRate;
+                int index = clock.PieceAt(now);
+                int count = frames - offset;
+                if (index < clock.Count - 1)
+                {
+                    count = Math.Min(count, Math.Max(1, (int)Math.Round((clock.InputEnd(index) - now) * Mp4Writer.AudioSampleRate)));
+                }
+                byte[] part = count == frames ? pcm : pcm[(offset * BytesPerFrame)..((offset + count) * BytesPerFrame)];
+                offset += count;
+
+                if (stretching != index)
+                {
+                    await EndStretchAsync();
+                }
+                VideoSegment piece = clock.Piece(index);
+                if (piece.Muted)
+                {
+                    continue; // quiet: filled in when the next sound is written
+                }
+                if (piece.IsRetimed)
+                {
+                    if (stretcher == null)
+                    {
+                        stretcher = new TimeStretcher(piece.Rate);
+                        stretching = index;
+                        stretched = 0;
+                    }
+                    await WriteStretchedAsync(stretcher.Process(part));
+                }
+                else
+                {
+                    await line.AddAsync(part, clock.ToPlay(now));
+                }
+            }
+        }
+        await EndStretchAsync();
+        await line.FillToAsync(clock.Duration);
     }
 
     private static void TryDelete(string path)

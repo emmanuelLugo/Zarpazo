@@ -59,7 +59,8 @@ internal static class VideoExporter
         CursorLayer? pointer = CursorLayer.For(track, cursor, segments, area);
         OverlayLayer? drawn = OverlayLayer.For(overlays, segments, area);
         bool cropped = area is { IsWhole: false };
-        // Windows' editing engine cannot change speed: retimed pieces are joined as recorded and the renderer plays them faster or slower.
+        // Windows' editing engine cannot change speed: retimed pieces are joined as recorded and the renderer plays them faster or
+        // slower, pictures and sound.
         bool retimed = segments.Any(segment => segment.IsRetimed);
         if (camera.IsEmpty && !framed && pointer == null && drawn == null && !cropped && !retimed && !letterboxed && output.IsDefault)
         {
@@ -67,7 +68,7 @@ internal static class VideoExporter
             return;
         }
 
-        bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].IsSilent;
+        bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].Muted && !segments[0].IsRetimed;
         if (whole)
         {
             await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn, output: output, aspect: aspect);
@@ -121,7 +122,7 @@ internal static class VideoExporter
 
             clip.TrimTimeFromStart = start;
             clip.TrimTimeFromEnd = length - end;
-            clip.Volume = segment.IsSilent ? 0 : 1;
+            clip.Volume = segment.Muted ? 0 : 1; // a retimed piece keeps its sound here: the renderer stretches it
             composition.Clips.Add(clip);
         }
 

@@ -47,7 +47,22 @@ internal sealed class PlayClock
         return i < 0 ? 0 : _playStarts[i] + Math.Clamp(input - _inputStarts[i], 0, _pieces[i].Length) / _pieces[i].Rate;
     }
 
-    /// <summary>Whether the piece at <paramref name="input"/> seconds of the joined file plays at another speed (so its sound is left out).</summary>
+    /// <summary>How many pieces there are.</summary>
+    public int Count => _pieces.Length;
+
+    /// <summary>The piece that holds the moment <paramref name="input"/> of the joined file (the last one for anything after the end).</summary>
+    public int PieceAt(double input) => Index(_inputStarts, input);
+
+    /// <summary>The piece <paramref name="index"/>.</summary>
+    public VideoSegment Piece(int index) => _pieces[index];
+
+    /// <summary>Where in the joined file the piece <paramref name="index"/> ends.</summary>
+    public double InputEnd(int index) => _inputStarts[index] + _pieces[index].Length;
+
+    /// <summary>Where in the finished video the piece <paramref name="index"/> begins.</summary>
+    public double PlayStart(int index) => _playStarts[index];
+
+    /// <summary>Whether the piece at <paramref name="input"/> seconds of the joined file plays at another speed.</summary>
     public bool IsRetimedAt(double input)
     {
         int i = Index(_inputStarts, input);

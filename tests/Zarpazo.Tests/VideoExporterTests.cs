@@ -97,6 +97,50 @@ public sealed class VideoExporterTests : IClassFixture<SampleVideos>, IDisposabl
         Assert.Single(clip.EmbeddedAudioTracks);
     }
 
+    // The loudest sample in a second of a video's sound: the samples carry a tone, so a piece that is quiet has none.
+    private static int LoudestIn(string path, double from, double to)
+    {
+        using var reader = new AudioChunkReader(path);
+        int loudest = 0;
+        while (reader.Read(out TimeSpan time) is { } pcm)
+        {
+            double at = time.TotalSeconds;
+            for (int i = 0; i + 1 < pcm.Length; i += 4)
+            {
+                double now = at + i / 4.0 / Mp4Writer.AudioSampleRate;
+                if (now >= from && now < to)
+                {
+                    loudest = Math.Max(loudest, Math.Abs((int)BitConverter.ToInt16(pcm, i)));
+                }
+            }
+        }
+        return loudest;
+    }
+
+    [Fact]
+    public async Task A_part_at_another_speed_keeps_its_sound()
+    {
+        string target = Path.Combine(_folder, "fast-sound.mp4");
+
+        // 1 s as recorded, then 2 s at 2x (1 s long): the second second must not be quiet.
+        await VideoExporter.ExportAsync(_samples.WithSound, target, new[] { Part(0, 1), new VideoSegment(1, 3, Speed: 2) }, [], 3, frame: null);
+
+        Assert.True(LoudestIn(target, 0.1, 0.9) > 2000, "the first part has its sound");
+        Assert.True(LoudestIn(target, 1.2, 1.8) > 2000, "the faster part has its sound");
+    }
+
+    [Fact]
+    public async Task A_muted_part_at_another_speed_stays_quiet()
+    {
+        string target = Path.Combine(_folder, "fast-muted.mp4");
+
+        await VideoExporter.ExportAsync(_samples.WithSound, target,
+            new[] { Part(0, 1), new VideoSegment(1, 3, Muted: true, Speed: 2) }, [], 3, frame: null);
+
+        Assert.True(LoudestIn(target, 0.1, 0.9) > 2000);
+        Assert.True(LoudestIn(target, 1.2, 1.8) < 300);
+    }
+
     [Fact]
     public async Task A_slowed_down_part_lasts_longer_and_shows_the_same_pictures()
     {
