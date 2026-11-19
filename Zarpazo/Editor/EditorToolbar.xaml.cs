@@ -645,6 +645,8 @@ public partial class EditorToolbar : UserControl
     public event EventHandler? SaveRequested;
     public event EventHandler? OcrRequested;
     public event EventHandler? PinRequested;
+
+    public event EventHandler? RotateRequested;
     public event EventHandler? GuideRequested;
     public event EventHandler? RecordRequested;
     public event EventHandler? CloseRequested;
@@ -752,6 +754,12 @@ public partial class EditorToolbar : UserControl
     {
         MorePopup.IsOpen = false;
         OnPin(sender, e);
+    }
+
+    private void OnMoreRotate(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        RotateRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnMoreGuide(object sender, RoutedEventArgs e)

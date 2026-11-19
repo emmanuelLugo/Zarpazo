@@ -153,6 +153,10 @@ public partial class OverlayWindow : Window
         {
             OnPin(this, EventArgs.Empty);
         }
+        else if (ctrl && e.Key == Key.R)
+        {
+            OnRotate(this, EventArgs.Empty);
+        }
         else if (ctrl && e.Key == Key.D)
         {
             OnGuide(this, EventArgs.Empty);
@@ -280,10 +284,20 @@ public partial class OverlayWindow : Window
         Toolbar.BeautifyEnabled ? ImageBeautifier.Apply(image, Toolbar.BeautifyStyle) : image;
 
     /// <summary>Leaves the capture floating over the screen, exactly where the area was.</summary>
-    private void OnPin(object? sender, EventArgs e) => FinishWithCrop(crop =>
+    private void OnPin(object? sender, EventArgs e) => Pin(rotate: false);
+
+    /// <summary>Pins the capture already turned right: the overlay can't turn it in place, the pinned window can.</summary>
+    private void OnRotate(object? sender, EventArgs e) => Pin(rotate: true);
+
+    private void Pin(bool rotate) => FinishWithCrop(crop =>
     {
         // No owner: a pinned capture has to outlive this window.
-        new PinnedWindow(crop.Final, _bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, _settings).Show();
+        var pinned = new PinnedWindow(crop.Final, _bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, _settings);
+        if (rotate)
+        {
+            pinned.RotateRight();
+        }
+        pinned.Show();
         return true;
     });
 

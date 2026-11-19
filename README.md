@@ -36,7 +36,7 @@
 - Copiar al portapapeles (también como archivo, para pegar la ruta en una consola) y guardar como **PNG o JPG**.
 - **Guardado automático** en una carpeta, con plantilla de nombre (`{fecha}`, `{hora}`, `{n}`).
 - **Embellecer**: fondo en degradado, margen, esquinas redondeadas y sombra al copiar o guardar.
-- **Fijar** la captura sobre la pantalla (`Ctrl+P`), siempre visible y con opacidad.
+- **Fijar** la captura sobre la pantalla (`Ctrl+P`), siempre visible y con opacidad. **Girar** (`Ctrl+R`) la fija ya girada; ahí `Ctrl+R` y `Ctrl+Shift+R` la siguen girando.
 - **Copiar texto** de una imagen con OCR (`Ctrl+T`).
 
 **Grabación**

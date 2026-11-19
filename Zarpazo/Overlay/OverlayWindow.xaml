@@ -73,6 +73,7 @@
                                   SaveRequested="OnSave"
                                   OcrRequested="OnOcr"
                                   PinRequested="OnPin"
+                                  RotateRequested="OnRotate"
                                   GuideRequested="OnGuide"
                                   RecordRequested="OnRecord"
                                   CloseRequested="OnCloseRequested" />

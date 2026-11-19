@@ -229,7 +229,9 @@ public partial class PinnedWindow : Window
 
     private void OnActualSize(object sender, RoutedEventArgs e) => ActualSize();
 
-    private void OnRotateRight(object sender, RoutedEventArgs e) => Rotate(90);
+    internal void RotateRight() => Rotate(90);
+
+    private void OnRotateRight(object sender, RoutedEventArgs e) => RotateRight();
 
     private void OnRotateLeft(object sender, RoutedEventArgs e) => Rotate(-90);
 
