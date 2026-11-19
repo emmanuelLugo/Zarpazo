@@ -54,6 +54,8 @@
             <MenuItem Header="Copiar" InputGestureText="Ctrl+C" Click="OnCopy" />
             <MenuItem Header="Guardar como…" Click="OnSave" />
             <MenuItem Header="Tamaño original" InputGestureText="Ctrl+0" Click="OnActualSize" />
+            <MenuItem Header="Girar a la derecha" InputGestureText="Ctrl+R" Click="OnRotateRight" />
+            <MenuItem Header="Girar a la izquierda" InputGestureText="Ctrl+Shift+R" Click="OnRotateLeft" />
             <Separator />
             <MenuItem Header="Cerrar" InputGestureText="Esc" Click="OnClose" />
         </ContextMenu>

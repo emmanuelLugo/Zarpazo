@@ -22,7 +22,9 @@ public partial class PinnedWindow : Window
     private const int ToolsMinWidth = 180; // narrower than this, the buttons would cover the picture
     private static readonly TimeSpan ToastDuration = TimeSpan.FromMilliseconds(900);
 
-    private readonly BitmapSource _image;
+    private readonly BitmapSource _original;
+    private BitmapSource _image; // the original turned by _angle; what is shown, copied and saved
+    private int _angle;
     private readonly SettingsStore _settings;
     private readonly IntPtr _hwnd;
     private double _scale = 1;
@@ -37,6 +39,7 @@ public partial class PinnedWindow : Window
     internal PinnedWindow(BitmapSource image, int left, int top, SettingsStore settings)
     {
         InitializeComponent();
+        _original = image;
         _image = image;
         _settings = settings;
         Picture.Fill = new ImageBrush(image) { Stretch = Stretch.Fill };
@@ -95,6 +98,20 @@ public partial class PinnedWindow : Window
         (int left, int top, int width, int height) = PictureRect();
         ScaleTo(1, left + width / 2, top + height / 2, 0.5, 0.5);
         Notify("Tamaño original");
+    }
+
+    /// <summary>Turns the picture a quarter turn (positive is clockwise) around its centre.</summary>
+    private void Rotate(int degrees)
+    {
+        (int left, int top, int width, int height) = PictureRect();
+        _angle = (_angle + degrees + 360) % 360;
+        // Always from the original, so turning many times does not stack transforms.
+        var turned = new TransformedBitmap(_original, new RotateTransform(_angle));
+        turned.Freeze();
+        _image = turned;
+        Picture.Fill = new ImageBrush(_image) { Stretch = Stretch.Fill };
+        ScaleTo(_scale, left + width / 2, top + height / 2, 0.5, 0.5);
+        Notify(degrees > 0 ? "Girada a la derecha" : "Girada a la izquierda");
     }
 
     private void ShowControls(bool hovering)
@@ -166,6 +183,10 @@ public partial class PinnedWindow : Window
         {
             ActualSize();
         }
+        else if (ctrl && e.Key == Key.R)
+        {
+            Rotate(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -90 : 90);
+        }
     }
 
     // The corner grip is dragged with the mouse captured and measured on the screen: the window itself moves with the
@@ -207,6 +228,10 @@ public partial class PinnedWindow : Window
         Run(() => ImageOutput.Save(_image, this, _settings.Current));
 
     private void OnActualSize(object sender, RoutedEventArgs e) => ActualSize();
+
+    private void OnRotateRight(object sender, RoutedEventArgs e) => Rotate(90);
+
+    private void OnRotateLeft(object sender, RoutedEventArgs e) => Rotate(-90);
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 
