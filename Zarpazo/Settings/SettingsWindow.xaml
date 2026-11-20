@@ -350,6 +350,11 @@
                     <TextBlock Style="{StaticResource Section}" Text="Tu configuración" />
                     <TextBlock x:Name="SettingsPathText" TextWrapping="Wrap" />
                     <Button Content="Abrir carpeta" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnOpenSettingsFolder" />
+
+                    <TextBlock Style="{StaticResource Section}" Text="Algo falló" />
+                    <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                               Text="Copia la versión, tu Windows, tus pantallas y los últimos errores para pegarlos en un reporte. No incluye tus capturas." />
+                    <Button Content="Copiar información para reportar" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnCopyReport" />
                 </StackPanel>
             </Grid>
         </ScrollViewer>

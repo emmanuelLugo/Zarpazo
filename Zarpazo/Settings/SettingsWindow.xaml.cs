@@ -314,6 +314,12 @@ public partial class SettingsWindow : Window
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
     }
 
+    private void OnCopyReport(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Clipboard.SetText(Diagnostics.ErrorReport.Build(Diagnostics.ErrorLog.Default));
+        ((System.Windows.Controls.Button)sender).Content = "Copiado";
+    }
+
     private void ShowPrintScreenNoticeIfNeeded() =>
         PrintScreenNotice.Visibility = PrintScreenConflict.Applies(CaptureHotKey.Value) ? Visibility.Visible : Visibility.Collapsed;
 

@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Zarpazo.Capture;
+using Zarpazo.Diagnostics;
 using Zarpazo.Guide;
 using Zarpazo.History;
 using Zarpazo.Overlay;
@@ -57,6 +58,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => ErrorLog.Default.Write("UnhandledException", (Exception)args.ExceptionObject);
+        TaskScheduler.UnobservedTaskException += (_, args) => ErrorLog.Default.Write("UnobservedTaskException", args.Exception);
+        DispatcherUnhandledException += (_, args) => ErrorLog.Default.Write("DispatcherUnhandledException", args.Exception); // WPF's own crash dialog still follows
 
         _instanceMutex = new Mutex(true, InstanceMutexName, out bool isFirstInstance);
         if (!isFirstInstance)
