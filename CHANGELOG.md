@@ -6,7 +6,10 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.10.0] - 2026-11-20
+
 ### Añadido
+- Girar capturas: una captura fijada sobre la pantalla gira un cuarto de vuelta a la derecha (Ctrl+R) o a la izquierda (Ctrl+Shift+R), también desde su menú. En el editor de capturas, el botón Girar (Ctrl+R) la fija ya girada a la derecha.
 - Embellecer tiene barra de ventana, como el marco de los videos: ninguna, Mac (tres botones redondos) o Windows (minimizar, maximizar y cerrar), en tono oscuro o claro. La captura queda como una ventana sobre el fondo.
 
 ### Cambiado
@@ -162,7 +165,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.1...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.7.0...v0.8.0
