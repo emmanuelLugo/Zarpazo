@@ -92,6 +92,20 @@ public sealed class ImageBeautifierTests
     }
 
     [Fact]
+    public void A_window_bar_sits_above_the_capture_and_makes_the_result_taller()
+    {
+        Sta.Run(() =>
+        {
+            var style = Plain(20) with { Bar = Zarpazo.Recording.WindowBar.Mac, LightBar = true };
+            BitmapSource result = ImageBeautifier.Apply(Solid(100, 60, Colors.Red), style);
+
+            Assert.Equal((140, 100 + ImageBeautifier.BarHeight), (result.PixelWidth, result.PixelHeight));
+            Assert.Equal(Color.FromRgb(0xF1, 0xF3, 0xF4), PixelAt(result, 110, 20 + 4));               // the light bar, right of the buttons
+            Assert.Equal(Colors.Red, PixelAt(result, 70, 20 + ImageBeautifier.BarHeight + 30));        // the capture, below it
+        });
+    }
+
+    [Fact]
     public void An_unknown_background_key_falls_back_to_the_default()
     {
         Assert.Equal(BeautifyBackground.Default, BeautifyBackground.Find("no-existe"));

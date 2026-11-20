@@ -519,6 +519,8 @@ public partial class EditorToolbar : UserControl
         FindChoice(this, "beautyBackground", _beautify.Background)?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
         FindChoice(this, "beautyPadding", _beautify.Padding.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
         FindChoice(this, "beautyRadius", _beautify.Radius.ToString(CultureInfo.InvariantCulture))?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+        FindChoice(this, "beautyBar", _beautify.Bar.ToString())?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
+        FindChoice(this, "beautyBarTone", _beautify.LightBar ? "Light" : "Dark")?.SetCurrentValue(RadioButton.IsCheckedProperty, true);
         BeautifyShadowBox.IsChecked = _beautify.Shadow;
         BeautifyEnabledBox.IsChecked = _beautifyEnabled;
         ShowBeautifyDot();
@@ -534,6 +536,7 @@ public partial class EditorToolbar : UserControl
 
     private void RefreshBeautifyPreview()
     {
+        BeautifyBarToneRow.IsEnabled = _beautify.Bar != WindowBar.None; // the tone is of the bar
         BitmapSource? source = PreviewSource?.Invoke();
         BeautifyEmpty.Visibility = source == null ? Visibility.Visible : Visibility.Collapsed;
         if (source == null)
@@ -544,7 +547,7 @@ public partial class EditorToolbar : UserControl
 
         // Drawn small: the whole screenshot at full size would make every click on an option wait.
         double width = source.PixelWidth + 2 * _beautify.Padding;
-        double height = source.PixelHeight + 2 * _beautify.Padding;
+        double height = source.PixelHeight + 2 * _beautify.Padding + (_beautify.Bar == WindowBar.None ? 0 : ImageBeautifier.BarHeight);
         double scale = Math.Min(1, Math.Min(PreviewWidth / width, PreviewHeight / height));
         BeautifyPreview.Source = ImageBeautifier.Apply(source, _beautify, scale);
     }
@@ -585,6 +588,8 @@ public partial class EditorToolbar : UserControl
             "beautyBackground" => _beautify with { Background = tag },
             "beautyPadding" => _beautify with { Padding = int.Parse(tag, CultureInfo.InvariantCulture) },
             "beautyRadius" => _beautify with { Radius = int.Parse(tag, CultureInfo.InvariantCulture) },
+            "beautyBar" => _beautify with { Bar = Enum.Parse<WindowBar>(tag) },
+            "beautyBarTone" => _beautify with { LightBar = tag == "Light" },
             _ => _beautify,
         };
         OnBeautifyEdited();

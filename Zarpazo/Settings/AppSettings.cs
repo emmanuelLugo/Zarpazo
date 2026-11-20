@@ -122,6 +122,10 @@ internal sealed class AppSettings
     public int BeautifyRadius { get; set; } = Output.BeautifyStyle.Default.Radius;
     public bool BeautifyShadow { get; set; } = Output.BeautifyStyle.Default.Shadow;
 
+    /// <summary>"None", "Mac" or "Windows" (see <see cref="Recording.WindowBar"/>).</summary>
+    public string BeautifyBar { get; set; } = Output.BeautifyStyle.Default.Bar.ToString();
+    public bool BeautifyLightBar { get; set; } = Output.BeautifyStyle.Default.LightBar;
+
     /// <summary>"gif" or "video"; what the recording panel starts with.</summary>
     public string RecordFormat { get; set; } = "gif";
     public bool RecordMicrophone { get; set; }
@@ -368,13 +372,19 @@ internal sealed class AppSettings
     [JsonIgnore]
     public Output.BeautifyStyle BeautifyStyle
     {
-        get => new(BeautifyBackground, BeautifyPadding, BeautifyRadius, BeautifyShadow);
+        get => new(BeautifyBackground, BeautifyPadding, BeautifyRadius, BeautifyShadow)
+        {
+            Bar = Enum.TryParse(BeautifyBar, out Recording.WindowBar bar) && Enum.IsDefined(bar) ? bar : Recording.WindowBar.None,
+            LightBar = BeautifyLightBar,
+        };
         set
         {
             BeautifyBackground = value.Background;
             BeautifyPadding = value.Padding;
             BeautifyRadius = value.Radius;
             BeautifyShadow = value.Shadow;
+            BeautifyBar = value.Bar.ToString();
+            BeautifyLightBar = value.LightBar;
         }
     }
 
@@ -470,6 +480,6 @@ internal sealed class AppSettings
             Output.BeautifyBackground.Find(BeautifyBackground).Key,
             Output.BeautifyStyle.Nearest(BeautifyPadding, Output.BeautifyStyle.PaddingChoices),
             Output.BeautifyStyle.Nearest(BeautifyRadius, Output.BeautifyStyle.RadiusChoices),
-            BeautifyShadow);
+            BeautifyShadow) { Bar = BeautifyStyle.Bar, LightBar = BeautifyLightBar };
     }
 }

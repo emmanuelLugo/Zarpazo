@@ -517,6 +517,55 @@
                             </RadioButton>
                         </StackPanel>
 
+                        <!-- Each choice shows a small window with that bar, as in the video editor's frame. -->
+                        <TextBlock Text="Barra de ventana" Style="{StaticResource PanelLabel}" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton GroupName="beautyBar" Tag="None" Style="{StaticResource Choice}" ToolTip="Sin barra: solo la captura">
+                                <StackPanel Orientation="Horizontal" Margin="8,0">
+                                    <Border Width="22" Height="15" CornerRadius="3" Background="#55808080" Margin="0,0,6,0" />
+                                    <TextBlock Text="Ninguna" FontSize="13" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton GroupName="beautyBar" Tag="Mac" Style="{StaticResource Choice}" ToolTip="Una barra con tres botones redondos a la izquierda, como en macOS">
+                                <StackPanel Orientation="Horizontal" Margin="8,0">
+                                    <Grid Width="22" Height="15" Margin="0,0,6,0">
+                                        <Border CornerRadius="3" Background="#55808080" />
+                                        <Border CornerRadius="3,3,0,0" Height="5" VerticalAlignment="Top" Background="#2B2D31" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="2.5,1.5,0,0">
+                                            <Ellipse Width="2" Height="2" Fill="#FF5F57" Margin="0,0,1,0" />
+                                            <Ellipse Width="2" Height="2" Fill="#FEBC2E" Margin="0,0,1,0" />
+                                            <Ellipse Width="2" Height="2" Fill="#28C840" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="Mac" FontSize="13" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton GroupName="beautyBar" Tag="Windows" Style="{StaticResource Choice}" ToolTip="Una barra con minimizar, maximizar y cerrar a la derecha, como en Windows">
+                                <StackPanel Orientation="Horizontal" Margin="8,0">
+                                    <Grid Width="22" Height="15" Margin="0,0,6,0">
+                                        <Border CornerRadius="3" Background="#55808080" />
+                                        <Border CornerRadius="3,3,0,0" Height="5" VerticalAlignment="Top" Background="#2B2D31" />
+                                        <Path Data="M14,2.5 H15.5 M17,1.5 H18.5 V3 H17 Z M19.5,1.5 L21,3 M21,1.5 L19.5,3" Stroke="#A8ADB4" StrokeThickness="0.5" />
+                                    </Grid>
+                                    <TextBlock Text="Windows" FontSize="13" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                        <StackPanel x:Name="BeautifyBarToneRow" Orientation="Horizontal">
+                            <RadioButton GroupName="beautyBarTone" Tag="Dark" Style="{StaticResource Choice}" ToolTip="Barra de tonos oscuros">
+                                <StackPanel Orientation="Horizontal" Margin="8,0">
+                                    <Ellipse Width="12" Height="12" Fill="#2B2D31" Stroke="#80808080" StrokeThickness="1" Margin="0,0,6,0" />
+                                    <TextBlock Text="Oscura" FontSize="13" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton GroupName="beautyBarTone" Tag="Light" Style="{StaticResource Choice}" ToolTip="Barra de tonos claros">
+                                <StackPanel Orientation="Horizontal" Margin="8,0">
+                                    <Ellipse Width="12" Height="12" Fill="#F1F3F4" Stroke="#80808080" StrokeThickness="1" Margin="0,0,6,0" />
+                                    <TextBlock Text="Clara" FontSize="13" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+
                         <CheckBox x:Name="BeautifyShadowBox" Content="Sombra" Foreground="White" Margin="0,10,0,0"
                                   FontFamily="Segoe UI" FontSize="13" Focusable="False" Click="OnBeautifyShadow" />
                     </StackPanel>

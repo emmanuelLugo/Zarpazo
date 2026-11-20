@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Embellecer tiene barra de ventana, como el marco de los videos: ninguna, Mac (tres botones redondos) o Windows (minimizar, maximizar y cerrar), en tono oscuro o claro. La captura queda como una ventana sobre el fondo.
+
 ### Cambiado
 - Las partes del video que aceleras o ralentizas ya no quedan mudas: su sonido se acelera o se ralentiza con ellas sin cambiar el tono (la voz no suena de ardilla ni de monstruo). Funciona de 0,5× a 4× (pasado 2× la voz se entiende cada vez menos, es normal). Silenciar una parte sigue funcionando en cualquier velocidad.
 

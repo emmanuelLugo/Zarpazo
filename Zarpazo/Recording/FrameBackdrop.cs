@@ -89,10 +89,13 @@ internal static class FrameBackdrop
     /// <param name="roundedTop">The card's top corners are round (the preview clips with them; the saved video cuts them itself).</param>
     public static void FillBar(Border bar, VideoFrameStyle style, FrameLayout layout, double scale, bool roundedTop)
     {
-        double height = layout.BarHeight * scale;
-        double width = layout.Card.Width * scale;
-        bool light = style.LightBar;
         double radius = roundedTop ? Math.Min(layout.RadiusPixels, Math.Min(layout.Card.Width, layout.Card.Height) / 2) * scale : 0;
+        FillBar(bar, style.Bar, style.LightBar, layout.Card.Width * scale, layout.BarHeight * scale, radius);
+    }
+
+    /// <summary>Sets up <paramref name="bar"/> as a title bar of the given size; Embellecer uses it for captures too.</summary>
+    public static void FillBar(Border bar, WindowBar kind, bool light, double width, double height, double radius)
+    {
         Color glyph = light ? LightBarGlyph : DarkBarGlyph;
 
         bar.Width = width;
@@ -104,7 +107,7 @@ internal static class FrameBackdrop
 
         var canvas = new Canvas { Width = width, Height = height };
         double middle = height / 2;
-        if (style.Bar == WindowBar.Mac)
+        if (kind == WindowBar.Mac)
         {
             // Three round buttons: close, minimise, zoom.
             double size = height * 0.32, step = height * 0.56, first = height * 0.62;
@@ -117,7 +120,7 @@ internal static class FrameBackdrop
                 canvas.Children.Add(dot);
             }
         }
-        else if (style.Bar == WindowBar.Windows)
+        else if (kind == WindowBar.Windows)
         {
             // Minimise, maximise and close, the last at the right edge.
             double button = height * 1.3, mark = height * 0.26, line = Math.Max(1, height * 0.055);
