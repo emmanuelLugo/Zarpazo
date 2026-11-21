@@ -19,30 +19,83 @@ internal sealed class VideoFrameReader : IDisposable
     private static readonly Guid YuvMatrix = new("3e23d450-2c75-4d25-a00e-b91670d12327");
     private static readonly Guid NominalRange = new("c21b8ee5-b956-4071-8daf-325edf5cab11");
 
+    private static readonly Guid D3DManager = new("ec822da2-e1e9-4b29-a0d8-563c719f5269"); // MF_SOURCE_READER_D3D_MANAGER
+    private static readonly Guid HardwareTransforms = new("a634a91c-822b-41b9-a494-4de4643612b0"); // MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS
+
     private readonly IMFSourceReader _reader;
+    private readonly DecoderDevice? _gpu;
     private int _frameHeight; // the decoder works in blocks of 16 rows, so 180 can come as 192
     private YuvConverter _converter = null!;
     private byte[] _nv12 = [];
 
     /// <param name="width">The size of the pictures wanted: the video's own size. Rows and columns the decoder adds beyond it are left out.</param>
+    /// <param name="hardware">Decode on the graphics card when there is one that can (the same pictures, a fraction of the processor time);
+    /// false always decodes on the processor.</param>
     /// <exception cref="COMException">Windows cannot read the file.</exception>
-    public VideoFrameReader(string path, int width, int height)
+    public VideoFrameReader(string path, int width, int height, bool hardware = true)
     {
         Width = width;
         Height = height;
         MediaFoundationApi.Startup();
 
-        MediaFoundationInterop.MFCreateSourceReaderFromURL(path, null, out _reader);
-        _reader.SetStreamSelection(AllStreams, false);
-        _reader.SetStreamSelection(FirstVideoStream, true);
-        IMFMediaType wanted = MediaFoundationApi.CreateMediaType();
-        wanted.SetGUID(MediaFoundationAttributes.MF_MT_MAJOR_TYPE, MediaTypes.MFMediaType_Video);
-        wanted.SetGUID(MediaFoundationAttributes.MF_MT_SUBTYPE, Nv12);
-        _reader.SetCurrentMediaType(FirstVideoStream, IntPtr.Zero, wanted);
-        Marshal.ReleaseComObject(wanted);
+        _gpu = hardware ? DecoderDevice.TryCreate() : null;
+        try
+        {
+            _reader = Open(path, _gpu);
+        }
+        catch (COMException) when (_gpu != null)
+        {
+            // shortcut: only a card that refuses the file up front falls back; one failing mid-video still throws.
+            _gpu.Dispose();
+            _gpu = null;
+            _reader = Open(path, null);
+        }
 
         ReadFormat();
     }
+
+    private static IMFSourceReader Open(string path, DecoderDevice? gpu)
+    {
+        IMFAttributes? attributes = null;
+        if (gpu != null)
+        {
+            attributes = MediaFoundationApi.CreateAttributes(2);
+            attributes.SetUnknown(D3DManager, gpu.Manager);
+            attributes.SetUINT32(HardwareTransforms, 1);
+        }
+        IMFSourceReader reader;
+        try
+        {
+            MediaFoundationInterop.MFCreateSourceReaderFromURL(path, attributes, out reader);
+        }
+        finally
+        {
+            if (attributes != null)
+            {
+                Marshal.ReleaseComObject(attributes);
+            }
+        }
+
+        try
+        {
+            reader.SetStreamSelection(AllStreams, false);
+            reader.SetStreamSelection(FirstVideoStream, true);
+            IMFMediaType wanted = MediaFoundationApi.CreateMediaType();
+            wanted.SetGUID(MediaFoundationAttributes.MF_MT_MAJOR_TYPE, MediaTypes.MFMediaType_Video);
+            wanted.SetGUID(MediaFoundationAttributes.MF_MT_SUBTYPE, Nv12);
+            reader.SetCurrentMediaType(FirstVideoStream, IntPtr.Zero, wanted);
+            Marshal.ReleaseComObject(wanted);
+            return reader;
+        }
+        catch
+        {
+            Marshal.ReleaseComObject(reader);
+            throw;
+        }
+    }
+
+    /// <summary>Whether the pictures are decoded on the graphics card.</summary>
+    public bool OnGpu => _gpu != null;
 
     // The size the decoder hands over and its colour formula. It can change when the first picture comes out (the padded
     // height is only known then), so it is read again whenever the reader says so.
@@ -192,5 +245,9 @@ internal sealed class VideoFrameReader : IDisposable
         }
     }
 
-    public void Dispose() => Marshal.ReleaseComObject(_reader);
+    public void Dispose()
+    {
+        Marshal.ReleaseComObject(_reader); // before the device it decodes on
+        _gpu?.Dispose();
+    }
 }
