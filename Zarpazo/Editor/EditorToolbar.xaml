@@ -385,7 +385,7 @@
                 </Border>
             </Popup>
 
-            <Button x:Name="MoreButton" Style="{StaticResource Action}" ToolTip="Más: copiar el texto, fijar sobre la pantalla, embellecer"
+            <Button x:Name="MoreButton" Style="{StaticResource Action}" ToolTip="Más: copiar el texto, fijar sobre la pantalla, embellecer, tamaño de salida"
                     AutomationProperties.Name="Más" Click="OnMoreButton">
                 <Grid Width="16" Height="16">
                     <Path Fill="White" Data="M2.2,8 A1.3,1.3 0 1 0 4.8,8 A1.3,1.3 0 1 0 2.2,8 Z M6.7,8 A1.3,1.3 0 1 0 9.3,8 A1.3,1.3 0 1 0 6.7,8 Z M11.2,8 A1.3,1.3 0 1 0 13.8,8 A1.3,1.3 0 1 0 11.2,8 Z" />
@@ -466,6 +466,21 @@
                                 <TextBlock x:Name="BeautifyState" Grid.Column="2" Text="Activado" Foreground="#FDD835" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
                             </Grid>
                         </Button>
+                        <TextBlock Text="Tamaño al copiar y guardar" Style="{StaticResource PanelLabel}" Margin="8,8,0,3" />
+                        <StackPanel Orientation="Horizontal" Margin="4,0,0,4" RadioButton.Checked="OnOutputScaleChoice">
+                            <RadioButton GroupName="outputScale" Tag="1" IsChecked="True" Style="{StaticResource Choice}" AutomationProperties.Name="Tamaño original">
+                                <TextBlock Text="100%" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="outputScale" Tag="0.75" Style="{StaticResource Choice}" AutomationProperties.Name="Tres cuartos del tamaño">
+                                <TextBlock Text="75%" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="outputScale" Tag="0.5" Style="{StaticResource Choice}" AutomationProperties.Name="La mitad del tamaño">
+                                <TextBlock Text="50%" Margin="8,0" />
+                            </RadioButton>
+                            <RadioButton GroupName="outputScale" Tag="0.25" Style="{StaticResource Choice}" AutomationProperties.Name="Un cuarto del tamaño">
+                                <TextBlock Text="25%" Margin="8,0" />
+                            </RadioButton>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Popup>

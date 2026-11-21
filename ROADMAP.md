@@ -6,7 +6,7 @@ Las funciones marcadas «Después» o «Avanzado» en PLAN.md se confirman antes
 ## Prioridad (en este orden)
 
 - [x] 1. Log de errores en archivo (rotativo) y botón «Copiar información para reportar» en Acerca de
-- [ ] 2. Recorte posterior en el editor de capturas (y redimensionado)
+- [x] 2. Recorte posterior (ya existía: asas del área, también al reabrir del historial) y redimensionado al copiar y guardar (Más > Tamaño: 100, 75, 50, 25%)
 - [ ] 3. Idiomas español e inglés
 - [ ] 4. Callouts, sellos y emojis
 - [ ] 5. Ocultar datos sensibles con detección automática (OCR: correos, tarjetas, IPs, tokens)

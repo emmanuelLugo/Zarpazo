@@ -279,9 +279,12 @@ public partial class OverlayWindow : Window
 
     private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(Embellished(image), this, _settings.Current));
 
-    // Only what leaves the app is dressed up. The history, the pinned copy and the text reading keep the plain capture.
-    private BitmapSource Embellished(BitmapSource image) =>
-        Toolbar.BeautifyEnabled ? ImageBeautifier.Apply(image, Toolbar.BeautifyStyle) : image;
+    // Only what leaves the app is shrunk and dressed up. The history, the pinned copy and the text reading keep the plain capture.
+    private BitmapSource Embellished(BitmapSource image)
+    {
+        image = ImageResizer.Scale(image, Toolbar.OutputScale); // the size first, so the margin and the bar keep their own
+        return Toolbar.BeautifyEnabled ? ImageBeautifier.Apply(image, Toolbar.BeautifyStyle) : image;
+    }
 
     /// <summary>Leaves the capture floating over the screen, exactly where the area was.</summary>
     private void OnPin(object? sender, EventArgs e) => Pin(rotate: false);

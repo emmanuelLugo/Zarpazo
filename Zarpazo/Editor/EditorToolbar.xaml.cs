@@ -529,9 +529,20 @@ public partial class EditorToolbar : UserControl
 
     private void ShowBeautifyDot()
     {
-        Visibility shown = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
-        BeautifyDot.Visibility = shown;
-        BeautifyState.Visibility = shown;
+        BeautifyDot.Visibility = _beautifyEnabled || OutputScale < 1 ? Visibility.Visible : Visibility.Collapsed; // either one changes what leaves the app
+        BeautifyState.Visibility = _beautifyEnabled ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The share of the capture's size that copying and saving give: 1, 0.75, 0.5 or 0.25. Lasts for this capture only.</summary>
+    public double OutputScale { get; private set; } = 1;
+
+    private void OnOutputScaleChoice(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is RadioButton { Tag: string tag })
+        {
+            OutputScale = double.Parse(tag, CultureInfo.InvariantCulture);
+            ShowBeautifyDot();
+        }
     }
 
     private void RefreshBeautifyPreview()
