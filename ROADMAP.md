@@ -9,7 +9,7 @@ Las funciones marcadas «Después» o «Avanzado» en PLAN.md se confirman antes
 - [x] 2. Recorte posterior (ya existía: asas del área, también al reabrir del historial) y redimensionado al copiar y guardar (Más > Tamaño: 100, 75, 50, 25%)
 - [-] 3. Idiomas español e inglés (descartado: no hace falta)
 - [ ] 4. Callouts, sellos y emojis
-- [ ] 5. Ocultar datos sensibles con detección automática (OCR: correos, tarjetas, IPs, tokens)
+- [-] 5. Ocultar datos sensibles con detección automática (descartado: no hace falta; el pixelado manual ya existe)
 - [ ] 6. Subir y copiar enlace (servidor propio, S3/R2 o Imgur)
 - [ ] 7. Captura con scroll
 
