@@ -10,6 +10,7 @@ using Zarpazo.Capture;
 using Zarpazo.Diagnostics;
 using Zarpazo.Guide;
 using Zarpazo.History;
+using Zarpazo.Output;
 using Zarpazo.Overlay;
 using Zarpazo.Recording;
 using Zarpazo.Settings;
@@ -35,10 +36,11 @@ public partial class App : Application
     private bool _delayPending; // a delayed capture is counting down, or about to show its overlay
     private bool _autoRestartStarted;
     private bool _recordingStarting; // the area was chosen and the recording is about to begin
+    private bool _scrolling;          // a scroll capture is running
 
     // Anything a restart would cut short: choosing an area or editing a capture (the overlay), a recording from the countdown until its
     // bar is closed (which covers encoding the video and the video editor), and the moments in between.
-    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting || _openEditors > 0
+    private bool IsBusy => _overlay != null || _recording != null || _delayPending || _recordingStarting || _scrolling || _openEditors > 0
         || Recording.VideoDelivery.HasPendingWrites; // a video still being copied into the history
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
@@ -760,6 +762,88 @@ public partial class App : Application
         }
     }
 
+    // Scrolls the area once the overlay has gone, then handles the tall picture like a copy: clipboard, automatic saving and history.
+    private async void BeginScrollCapture(Rectangle region)
+    {
+        _scrolling = true;
+        ScrollResult result;
+        ScrollStatusWindow? status = null;
+        try
+        {
+            await Task.Delay(MenuCloseDelayMs);
+            status = ScrollStatusWindow.TryShow(region);
+            result = await ScrollCapture.RunAsync(region, new Progress<int>(rows => status?.Update(rows)));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            result = new ScrollResult(null, $"No se pudo hacer la captura con scroll: {ex.Message}");
+        }
+        finally
+        {
+            status?.Close();
+            _scrolling = false;
+        }
+
+        try
+        {
+            FinishScrollCapture(result);
+        }
+        finally
+        {
+            ReleaseMemoryWhenIdle();
+            OnMaybeIdle();
+        }
+    }
+
+    private void FinishScrollCapture(ScrollResult result)
+    {
+        if (result.Image is not { } image)
+        {
+            _tray!.ShowWarning(result.Notice ?? "No se pudo hacer la captura con scroll.");
+            return;
+        }
+
+        string note = result.Notice == null ? "" : " " + result.Notice;
+        try
+        {
+            ImageOutput.CopyToClipboard(image, _settings.Current);
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or IOException)
+        {
+            _tray!.ShowWarning($"No se pudo copiar la captura con scroll: {ex.Message}");
+            return;
+        }
+
+        string? saved = null;
+        var saver = new AutoSaver(_settings);
+        if (saver.IsEnabled)
+        {
+            try
+            {
+                saved = saver.SaveImage(image);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                note += $" Se copió, pero no se pudo guardar: {ex.Message}";
+            }
+        }
+        if (_settings.Current.KeepHistory)
+        {
+            try
+            {
+                _history.Add(image, _settings.Current.HistoryLimit);
+                _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Already copied: a full disk must not turn that into an error.
+            }
+        }
+
+        string where = saved == null ? "copiada" : $"copiada y guardada en {saved}";
+        _tray!.ShowInfo($"Captura con scroll {where} ({image.PixelWidth}×{image.PixelHeight}).{note}");
+    }
+
     private void ShowOverlay(Rectangle? area = null)
     {
         // The same shortcut that starts a capture stops a recording: it is the one key that is always within reach.
@@ -790,6 +874,7 @@ public partial class App : Application
         _overlay = new OverlayWindow(image, bounds, windows, _settings, _history, initialArea: area);
         _overlay.AreaUsed += used => _lastArea = used;
         _overlay.RecordRequested += BeginRecording;
+        _overlay.ScrollRequested += BeginScrollCapture;
         _overlay.SetGroup(_guide.AddsOnCapture, _guide.Steps.Count);
         _overlay.GuideStepRequested += AddGuideStep;
         _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");

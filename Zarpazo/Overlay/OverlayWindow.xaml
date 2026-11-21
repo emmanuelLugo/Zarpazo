@@ -75,6 +75,7 @@
                                   PinRequested="OnPin"
                                   RotateRequested="OnRotate"
                                   GuideRequested="OnGuide"
+                                  ScrollRequested="OnScroll"
                                   RecordRequested="OnRecord"
                                   CloseRequested="OnCloseRequested" />
 

@@ -165,6 +165,10 @@ public partial class OverlayWindow : Window
         {
             OnRecord(this, EventArgs.Empty);
         }
+        else if (ctrl && e.Key == Key.L)
+        {
+            OnScroll(this, EventArgs.Empty);
+        }
         else if (ctrl && e.Key == Key.Z)
         {
             OnUndo(this, EventArgs.Empty);
@@ -367,6 +371,30 @@ public partial class OverlayWindow : Window
         var region = new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height);
         AreaUsed?.Invoke(region);
         RecordRequested?.Invoke(region, Toolbar.RecordingOptions);
+        Close();
+    }
+
+    /// <summary>Asked to scroll the chosen area, in physical screen pixels, and join what it shows into one tall picture.</summary>
+    internal event Action<Rectangle>? ScrollRequested;
+
+    private void OnScroll(object? sender, EventArgs e)
+    {
+        CommitText();
+        Crop? crop = CropSelection();
+        if (crop == null)
+        {
+            return;
+        }
+        if (crop.Pixels.Width < MinRecordingSide || crop.Pixels.Height < MinRecordingSide)
+        {
+            ShowNotice("La zona es muy pequeña para una captura con scroll");
+            return;
+        }
+
+        // The overlay has to be gone first: it covers the screen, so the wheel would never reach the window underneath.
+        var region = new Rectangle(_bounds.X + crop.Pixels.X, _bounds.Y + crop.Pixels.Y, crop.Pixels.Width, crop.Pixels.Height);
+        AreaUsed?.Invoke(region);
+        ScrollRequested?.Invoke(region);
         Close();
     }
 

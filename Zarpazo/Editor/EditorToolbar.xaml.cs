@@ -664,6 +664,7 @@ public partial class EditorToolbar : UserControl
 
     public event EventHandler? RotateRequested;
     public event EventHandler? GuideRequested;
+    public event EventHandler? ScrollRequested;
     public event EventHandler? RecordRequested;
     public event EventHandler? CloseRequested;
 
@@ -782,6 +783,12 @@ public partial class EditorToolbar : UserControl
     {
         MorePopup.IsOpen = false;
         GuideRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnMoreScroll(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        ScrollRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnMoreBeautify(object sender, RoutedEventArgs e)

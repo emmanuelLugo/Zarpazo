@@ -11,7 +11,7 @@ Las funciones marcadas «Después» o «Avanzado» en PLAN.md se confirman antes
 - [ ] 4. Callouts, sellos y emojis
 - [-] 5. Ocultar datos sensibles con detección automática (descartado: no hace falta; el pixelado manual ya existe)
 - [ ] 6. Subir y copiar enlace (servidor propio, S3/R2 o Imgur)
-- [ ] 7. Captura con scroll
+- [x] 7. Captura con scroll (Más > Captura con scroll, Ctrl+L; falta probarla a mano en varias apps)
 
 ## Pulido pendiente
 
