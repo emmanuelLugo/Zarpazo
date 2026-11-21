@@ -132,6 +132,30 @@ public sealed class ScrollStitcherTests
     }
 
     [Fact]
+    public void A_bar_that_stays_at_the_bottom_shows_only_at_the_end_not_at_every_seam()
+    {
+        // Like the address a browser shows over a link: a few rows at the bottom of every picture that are not the page's,
+        // different each time.
+        byte[] page = Page(400);
+        var stitcher = new ScrollStitcher(Width, Height);
+        int[] tops = [0, 50, 100, 150, 200, 250, 300];
+        foreach (int top in tops)
+        {
+            byte[] frame = Window(page, top);
+            for (int i = (Height - 6) * Width * 4; i < frame.Length; i++)
+            {
+                frame[i] = (byte)(top + i);
+            }
+            Assert.Equal(ScrollStep.Added, stitcher.Add(frame));
+        }
+
+        Assert.Equal(400, stitcher.TotalHeight);
+        byte[] result = Pixels(stitcher.Result()!);
+        int clean = (400 - 6) * Width * 4;
+        Assert.Equal(page[..clean], result[..clean]);
+    }
+
+    [Fact]
     public void Refuses_a_scroll_that_leaves_almost_nothing_in_common()
     {
         // 90 of 100 rows moved: less than a quarter of the picture is shared, which is too little to trust.

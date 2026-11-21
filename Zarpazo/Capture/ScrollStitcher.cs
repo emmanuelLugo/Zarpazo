@@ -22,8 +22,8 @@ internal enum ScrollStep
 /// rows they share, and only the rows that are new are kept.
 /// </summary>
 /// <remarks>
-/// shortcut: a header or footer that stays put while the page scrolls is repeated in every piece, because only the moving rows are
-/// matched. Cut it out of the area, or mask it, if that ever matters.
+/// shortcut: a header or footer that stays put while the page scrolls is left out of the seams (they go in the middle of the shared
+/// rows), but still shows at the top of the first picture and the bottom of the last; one taller than half the shared rows repeats.
 /// </remarks>
 internal sealed class ScrollStitcher(int width, int height)
 {
@@ -70,9 +70,13 @@ internal sealed class ScrollStitcher(int width, int height)
             return ScrollStep.Lost;
         }
 
-        // The last `moved` rows of the new picture are the ones the old one did not have.
-        var fresh = new byte[moved * width * 4];
-        Buffer.BlockCopy(pixels, (height - moved) * width * 4, fresh, 0, fresh.Length);
+        // The last `moved` rows of the new picture are the ones the old one did not have. The seam goes in the middle of the rows both
+        // share, not at the old picture's bottom edge: something that stays put there (a link's address shown by the browser, a chat
+        // bar, a cookie notice) would otherwise be repeated at every seam. Row y of the new picture is row y + moved of the old one.
+        int keep = (height - moved) / 2;
+        DropLastRows(height - moved - keep);
+        var fresh = new byte[(height - keep) * width * 4];
+        Buffer.BlockCopy(pixels, keep * width * 4, fresh, 0, fresh.Length);
         _pieces.Add(fresh);
         _totalHeight += moved;
         _lastShift = moved;
@@ -102,6 +106,26 @@ internal sealed class ScrollStitcher(int width, int height)
     }
 
     private void Remember(ulong[] rows) => _previous = rows;
+
+    private void DropLastRows(int rows)
+    {
+        int rowBytes = width * 4;
+        while (rows > 0)
+        {
+            byte[] last = _pieces[^1];
+            int lastRows = last.Length / rowBytes;
+            if (lastRows <= rows)
+            {
+                _pieces.RemoveAt(_pieces.Count - 1);
+                rows -= lastRows;
+            }
+            else
+            {
+                _pieces[^1] = last[..((lastRows - rows) * rowBytes)];
+                rows = 0;
+            }
+        }
+    }
 
     /// <summary>Whether two pictures are the same, row for row.</summary>
     public static bool Same(byte[] a, byte[] b, int width, int height) =>

@@ -28,6 +28,7 @@ internal static class ScrollCapture
     private const int SettleTries = 14;       // smooth scrolling takes a moment to stop; about a second at most
     private const int MaxSteps = 600;
     private const uint MouseEventWheel = 0x0800;
+    private const int PointerInset = 4;
 
     /// <param name="region">The area, in physical screen pixels. The overlay must already be gone.</param>
     /// <param name="progress">Told the height of the picture after each step.</param>
@@ -37,8 +38,9 @@ internal static class ScrollCapture
         input.WasPressedSinceLastCheck(EscapeKey); // clears an old press, so only a new one stops it
 
         System.Drawing.Point cursorBefore = System.Windows.Forms.Cursor.Position;
-        // The wheel scrolls what is under the pointer, so the pointer goes to the middle of the area.
-        System.Windows.Forms.Cursor.Position = new System.Drawing.Point(region.X + region.Width / 2, region.Y + region.Height / 2);
+        // The wheel scrolls what is under the pointer, so the pointer goes into the area: near its left edge, which is usually margin.
+        // In the middle it tended to rest on a link, and the browser then showed the link's address at the bottom of the page.
+        System.Windows.Forms.Cursor.Position = new System.Drawing.Point(region.X + Math.Min(PointerInset, region.Width / 2), region.Y + region.Height / 2);
         try
         {
             using var bitmap = new Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb);
