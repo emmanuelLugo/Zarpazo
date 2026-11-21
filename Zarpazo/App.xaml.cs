@@ -768,11 +768,12 @@ public partial class App : Application
         _scrolling = true;
         ScrollResult result;
         ScrollStatusWindow? status = null;
+        using var stop = new CancellationTokenSource(); // outlives the strip, whose button may still be clicked as it closes
         try
         {
             await Task.Delay(MenuCloseDelayMs);
-            status = ScrollStatusWindow.TryShow(region);
-            result = await ScrollCapture.RunAsync(region, new Progress<int>(rows => status?.Update(rows)));
+            status = ScrollStatusWindow.TryShow(region, stop.Cancel);
+            result = await ScrollCapture.RunAsync(region, new Progress<int>(rows => status?.Update(rows)), stop.Token);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -827,11 +828,12 @@ public partial class App : Application
                 note += $" Se copió, pero no se pudo guardar: {ex.Message}";
             }
         }
+        string? kept = null;
         if (_settings.Current.KeepHistory)
         {
             try
             {
-                _history.Add(image, _settings.Current.HistoryLimit);
+                kept = _history.Add(image, _settings.Current.HistoryLimit);
                 _history.DeleteOlderThan(_settings.Current.HistoryMaxAgeDays, DateTime.Now);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -842,6 +844,27 @@ public partial class App : Application
 
         string where = saved == null ? "copiada" : $"copiada y guardada en {saved}";
         _tray!.ShowInfo($"Captura con scroll {where} ({image.PixelWidth}×{image.PixelHeight}).{note}");
+        ShowScrollResult(image, saved ?? kept);
+    }
+
+    // The capture editor works over the screen and cannot hold a picture taller than it, so the result opens in Windows' image viewer.
+    private static void ShowScrollResult(BitmapSource image, string? file)
+    {
+        try
+        {
+            if (file == null)
+            {
+                // shortcut: these copies stay in %TEMP%\Zarpazo until Windows cleans it; delete them on exit if that ever matters.
+                file = Path.Combine(Path.GetTempPath(), "Zarpazo", $"Scroll_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png");
+                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                ImageOutput.Write(file, image);
+            }
+            Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
+        {
+            // Already copied (and saved, if set to): not being able to show it is no failure.
+        }
     }
 
     private void ShowOverlay(Rectangle? area = null)

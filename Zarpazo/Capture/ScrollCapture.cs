@@ -32,7 +32,8 @@ internal static class ScrollCapture
 
     /// <param name="region">The area, in physical screen pixels. The overlay must already be gone.</param>
     /// <param name="progress">Told the height of the picture after each step.</param>
-    public static async Task<ScrollResult> RunAsync(Rectangle region, IProgress<int>? progress = null)
+    /// <param name="stop">Ends it like Esc does, keeping what was joined so far.</param>
+    public static async Task<ScrollResult> RunAsync(Rectangle region, IProgress<int>? progress = null, CancellationToken stop = default)
     {
         var input = new WindowsInputState();
         input.WasPressedSinceLastCheck(EscapeKey); // clears an old press, so only a new one stops it
@@ -55,7 +56,7 @@ internal static class ScrollCapture
             int notches = FirstNotches;
             for (int step = 0; step < MaxSteps; step++)
             {
-                if (input.WasPressedSinceLastCheck(EscapeKey))
+                if (input.WasPressedSinceLastCheck(EscapeKey) || stop.IsCancellationRequested)
                 {
                     return Done(stitcher, null);
                 }

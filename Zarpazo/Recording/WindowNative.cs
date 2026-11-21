@@ -20,6 +20,10 @@ internal static class WindowNative
     public static void MakeClickThrough(IntPtr hwnd) =>
         SetWindowLong(hwnd, GwlExStyle, GetWindowLong(hwnd, GwlExStyle) | WsExTransparent | WsExToolWindow | WsExNoActivate);
 
+    /// <summary>It can be clicked but never takes the focus, so the window being worked on keeps it.</summary>
+    public static void MakeNoActivate(IntPtr hwnd) =>
+        SetWindowLong(hwnd, GwlExStyle, GetWindowLong(hwnd, GwlExStyle) | WsExToolWindow | WsExNoActivate);
+
     /// <summary>Keeps the window out of screenshots and recordings (Windows 10 2004 and later); false if Windows refuses.</summary>
     public static bool ExcludeFromScreenCapture(IntPtr hwnd) => SetWindowDisplayAffinity(hwnd, ExcludeFromCapture);
 
