@@ -248,7 +248,10 @@ internal sealed class VideoJob : RecordingJob
             // A picture taken a moment after its turn (waking up from Sleep is only good to a millisecond or two) is stamped
             // with its turn, so the pictures come out exactly evenly spaced and motion plays smoothly; one that is really
             // late keeps its own time.
-            TimeSpan stamp = now - due <= OnTimeMilliseconds
+            // The first picture is always stamped 0, though it comes 0.1-0.7 s after the clock starts: a file with no sound is
+            // moved to start at its first picture anyway, and the pointer's record (stamped alike) would fall that far behind.
+            TimeSpan stamp = frame == 0 ? TimeSpan.Zero
+                : now - due <= OnTimeMilliseconds
                 ? TimeSpan.FromTicks(frame * TimeSpan.TicksPerSecond / _quality.VideoFramesPerSecond)
                 : TimeSpan.FromMilliseconds(now);
 
