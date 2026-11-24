@@ -6,6 +6,22 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.11.0] - 2026-11-23
+
+### Añadido
+- Captura con scroll (Más > Captura con scroll, o Ctrl+L): eliges una zona y Zarpazo la va desplazando con la rueda del mouse y une las imágenes en una sola, para capturar una página o una lista más larga que la pantalla. Termina sola al llegar al final, con Esc o con el botón «Terminar» de la barra de estado, y la imagen terminada se abre para verla.
+- Editor de capturas, menú Más: tamaño al copiar y guardar (100 %, 75 %, 50 % o 25 %), para mandar una captura más liviana.
+- Ajustes: «Copiar información para reportar». Si algo falla, copia la versión, tu Windows, tus pantallas y los últimos errores para pegarlos en un reporte. No incluye tus capturas.
+
+### Cambiado
+- Los videos con marco se guardan con mucha más nitidez. Antes, para dejar lugar al marco, la grabación se achicaba (con tamaño «Alta», al 77 %) y el texto salía borroso. Ahora el video crece para que la grabación quede a su tamaño real, con el marco alrededor (hasta 4K). Por eso los videos con marco salen más grandes en píxeles y pesan algo más.
+- Al guardar un video más chico (Alta, Media o Baja) o al grabar una pantalla más grande que Full HD, las letras finas ya no se pierden ni salen dentadas: cada punto de la imagen chica promedia todos los de la grande que cubre.
+- Los videos se guardan con el perfil H.264 High, que deja más limpios los bordes del texto con el mismo peso.
+- Guardar un video es más rápido: la tarjeta de video decodifica la grabación (en una prueba de 20 s a 1080p con marco, de 14,5 s a 11,7 s).
+
+### Corregido
+- En los videos grabados sin sonido, el cursor dibujado iba atrasado respecto de la pantalla (entre 0,1 y 0,7 s): se iluminaba un botón o se marcaba un clic antes de que el cursor llegara. Ahora van juntos. Las grabaciones hechas antes de esta versión conservan el desfase.
+
 ## [0.10.0] - 2026-11-20
 
 ### Añadido
@@ -165,7 +181,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.10.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.8.0...v0.9.0
