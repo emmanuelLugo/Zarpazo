@@ -337,7 +337,10 @@ public sealed class ZoomRendererTests : IClassFixture<SampleVideos>, IDisposable
         MediaClip clip = await OpenAsync(target);
         Windows.Media.MediaProperties.VideoEncodingProperties video = clip.GetVideoEncodingProperties();
         CropArea area = CropArea.For(crop, 320, 180);
-        Assert.Equal(((uint)area.Width, (uint)area.Height), (video.Width, video.Height));
+        // The crop's size, grown so the frame goes around the cropped recording instead of shrinking it.
+        FrameLayout layout = FrameLayout.ForExport(frame, area.Width, area.Height, area.Width, area.Height);
+        Assert.Equal((area.Width, area.Height), (layout.Content.Width, layout.Content.Height));
+        Assert.Equal(((uint)layout.Width, (uint)layout.Height), (video.Width, video.Height));
         Assert.Equal(0u, video.Width % 2);
         Assert.Equal(0u, video.Height % 2);
         Assert.Single(clip.EmbeddedAudioTracks);

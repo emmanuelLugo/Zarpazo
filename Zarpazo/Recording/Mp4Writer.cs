@@ -80,6 +80,7 @@ internal sealed class Mp4Writer
         _profile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p);
         _profile.Video.Width = (uint)width;
         _profile.Video.Height = (uint)height;
+        _profile.Video.ProfileId = H264ProfileIds.High; // its 8x8 blocks keep the edges of text cleaner than Main's at the same bitrate
         _profile.Video.FrameRate.Numerator = (uint)fps;
         _profile.Video.FrameRate.Denominator = 1;
         _profile.Video.Bitrate = (uint)Math.Clamp(width * height * fps * bitsPerPixelPerFrame, MinBitrate, MaxBitrate);

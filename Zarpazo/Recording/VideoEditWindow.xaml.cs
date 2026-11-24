@@ -1799,6 +1799,7 @@ public partial class VideoEditWindow : Window
         {
             return;
         }
+        ShowExportSize(); // the frame's room is added around the recording, so the frame changes the size saved
 
         bool cropping = CropEditing;
         _shownCrop = _timeline?.Crop;
@@ -2013,7 +2014,14 @@ public partial class VideoEditWindow : Window
             ExportSizeText.Text = "";
             return;
         }
-        (int sceneWidth, int sceneHeight) = (_timeline?.Aspect ?? VideoAspect.Original).SceneSize(area.Width, area.Height);
+        VideoAspect aspect = _timeline?.Aspect ?? VideoAspect.Original;
+        (int sceneWidth, int sceneHeight) = aspect.SceneSize(area.Width, area.Height);
+        VideoFrameStyle frame = _frame.ForScene(aspect.IsLetterboxed(area.Width, area.Height));
+        if (frame.Enabled)
+        {
+            FrameLayout grown = FrameLayout.ForExport(frame, sceneWidth, sceneHeight, area.Width, area.Height); // as ZoomRenderer makes it
+            (sceneWidth, sceneHeight) = (grown.Width, grown.Height);
+        }
         (int width, int height) = _export.SizeFor(sceneWidth, sceneHeight);
         bool reshaped = (sceneWidth, sceneHeight) != (area.Width, area.Height);
         ExportSizeText.Text = _export.Resolution == ExportResolution.Original

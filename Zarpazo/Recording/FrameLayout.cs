@@ -27,9 +27,39 @@ internal readonly record struct FrameLayout(int Width, int Height, Int32Rect Con
     /// <summary>A scene of the same shape as the recording: the frame only shrinks it to leave room around.</summary>
     public static FrameLayout For(VideoFrameStyle style, int width, int height) => For(style, width, height, width, height);
 
+    /// <summary>
+    /// The layout of a saved video: the scene (<paramref name="width"/> x <paramref name="height"/>, the recording's size or a
+    /// canvas around it) grows, keeping its shape, until the recording fits in at its own size and the frame's room is added
+    /// around it. Shrinking the recording to make that room blurred its text. It grows up to 4K at most.
+    /// </summary>
+    public static FrameLayout ForExport(VideoFrameStyle style, int width, int height, int contentWidth, int contentHeight)
+    {
+        FrameLayout layout = For(style, width, height, contentWidth, contentHeight);
+        double limit = Math.Min(MaxExportSide / (double)Math.Max(width, height), Math.Sqrt(MaxExportPixels / ((double)width * height)));
+        double grow = Math.Min(1 / layout.ContentScale, limit);
+        // Rounding to whole, even pixels can leave the recording a pixel short: then the scene grows two more.
+        for (int tries = 0; grow > 1 && tries < 20; tries++)
+        {
+            layout = For(style, Even(width * grow), Even(height * grow), contentWidth, contentHeight, maxScale: 1);
+            if (layout.ContentScale >= 1 || grow >= limit)
+            {
+                break;
+            }
+            grow = Math.Min(limit, grow + 2.0 / Math.Max(width, height));
+        }
+        return layout;
+    }
+
+    // The biggest scene ForExport makes: 4K, which hardware H.264 encoders take.
+    private const int MaxExportSide = 3840;
+    private const double MaxExportPixels = 3840.0 * 2160;
+
+    private static int Even(double value) => Math.Max(2, (int)Math.Round(value) & ~1);
+
     /// <param name="width">The scene's size, which is the video's.</param>
     /// <param name="contentWidth">The size of the recording as it is, cropped; it is fitted inside the scene, with the room the style leaves (and the bar's height, if it has one).</param>
-    public static FrameLayout For(VideoFrameStyle style, int width, int height, int contentWidth, int contentHeight)
+    /// <param name="maxScale">The most the recording is enlarged to fill its place; it is then centred in it.</param>
+    public static FrameLayout For(VideoFrameStyle style, int width, int height, int contentWidth, int contentHeight, double maxScale = double.PositiveInfinity)
     {
         (double roomLeft, double roomTop, double roomRight, double roomBottom) = style.Room;
         int left = (int)Math.Round(roomLeft * height), top = (int)Math.Round(roomTop * height);
@@ -38,7 +68,7 @@ internal readonly record struct FrameLayout(int Width, int Height, Int32Rect Con
         // However much room is asked for, a fifth of the scene is always left for the recording.
         double freeWidth = Math.Max(width * 0.2, width - left - right);
         double freeHeight = Math.Max(height * 0.2, height - top - bottom - bar);
-        double scale = Math.Min(freeWidth / contentWidth, freeHeight / contentHeight);
+        double scale = Math.Min(maxScale, Math.Min(freeWidth / contentWidth, freeHeight / contentHeight));
         int fittedWidth = Math.Max(2, (int)Math.Round(contentWidth * scale));
         int fittedHeight = Math.Max(2, (int)Math.Round(contentHeight * scale));
         // The recording (and its bar) is centred in the space the room leaves.

@@ -51,7 +51,7 @@ internal static class VideoExporter
             if (framed)
             {
                 (int sceneWidth, int sceneHeight) = aspect.SceneSize(area.Value.Width, area.Value.Height);
-                zooms = FrameLayout.For(frame, sceneWidth, sceneHeight, area.Value.Width, area.Value.Height).ToScene(zooms);
+                zooms = FrameLayout.ForExport(frame, sceneWidth, sceneHeight, area.Value.Width, area.Value.Height).ToScene(zooms);
             }
         }
 

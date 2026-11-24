@@ -1,9 +1,10 @@
 namespace Zarpazo.Recording;
 
 /// <summary>
-/// Makes a recorded picture smaller (an area wider than <see cref="VideoJob.MaxSide"/>), quickly and on all cores. Shrunk
-/// by half or more (a 4K screen), each pixel is the average of the block of pixels it covers; by less (a 2K screen), one
-/// smooth (bilinear) sample. GDI+'s high quality resampling took about 180 ms for a full HD picture, longer than a frame.
+/// Makes a picture smaller, quickly and on all cores: a recorded area wider than <see cref="VideoJob.MaxSide"/>, or a saved
+/// video at a lower size. Each pixel is the average of the source pixels it covers, the ones it only partly covers counted
+/// by how much: a bilinear sample (the four nearest pixels) skipped detail when shrinking by less than half, and thin text
+/// came out jagged and blurred. GDI+'s high quality resampling took about 180 ms for a full HD picture, longer than a frame.
 /// </summary>
 internal static class PictureShrinker
 {
@@ -11,17 +12,54 @@ internal static class PictureShrinker
     /// <param name="target">BGRA, tightly packed, <paramref name="width"/> x <paramref name="height"/>.</param>
     public static void Shrink(byte[] source, int sourceWidth, int sourceHeight, byte[] target, int width, int height)
     {
-        double stepX = (double)sourceWidth / width;
-        double stepY = (double)sourceHeight / height;
-        int block = (int)Math.Floor(Math.Min(stepX, stepY));
-        if (block >= 2)
+        int block = sourceWidth / width;
+        if (block >= 2 && sourceWidth == width * block && sourceHeight == height * block)
         {
-            Average(source, sourceWidth, sourceHeight, target, width, height, stepX, stepY, block);
+            // Exactly a half, a third...: the same averages, worked out faster (a 4K screen recorded at full HD, live).
+            Average(source, sourceWidth, sourceHeight, target, width, height, block, block, block);
+            return;
         }
-        else
+
+        (int[] lefts, int[][] acrossWeights) = Spans(sourceWidth, width);
+        (int[] tops, int[][] downWeights) = Spans(sourceHeight, height);
+        int stride = sourceWidth * 4;
+
+        // Each row of the result: first the source rows it covers are mixed into one line, then that line is mixed across.
+        Parallel.For(0, height, y =>
         {
-            Bilinear(source, sourceWidth, sourceHeight, target, width, height, stepX, stepY);
-        }
+            Span<int> line = sourceWidth <= 8192 ? stackalloc int[sourceWidth * 3] : new int[sourceWidth * 3];
+            line.Clear();
+            int[] down = downWeights[y];
+            for (int k = 0; k < down.Length; k++)
+            {
+                int weight = down[k];
+                int i = (tops[y] + k) * stride;
+                for (int x = 0, l = 0; x < sourceWidth; x++, i += 4, l += 3)
+                {
+                    line[l] += source[i] * weight;
+                    line[l + 1] += source[i + 1] * weight;
+                    line[l + 2] += source[i + 2] * weight;
+                }
+            }
+
+            int o = y * width * 4;
+            for (int x = 0; x < width; x++, o += 4)
+            {
+                int[] across = acrossWeights[x];
+                int b = 0, g = 0, r = 0;
+                for (int k = 0, l = lefts[x] * 3; k < across.Length; k++, l += 3)
+                {
+                    b += line[l] * across[k];
+                    g += line[l + 1] * across[k];
+                    r += line[l + 2] * across[k];
+                }
+                // Both sets of weights add up to 256.
+                target[o] = (byte)((b + (1 << 15)) >> 16);
+                target[o + 1] = (byte)((g + (1 << 15)) >> 16);
+                target[o + 2] = (byte)((r + (1 << 15)) >> 16);
+                target[o + 3] = 255;
+            }
+        });
     }
 
     private static void Average(byte[] source, int sourceWidth, int sourceHeight, byte[] target, int width, int height,
@@ -60,43 +98,31 @@ internal static class PictureShrinker
         });
     }
 
-    private static void Bilinear(byte[] source, int sourceWidth, int sourceHeight, byte[] target, int width, int height,
-        double stepX, double stepY)
+    // For each pixel of the result along one side: the first source pixel it covers, and how much of it and of the next
+    // ones, in 256ths that add up to 256.
+    private static (int[] First, int[][] Weights) Spans(int sourceSize, int size)
     {
-        int stride = sourceWidth * 4;
-        int maxX = sourceWidth - 1;
-        int maxY = sourceHeight - 1;
-        var lefts = new int[width];
-        var rights = new int[width];
-        var weights = new int[width];
-        for (int x = 0; x < width; x++)
+        double step = (double)sourceSize / size;
+        var first = new int[size];
+        var weights = new int[size][];
+        for (int i = 0; i < size; i++)
         {
-            double sx = Math.Clamp((x + 0.5) * stepX - 0.5, 0, maxX);
-            int left = (int)sx;
-            lefts[x] = left * 4;
-            rights[x] = Math.Min(left + 1, maxX) * 4;
-            weights[x] = (int)((sx - left) * 256);
-        }
-
-        Parallel.For(0, height, y =>
-        {
-            double sy = Math.Clamp((y + 0.5) * stepY - 0.5, 0, maxY);
-            int top = (int)sy;
-            int wy = (int)((sy - top) * 256);
-            int upperRow = top * stride;
-            int lowerRow = Math.Min(top + 1, maxY) * stride;
-            int o = y * width * 4;
-            for (int x = 0; x < width; x++, o += 4)
+            double start = i * step, end = Math.Min(sourceSize, (i + 1) * step);
+            int from = Math.Min((int)start, sourceSize - 1);
+            int to = Math.Clamp((int)Math.Ceiling(end) - 1, from, sourceSize - 1);
+            var weight = new int[to - from + 1];
+            int total = 0, largest = 0;
+            for (int k = 0; k < weight.Length; k++)
             {
-                int a = lefts[x], b = rights[x], wx = weights[x];
-                for (int c = 0; c < 3; c++)
-                {
-                    int upper = source[upperRow + a + c] * (256 - wx) + source[upperRow + b + c] * wx;
-                    int lower = source[lowerRow + a + c] * (256 - wx) + source[lowerRow + b + c] * wx;
-                    target[o + c] = (byte)((upper * (256 - wy) + lower * wy + (1 << 15)) >> 16);
-                }
-                target[o + 3] = 255;
+                double cover = Math.Min(end, from + k + 1) - Math.Max(start, from + k);
+                weight[k] = (int)Math.Round(Math.Max(0, cover) / step * 256);
+                total += weight[k];
+                largest = weight[k] > weight[largest] ? k : largest;
             }
-        });
+            weight[largest] += 256 - total; // what rounding lost or added
+            first[i] = from;
+            weights[i] = weight;
+        }
+        return (first, weights);
     }
 }

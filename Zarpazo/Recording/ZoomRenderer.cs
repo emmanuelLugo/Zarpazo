@@ -48,6 +48,12 @@ internal static class ZoomRenderer
         // The scene is the video: the cropped picture's own size, or a canvas of another shape that it sits in.
         (int width, int height) = aspect.SceneSize(area.Width, area.Height);
         frame = (frame ?? VideoFrameStyle.Default).ForScene(aspect.IsLetterboxed(area.Width, area.Height));
+        // In a frame the scene grows so the recording keeps its own pixels, with the frame around it.
+        FrameLayout? layout = frame.Enabled ? FrameLayout.ForExport(frame, width, height, area.Width, area.Height) : null;
+        if (layout is { } grown)
+        {
+            (width, height) = (grown.Width, grown.Height);
+        }
         double recordedRate = VideoFrameReader.RecordedFrameRate(source)
             ?? profile.Video.FrameRate.Numerator / (double)Math.Max(1u, profile.Video.FrameRate.Denominator);
         // Recordings stamp their pictures in whole milliseconds (gaps of 33 and 34 ms make 29.4), so the rate is taken as the
@@ -65,10 +71,8 @@ internal static class ZoomRenderer
         double bitsPerPixel = Math.Clamp(profile.Video.Bitrate / ((double)sourceWidth * sourceHeight * recordedFps), MinBitsPerPixel, 0.5) * output.QualityFactor;
 
         FrameCompositor? compositor = null;
-        FrameLayout? layout = null;
-        if (frame is { Enabled: true })
+        if (layout != null)
         {
-            layout = FrameLayout.For(frame, width, height, area.Width, area.Height);
             System.Windows.Media.Color? border = frame.BorderWidth > 0 && FrameBackground.TryHex(frame.BorderColor, out System.Windows.Media.Color line) ? line : null;
             compositor = new FrameCompositor(layout.Value, FrameBackdrop.Render(frame, layout.Value), sourceWidth, sourceHeight, area.Pixels,
                 FrameBackdrop.RenderBar(frame, layout.Value), border);
