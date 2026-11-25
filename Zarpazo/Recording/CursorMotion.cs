@@ -23,6 +23,12 @@ internal sealed class CursorMotion
     /// <summary>The most the arrow leans, in degrees, at full sway.</summary>
     public const double MaxAngle = 24;
 
+    /// <summary>How long the pointer stands still before it starts to fade, when it hides while idle.</summary>
+    public const double IdleSeconds = 2;
+
+    /// <summary>How long it takes to fade away, and to come back.</summary>
+    public const double FadeSeconds = 0.3;
+
     // At full smoothing each pass follows the hand with this time constant.
     private const double MaxGlideSeconds = 0.08;
 
@@ -42,7 +48,8 @@ internal sealed class CursorMotion
     private readonly double[] _x;
     private readonly double[] _y;
     private readonly double[] _angle;
-    private readonly (double Time, double X, double Y)[] _clicks;
+    private readonly (double Time, double X, double Y, bool Secondary)[] _clicks;
+    private readonly (double Start, double End)[] _activity; // when the mouse did something, in order, without overlaps
 
     public CursorMotion(CursorTrack track, CursorStyle style)
     {
@@ -52,6 +59,7 @@ internal sealed class CursorMotion
         {
             _x = _y = _angle = [];
             _clicks = [];
+            _activity = [];
             return;
         }
 
@@ -100,9 +108,10 @@ internal sealed class CursorMotion
 
         _angle = Lean(_x, track.Width / (double)track.Height, style.Sway);
         _clicks = track.Clicks
-            .Select(click => click.TimeMs / 1000.0)
-            .Select(time => (time, Sample(_x, time), Sample(_y, time)))
+            .Select(click => (Time: click.TimeMs / 1000.0, click.Button))
+            .Select(click => (click.Time, Sample(_x, click.Time), Sample(_y, click.Time), click.Button == ClickButton.Right))
             .ToArray();
+        _activity = Activity(track);
     }
 
     // The same path in another style: only the smoothing and the sway shape the path, so for any other change (size, shape,
@@ -114,6 +123,7 @@ internal sealed class CursorMotion
         _y = path._y;
         _angle = path._angle;
         _clicks = path._clicks;
+        _activity = path._activity;
     }
 
     /// <summary>This path in <paramref name="style"/>; worked out again only if the smoothing or the sway differ.</summary>
@@ -134,10 +144,16 @@ internal sealed class CursorMotion
             return null;
         }
 
+        double opacity = _style.HideWhenIdle ? Awake(seconds) : 1;
+        if (opacity <= 0)
+        {
+            return null;
+        }
+
         double scale = 1;
         if (_style.Bounce)
         {
-            foreach ((double time, _, _) in _clicks)
+            foreach ((double time, _, _, _) in _clicks)
             {
                 double share = (seconds - time) / BounceSeconds;
                 if (share is >= 0 and <= 1)
@@ -146,7 +162,7 @@ internal sealed class CursorMotion
                 }
             }
         }
-        return new CursorPose(x, y, Sample(_angle, seconds), scale);
+        return new CursorPose(x, y, Sample(_angle, seconds), scale, opacity);
     }
 
     /// <summary>The clicks whose effect shows at <paramref name="seconds"/>, oldest first.</summary>
@@ -158,15 +174,61 @@ internal sealed class CursorMotion
         }
 
         List<ClickMark>? marks = null;
-        foreach ((double time, double x, double y) in _clicks)
+        foreach ((double time, double x, double y, bool secondary) in _clicks)
         {
             double share = (seconds - time) / ClickSeconds;
             if (share is >= 0 and <= 1)
             {
-                (marks ??= []).Add(new ClickMark(x, y, share));
+                (marks ??= []).Add(new ClickMark(x, y, share, secondary));
             }
         }
         return marks ?? (IReadOnlyList<ClickMark>)[];
+    }
+
+    // Every move is a moment of activity and every click a span of it (the button held down counts).
+    private static (double Start, double End)[] Activity(CursorTrack track)
+    {
+        var spans = new List<(double Start, double End)>();
+        foreach ((double start, double end) in track.Moves.Select(move => (Start: move.TimeMs / 1000.0, End: move.TimeMs / 1000.0))
+            .Concat(track.Clicks.Select(click => (Start: click.TimeMs / 1000.0, End: click.EndMs / 1000.0)))
+            .OrderBy(span => span.Start))
+        {
+            if (spans.Count > 0 && start <= spans[^1].End)
+            {
+                spans[^1] = (spans[^1].Start, Math.Max(spans[^1].End, end));
+            }
+            else
+            {
+                spans.Add((start, end));
+            }
+        }
+        return spans.ToArray();
+    }
+
+    // How much the pointer shows when it hides while idle: fading out after standing still, and fading in before it moves
+    // again (the whole path is known, so it is already there when it sets off).
+    private double Awake(double seconds)
+    {
+        // The first span that starts after the moment.
+        int low = 0, high = _activity.Length;
+        while (low < high)
+        {
+            int middle = (low + high) / 2;
+            if (_activity[middle].Start <= seconds)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        double since = low > 0 ? Math.Max(0, seconds - _activity[low - 1].End) : double.PositiveInfinity;
+        double until = low < _activity.Length ? _activity[low].Start - seconds : double.PositiveInfinity;
+        double leaving = 1 - (since - IdleSeconds) / FadeSeconds;
+        double coming = 1 - until / FadeSeconds;
+        return Math.Clamp(Math.Max(leaving, coming), 0, 1);
     }
 
     // An exponential follower run forwards and then backwards: each pass lags by as much as the other leads.

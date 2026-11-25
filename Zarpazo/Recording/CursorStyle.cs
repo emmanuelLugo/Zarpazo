@@ -9,7 +9,10 @@ namespace Zarpazo.Recording;
 /// <param name="Smoothing">0 follows the hand exactly; 1 glides the most.</param>
 /// <param name="Sway">0 keeps the arrow upright; 1 leans it the most as it moves sideways.</param>
 /// <param name="Bounce">The pointer shrinks a moment when it clicks, as if pressed.</param>
-internal sealed record CursorStyle(bool Visible, CursorShape Shape, double Size, double Smoothing, double Sway, ClickEffect Click, bool Bounce)
+/// <param name="Tint">The colour of the click effects.</param>
+/// <param name="HideWhenIdle">The pointer fades away after standing still a while, and is back by the time it moves.</param>
+internal sealed record CursorStyle(bool Visible, CursorShape Shape, double Size, double Smoothing, double Sway, ClickEffect Click, bool Bounce,
+    ClickTint Tint = ClickTint.Blue, bool HideWhenIdle = false)
 {
     public const double MinSize = 1;
     public const double MaxSize = 3;
@@ -24,5 +27,6 @@ internal sealed record CursorStyle(bool Visible, CursorShape Shape, double Size,
         Smoothing = Math.Clamp(double.IsFinite(Smoothing) ? Smoothing : Default.Smoothing, 0, 1),
         Sway = Math.Clamp(double.IsFinite(Sway) ? Sway : Default.Sway, 0, 1),
         Click = Enum.IsDefined(Click) ? Click : Default.Click,
+        Tint = Enum.IsDefined(Tint) ? Tint : Default.Tint,
     };
 }

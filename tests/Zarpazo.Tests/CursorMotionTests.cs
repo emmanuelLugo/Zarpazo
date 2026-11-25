@@ -140,6 +140,37 @@ public sealed class CursorMotionTests
     }
 
     [Fact]
+    public void A_right_click_adds_a_second_ring_to_its_effect()
+    {
+        CursorTrack track = Track([new(0, 500, 250)],
+            new CursorClick(1000, 1000, 500, 250, ClickButton.Left), new CursorClick(3000, 3000, 500, 250, ClickButton.Right));
+        var motion = new CursorMotion(track, Exact with { Click = ClickEffect.Ripple });
+
+        Assert.Single(CursorArt.ClickShapes(ClickEffect.Ripple, Assert.Single(motion.ClicksAt(1.1))));
+        Assert.Equal(2, CursorArt.ClickShapes(ClickEffect.Ripple, Assert.Single(motion.ClicksAt(3.1))).Count());
+    }
+
+    [Fact]
+    public void An_idle_pointer_fades_away_and_is_back_by_the_time_it_moves()
+    {
+        // Still, a click held from 5 to 6 s, then a move at 10 s.
+        CursorTrack track = Track([new(0, 500, 250), new(10000, 600, 250)], new CursorClick(5000, 6000, 500, 250, ClickButton.Left));
+        var motion = new CursorMotion(track, Exact with { HideWhenIdle = true });
+        double Shows(double seconds) => motion.PoseAt(seconds)?.Opacity ?? 0;
+
+        Assert.Equal(1, Shows(1.9));
+        Assert.InRange(Shows(CursorMotion.IdleSeconds + CursorMotion.FadeSeconds / 2), 0.4, 0.6);
+        Assert.Equal(0, Shows(3));
+        Assert.InRange(Shows(5 - CursorMotion.FadeSeconds / 2), 0.4, 0.6);
+        Assert.Equal(1, Shows(5.9)); // the button held down
+        Assert.Equal(1, Shows(7.9));
+        Assert.Equal(0, Shows(9));
+        Assert.Equal(1, Shows(10));
+        Assert.Equal(0, Shows(13));
+        Assert.Equal(1, new CursorMotion(track, Exact).PoseAt(3)!.Value.Opacity);
+    }
+
+    [Fact]
     public void Nothing_is_drawn_when_the_pointer_is_off_the_picture_or_switched_off()
     {
         CursorTrack track = Track([new(0, 500, 250), new(1000, 1200, 250)], new CursorClick(0, 0, 500, 250, ClickButton.Left));
@@ -161,13 +192,14 @@ public sealed class CursorMotionTests
     [Fact]
     public void A_style_from_a_hand_edited_file_is_brought_back_inside_what_is_offered()
     {
-        CursorStyle style = new CursorStyle(true, (CursorShape)42, 9, double.NaN, -1, (ClickEffect)7, true).Tidied();
+        CursorStyle style = new CursorStyle(true, (CursorShape)42, 9, double.NaN, -1, (ClickEffect)7, true, (ClickTint)9).Tidied();
 
         Assert.Equal(CursorStyle.Default.Shape, style.Shape);
         Assert.Equal(CursorStyle.MaxSize, style.Size);
         Assert.Equal(CursorStyle.Default.Smoothing, style.Smoothing);
         Assert.Equal(0, style.Sway);
         Assert.Equal(CursorStyle.Default.Click, style.Click);
+        Assert.Equal(CursorStyle.Default.Tint, style.Tint);
     }
 
     [Fact]

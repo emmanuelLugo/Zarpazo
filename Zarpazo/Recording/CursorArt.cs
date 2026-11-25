@@ -32,8 +32,32 @@ internal static class CursorArt
     public const double ShadowDrop = 1.6;
     public const byte ShadowAlpha = 0x55;
 
-    /// <summary>The colour of the click effects: a blue that shows on dark and light windows alike.</summary>
-    public static readonly Color ClickColor = Color.FromRgb(0x4F, 0x9D, 0xFF);
+    /// <summary>The ring a right click adds inside its effect, as a share of the effect's radius.</summary>
+    public const double SecondaryRingShare = 0.55;
+
+    /// <summary>The colours offered for the click effects: bright ones, that show on dark and light windows alike.</summary>
+    public static Color TintColor(ClickTint tint) => tint switch
+    {
+        ClickTint.Red => Color.FromRgb(0xFF, 0x4D, 0x4D),
+        ClickTint.Yellow => Color.FromRgb(0xFF, 0xC8, 0x3D),
+        ClickTint.Green => Color.FromRgb(0x3D, 0xD6, 0x8C),
+        ClickTint.White => Colors.White,
+        _ => Color.FromRgb(0x4F, 0x9D, 0xFF),
+    };
+
+    /// <summary>The circles that make up a click's effect at this point of it.</summary>
+    public static IEnumerable<ClickShape> ClickShapes(ClickEffect effect, ClickMark click)
+    {
+        double growth = ClickGrowth(click.Progress), opacity = ClickOpacity(click.Progress);
+        bool pulse = effect == ClickEffect.Pulse;
+        double start = pulse ? PulseStartRadius : RippleStartRadius, end = pulse ? PulseEndRadius : RippleEndRadius;
+        double radius = start + (end - start) * growth;
+        yield return new ClickShape(radius, pulse ? 0 : RippleWidth, pulse ? opacity * 0.45 : opacity);
+        if (click.Secondary)
+        {
+            yield return new ClickShape(radius * SecondaryRingShare, RippleWidth, opacity);
+        }
+    }
 
     private static readonly Color Ink = Color.FromRgb(0x14, 0x14, 0x16);
 

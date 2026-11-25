@@ -6,6 +6,13 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Editor de video, panel Cursor: color del efecto de clic (azul, rojo, amarillo, verde o blanco), «Ocultar si no se mueve» y tres formas de movimiento listas (Natural, Suave y Cinemático).
+- El clic derecho se distingue en el video con un segundo anillo.
+
+### Cambiado
+- Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.
+
 ## [0.12.0] - 2026-11-25
 
 ### Cambiado

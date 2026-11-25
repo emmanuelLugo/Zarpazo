@@ -204,6 +204,8 @@ internal sealed class AppSettings
     public double VideoCursorSway { get; set; } = Recording.CursorStyle.Default.Sway;
     public string VideoCursorClick { get; set; } = Recording.CursorStyle.Default.Click.ToString();
     public bool VideoCursorBounce { get; set; } = Recording.CursorStyle.Default.Bounce;
+    public string VideoCursorTint { get; set; } = Recording.CursorStyle.Default.Tint.ToString();
+    public bool VideoCursorHideWhenIdle { get; set; } = Recording.CursorStyle.Default.HideWhenIdle;
 
     [JsonIgnore]
     public Recording.CursorStyle VideoCursor
@@ -215,7 +217,9 @@ internal sealed class AppSettings
             VideoCursorSmoothing,
             VideoCursorSway,
             Enum.TryParse(VideoCursorClick, out Recording.ClickEffect click) ? click : Recording.CursorStyle.Default.Click,
-            VideoCursorBounce).Tidied();
+            VideoCursorBounce,
+            Enum.TryParse(VideoCursorTint, out Recording.ClickTint tint) ? tint : Recording.CursorStyle.Default.Tint,
+            VideoCursorHideWhenIdle).Tidied();
         set
         {
             VideoCursorVisible = value.Visible;
@@ -225,6 +229,8 @@ internal sealed class AppSettings
             VideoCursorSway = value.Sway;
             VideoCursorClick = value.Click.ToString();
             VideoCursorBounce = value.Bounce;
+            VideoCursorTint = value.Tint.ToString();
+            VideoCursorHideWhenIdle = value.HideWhenIdle;
         }
     }
 

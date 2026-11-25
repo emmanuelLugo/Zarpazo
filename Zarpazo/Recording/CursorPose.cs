@@ -4,4 +4,5 @@ namespace Zarpazo.Recording;
 /// <param name="X">The tip, in shares of the recorded picture (0 to 1).</param>
 /// <param name="Angle">How far it leans, in degrees; positive turns it clockwise around the tip.</param>
 /// <param name="Scale">1 at rest; a little less for a moment after a click.</param>
-internal readonly record struct CursorPose(double X, double Y, double Angle, double Scale);
+/// <param name="Opacity">1 normally; less while it fades away for standing still, and back.</param>
+internal readonly record struct CursorPose(double X, double Y, double Angle, double Scale, double Opacity = 1);

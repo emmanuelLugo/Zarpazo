@@ -780,28 +780,39 @@
                             <StackPanel x:Name="CursorOptions">
                                 <TextBlock Text="ESTILO" Style="{StaticResource SubHeader}" />
                                 <StackPanel x:Name="CursorShapes" Orientation="Horizontal" />
-                                <TextBlock Text="MOVIMIENTO" Style="{StaticResource SubHeader}" />
-                                <Grid Style="{StaticResource Row}">
+                                <Grid Style="{StaticResource Row}" Margin="0,8,0,0">
                                     <Slider x:Name="CursorSizeSlider" Style="{StaticResource RowSlider}" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5"
                                             ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
                                     <TextBlock Text="Tamaño" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="CursorSizeText" Style="{StaticResource RowValue}" />
                                 </Grid>
+                                <TextBlock Text="MOVIMIENTO" Style="{StaticResource SubHeader}" />
+                                <UniformGrid Columns="3" Margin="0,0,0,8">
+                                    <RadioButton x:Name="CursorNaturalTile" Style="{StaticResource WordTile}" GroupName="cursorMotion" Content="Natural" Click="OnCursorMotion"
+                                                 ToolTip="El puntero va exactamente como lo moviste" />
+                                    <RadioButton x:Name="CursorSmoothTile" Style="{StaticResource WordTile}" GroupName="cursorMotion" Content="Suave" Click="OnCursorMotion"
+                                                 ToolTip="Sin temblores y con un leve balanceo" />
+                                    <RadioButton x:Name="CursorCinematicTile" Style="{StaticResource WordTile}" GroupName="cursorMotion" Content="Cinemático" Click="OnCursorMotion"
+                                                 Margin="0" ToolTip="Se desliza mucho y se inclina al moverse: para demostraciones" />
+                                </UniformGrid>
                                 <Grid Style="{StaticResource Row}">
                                     <Slider x:Name="CursorSmoothingSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
                                             ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
                                     <TextBlock Text="Suavizado" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource RowValue}" />
                                 </Grid>
-                                <Grid Style="{StaticResource Row}">
+                                <Grid x:Name="CursorSwayRow" Style="{StaticResource Row}" Background="Transparent" ToolTipService.ShowOnDisabled="True">
                                     <Slider x:Name="CursorSwaySlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
-                                            ValueChanged="OnCursorSlider" ToolTip="Cuánto se inclina la flecha al moverse de lado" />
+                                            ValueChanged="OnCursorSlider" />
                                     <TextBlock Text="Balanceo" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="CursorSwayText" Style="{StaticResource RowValue}" />
                                 </Grid>
+                                <CheckBox x:Name="CursorIdleBox" Content="Ocultar si no se mueve" Style="{StaticResource Switch}" Margin="0,6,0,0" Click="OnCursorChanged"
+                                          ToolTip="Tras 2 segundos quieto, el puntero se desvanece; vuelve justo cuando se mueve" />
                                 <TextBlock Text="EFECTO DE CLIC" Style="{StaticResource SubHeader}" />
                                 <StackPanel x:Name="CursorClicks" Orientation="Horizontal" />
-                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Style="{StaticResource Switch}" Margin="0,10,0,0" Click="OnCursorChanged"
+                                <WrapPanel x:Name="CursorTints" Margin="0,10,0,0" />
+                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnCursorChanged"
                                           ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
                             </StackPanel>
                         </StackPanel>

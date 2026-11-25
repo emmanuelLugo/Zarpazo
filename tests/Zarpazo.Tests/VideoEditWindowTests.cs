@@ -568,6 +568,15 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.False(window.Timeline!.HasChanges, "the pointer is a style, not an edit to discard");
                 Shot(window, folder, "editor-cursor.png");
 
+                window.CursorCinematicTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Assert.True(window.PointerStyle.Smoothing > CursorStyle.Default.Smoothing);
+                ((System.Windows.Controls.RadioButton)window.CursorTints.Children[(int)ClickTint.Red]).IsChecked = true;
+                ((System.Windows.Controls.RadioButton)window.CursorShapes.Children[(int)CursorShape.Dot]).IsChecked = true;
+                Assert.Equal(ClickTint.Red, window.PointerStyle.Tint);
+                Assert.False(window.CursorSwayRow.IsEnabled);
+                Pump(() => false, 100);
+                Shot(window, folder, "editor-cursor-dot.png");
+
                 window.CursorBox.IsChecked = false;
                 window.CursorBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 100); // drawn again with the next frame

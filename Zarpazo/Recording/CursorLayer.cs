@@ -119,7 +119,7 @@ internal sealed class CursorLayer
             {
                 if (At(click.X, click.Y) is { } at)
                 {
-                    DrawClick(graphics, at, click.Progress, unit);
+                    DrawClick(graphics, at, click, unit);
                 }
             }
             if (pose is { } p && At(p.X, p.Y) is { } tip)
@@ -133,26 +133,23 @@ internal sealed class CursorLayer
         }
     }
 
-    private void DrawClick(Graphics graphics, PointF at, double progress, double unit)
+    private void DrawClick(Graphics graphics, PointF at, ClickMark click, double unit)
     {
-        double growth = CursorArt.ClickGrowth(progress);
-        int alpha = (int)Math.Round(255 * CursorArt.ClickOpacity(progress));
-        if (alpha <= 0)
+        MediaColor color = CursorArt.TintColor(_style.Tint);
+        foreach (ClickShape shape in CursorArt.ClickShapes(_style.Click, click))
         {
-            return;
-        }
-
-        if (_style.Click == ClickEffect.Pulse)
-        {
-            float radius = (float)((CursorArt.PulseStartRadius + (CursorArt.PulseEndRadius - CursorArt.PulseStartRadius) * growth) * unit);
-            using var fill = new SolidBrush(ToDrawing(CursorArt.ClickColor, alpha * 0.45));
-            graphics.FillEllipse(fill, at.X - radius, at.Y - radius, radius * 2, radius * 2);
-        }
-        else
-        {
-            float radius = (float)((CursorArt.RippleStartRadius + (CursorArt.RippleEndRadius - CursorArt.RippleStartRadius) * growth) * unit);
-            using var pen = new Pen(ToDrawing(CursorArt.ClickColor, alpha), (float)(CursorArt.RippleWidth * unit));
-            graphics.DrawEllipse(pen, at.X - radius, at.Y - radius, radius * 2, radius * 2);
+            float radius = (float)(shape.Radius * unit);
+            Color paint = ToDrawing(color, shape.Opacity * 255);
+            if (shape.Width == 0)
+            {
+                using var fill = new SolidBrush(paint);
+                graphics.FillEllipse(fill, at.X - radius, at.Y - radius, radius * 2, radius * 2);
+            }
+            else
+            {
+                using var pen = new Pen(paint, (float)(shape.Width * unit));
+                graphics.DrawEllipse(pen, at.X - radius, at.Y - radius, radius * 2, radius * 2);
+            }
         }
     }
 
@@ -176,8 +173,8 @@ internal sealed class CursorLayer
 
         // A soft shadow: the shape a little lower, twice, the second wider and fainter.
         (MediaColor fill, MediaColor edge) = CursorArt.Paint(_style.Shape);
-        using (var shadow = new SolidBrush(Color.FromArgb(CursorArt.ShadowAlpha / 2, 0, 0, 0)))
-        using (var blur = new Pen(Color.FromArgb(CursorArt.ShadowAlpha / 3, 0, 0, 0), (float)(CursorArt.EdgeWidth * 2.5)) { LineJoin = LineJoin.Round })
+        using (var shadow = new SolidBrush(Color.FromArgb((int)(CursorArt.ShadowAlpha / 2 * pose.Opacity), 0, 0, 0)))
+        using (var blur = new Pen(Color.FromArgb((int)(CursorArt.ShadowAlpha / 3 * pose.Opacity), 0, 0, 0), (float)(CursorArt.EdgeWidth * 2.5)) { LineJoin = LineJoin.Round })
         {
             GraphicsState flat = graphics.Save();
             graphics.TranslateTransform(0, (float)CursorArt.ShadowDrop);
@@ -186,8 +183,8 @@ internal sealed class CursorLayer
             graphics.Restore(flat);
         }
 
-        using (var edgePen = new Pen(ToDrawing(edge, edge.A), (float)(CursorArt.EdgeWidth * 2)) { LineJoin = LineJoin.Round })
-        using (var fillBrush = new SolidBrush(ToDrawing(fill, fill.A)))
+        using (var edgePen = new Pen(ToDrawing(edge, edge.A * pose.Opacity), (float)(CursorArt.EdgeWidth * 2)) { LineJoin = LineJoin.Round })
+        using (var fillBrush = new SolidBrush(ToDrawing(fill, fill.A * pose.Opacity)))
         {
             // The edge is drawn twice as wide and the fill over it, so the edge shows only outside the shape.
             graphics.DrawPath(edgePen, path);

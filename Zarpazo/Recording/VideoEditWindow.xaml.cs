@@ -64,6 +64,8 @@ public partial class VideoEditWindow : Window
     private IReadOnlyList<VideoPreset> _presets;
     private long _presetsClosedAt; // see OnPresets
     private readonly List<Ellipse> _clickMarks = [];
+    private readonly SolidColorBrush _rippleBrush = new(); // the drawings of the click effects, in the chosen colour
+    private readonly SolidColorBrush _pulseBrush = new();
     private FrameLayout? _layout; // where the recording sits in the scene; null without a frame
     private ZoomCamera? _previewCamera; // the zooms in the scene, for the preview
     private bool _showingFrame;
@@ -2570,6 +2572,11 @@ public partial class VideoEditWindow : Window
     /// <summary>The pointer drawn on the video, as chosen now.</summary>
     internal CursorStyle PointerStyle => _cursor;
 
+    // The smoothing and sway of each ready-made way of moving.
+    private static readonly (double Smoothing, double Sway) NaturalMotion = (0, 0);
+    private static readonly (double Smoothing, double Sway) SmoothMotion = (CursorStyle.Default.Smoothing, CursorStyle.Default.Sway);
+    private static readonly (double Smoothing, double Sway) CinematicMotion = (0.85, 0.6);
+
     // A tile for each shape, with a drawing of it.
     private void BuildCursorChoices()
     {
@@ -2607,8 +2614,7 @@ public partial class VideoEditWindow : Window
             CursorShapes.Children.Add(tile);
         }
 
-        // The click effects, each with a drawing of it in the colour it has in the video.
-        var blue = new SolidColorBrush(CursorArt.ClickColor);
+        // The click effects, each with a drawing of it in the colour it has in the video (see ShowCursorValues).
         foreach (ClickEffect effect in Enum.GetValues<ClickEffect>())
         {
             ShapePath icon = effect switch
@@ -2622,12 +2628,12 @@ public partial class VideoEditWindow : Window
                 ClickEffect.Pulse => new ShapePath
                 {
                     Data = Geometry.Parse("M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 Z"),
-                    Fill = new SolidColorBrush(Color.FromArgb(0x90, CursorArt.ClickColor.R, CursorArt.ClickColor.G, CursorArt.ClickColor.B)),
+                    Fill = _pulseBrush,
                 },
                 _ => new ShapePath
                 {
                     Data = Geometry.Parse("M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 Z M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z"),
-                    Stroke = blue,
+                    Stroke = _rippleBrush,
                     StrokeThickness = 1.8,
                 },
             };
@@ -2641,12 +2647,35 @@ public partial class VideoEditWindow : Window
                 ToolTip = effect switch
                 {
                     ClickEffect.None => "Sin efecto en los clics",
-                    ClickEffect.Pulse => "Pulso: una mancha suave que crece y se apaga",
-                    _ => "Onda: un anillo que crece desde el puntero",
+                    ClickEffect.Pulse => "Pulso: una mancha suave que crece y se apaga. El clic derecho añade un anillo",
+                    _ => "Onda: un anillo que crece desde el puntero. El clic derecho hace dos anillos",
                 },
             };
             tile.Checked += OnCursorChanged;
             CursorClicks.Children.Add(tile);
+        }
+
+        foreach (ClickTint tint in Enum.GetValues<ClickTint>())
+        {
+            string name = tint switch
+            {
+                ClickTint.Red => "Rojo",
+                ClickTint.Yellow => "Amarillo",
+                ClickTint.Green => "Verde",
+                ClickTint.White => "Blanco",
+                _ => "Azul",
+            };
+            var swatch = new RadioButton
+            {
+                Style = (Style)FindResource("Swatch"),
+                GroupName = "cursorTint",
+                Tag = tint,
+                Background = new SolidColorBrush(CursorArt.TintColor(tint)),
+                ToolTip = name,
+            };
+            System.Windows.Automation.AutomationProperties.SetName(swatch, name);
+            swatch.Checked += OnCursorChanged;
+            CursorTints.Children.Add(swatch);
         }
         ShowCursorChoices();
     }
@@ -2666,6 +2695,11 @@ public partial class VideoEditWindow : Window
         {
             tile.IsChecked = (ClickEffect)tile.Tag == _cursor.Click;
         }
+        foreach (RadioButton swatch in CursorTints.Children.OfType<RadioButton>())
+        {
+            swatch.IsChecked = (ClickTint)swatch.Tag == _cursor.Tint;
+        }
+        CursorIdleBox.IsChecked = _cursor.HideWhenIdle;
         CursorResetButton.IsEnabled = _cursor with { Visible = true } != CursorStyle.Default with { Visible = true };
         CursorBounceBox.IsChecked = _cursor.Bounce;
         ShowCursorValues();
@@ -2689,6 +2723,32 @@ public partial class VideoEditWindow : Window
         CursorSizeText.Text = $"{_cursor.Size.ToString("0.0", CultureInfo.CurrentCulture)}×";
         CursorSmoothingText.Text = $"{Math.Round(_cursor.Smoothing * 100)} %";
         CursorSwayText.Text = $"{Math.Round(_cursor.Sway * 100)} %";
+        CursorNaturalTile.IsChecked = IsMotion(NaturalMotion);
+        CursorSmoothTile.IsChecked = IsMotion(SmoothMotion);
+        CursorCinematicTile.IsChecked = IsMotion(CinematicMotion);
+
+        // A dot looks the same however it leans.
+        bool leans = _cursor.Shape != CursorShape.Dot;
+        CursorSwayRow.IsEnabled = leans;
+        CursorSwayRow.Opacity = leans ? 1 : 0.5;
+        CursorSwayRow.ToolTip = leans ? "Cuánto se inclina la flecha al moverse de lado" : "El punto no se inclina: elige una flecha";
+
+        CursorTints.IsEnabled = _cursor.Click != ClickEffect.None;
+        CursorTints.Opacity = CursorTints.IsEnabled ? 1 : 0.5;
+        Color tint = CursorArt.TintColor(_cursor.Tint);
+        _rippleBrush.Color = tint;
+        _pulseBrush.Color = Color.FromArgb(0x90, tint.R, tint.G, tint.B);
+
+        bool IsMotion((double Smoothing, double Sway) motion) => (_cursor.Smoothing, _cursor.Sway) == motion;
+    }
+
+    private void OnCursorMotion(object sender, RoutedEventArgs e)
+    {
+        (double smoothing, double sway) = sender == CursorNaturalTile ? NaturalMotion
+            : sender == CursorSmoothTile ? SmoothMotion
+            : CinematicMotion;
+        ChangeLook(Look with { Cursor = _cursor with { Smoothing = smoothing, Sway = sway } });
+        ShowCursorChoices();
     }
 
     private void OnCursorSlider(object sender, RoutedPropertyChangedEventArgs<double> e) => OnCursorChanged(sender, e);
@@ -2708,7 +2768,9 @@ public partial class VideoEditWindow : Window
             Math.Round(CursorSmoothingSlider.Value * 20) / 20,
             Math.Round(CursorSwaySlider.Value * 20) / 20,
             CursorClicks.Children.OfType<RadioButton>().FirstOrDefault(tile => tile.IsChecked == true)?.Tag as ClickEffect? ?? _cursor.Click,
-            CursorBounceBox.IsChecked == true).Tidied() });
+            CursorBounceBox.IsChecked == true,
+            CursorTints.Children.OfType<RadioButton>().FirstOrDefault(swatch => swatch.IsChecked == true)?.Tag as ClickTint? ?? _cursor.Tint,
+            CursorIdleBox.IsChecked == true).Tidied() });
         if (sender is not Slider)
         {
             ShowCursorChoices(); // a slider is left alone while it is dragged
@@ -2779,52 +2841,38 @@ public partial class VideoEditWindow : Window
         double original = CursorLayer.ToOriginal(_timeline.Segments, time);
         double unit = CursorLayer.Unit(_cursor, _track!.PointerScale > 0 ? _track.PointerScale : 1, view, _layout);
 
-        IReadOnlyList<ClickMark> clicks = _motion.ClicksAt(original);
-        while (_clickMarks.Count < clicks.Count)
+        Color color = CursorArt.TintColor(_cursor.Tint);
+        int used = 0;
+        foreach (ClickMark click in _motion.ClicksAt(original))
         {
-            var mark = new Ellipse();
-            _clickMarks.Add(mark);
-            ClickMarks.Children.Add(mark);
-        }
-        for (int i = 0; i < _clickMarks.Count; i++)
-        {
-            Ellipse mark = _clickMarks[i];
-            if (i >= clicks.Count)
-            {
-                mark.Visibility = Visibility.Collapsed;
-                continue;
-            }
-
-            ClickMark click = clicks[i];
             if (CursorLayer.Shown(click.X, click.Y, _area) is not { } clickAt)
             {
-                mark.Visibility = Visibility.Collapsed; // in the part cut away
-                continue;
+                continue; // in the part cut away
             }
-            double growth = CursorArt.ClickGrowth(click.Progress);
-            byte alpha = (byte)Math.Round(255 * CursorArt.ClickOpacity(click.Progress));
-            Color color = CursorArt.ClickColor;
-            double radius;
-            if (_cursor.Click == ClickEffect.Pulse)
-            {
-                radius = (CursorArt.PulseStartRadius + (CursorArt.PulseEndRadius - CursorArt.PulseStartRadius) * growth) * unit;
-                mark.Fill = new SolidColorBrush(Color.FromArgb((byte)(alpha * 0.45), color.R, color.G, color.B));
-                mark.Stroke = null;
-            }
-            else
-            {
-                radius = (CursorArt.RippleStartRadius + (CursorArt.RippleEndRadius - CursorArt.RippleStartRadius) * growth) * unit;
-                mark.Fill = null;
-                mark.Stroke = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
-                mark.StrokeThickness = CursorArt.RippleWidth * unit;
-            }
-            // GDI+ draws the ring's line centred on the circle, WPF inside the ellipse: half a line wider matches them.
-            double outer = radius + (mark.Stroke != null ? mark.StrokeThickness / 2 : 0);
             (double x, double y) = CursorLayer.ToPicture(clickAt.X, clickAt.Y, view, _layout, width, height);
-            mark.Width = mark.Height = outer * 2;
-            Canvas.SetLeft(mark, x - outer);
-            Canvas.SetTop(mark, y - outer);
-            mark.Visibility = Visibility.Visible;
+            foreach (ClickShape shape in CursorArt.ClickShapes(_cursor.Click, click))
+            {
+                if (used == _clickMarks.Count)
+                {
+                    _clickMarks.Add(new Ellipse());
+                    ClickMarks.Children.Add(_clickMarks[used]);
+                }
+                Ellipse mark = _clickMarks[used++];
+                var brush = new SolidColorBrush(Color.FromArgb((byte)Math.Round(255 * shape.Opacity), color.R, color.G, color.B));
+                mark.Fill = shape.Width == 0 ? brush : null;
+                mark.Stroke = shape.Width == 0 ? null : brush;
+                mark.StrokeThickness = shape.Width * unit;
+                // GDI+ draws the ring's line centred on the circle, WPF inside the ellipse: half a line wider matches them.
+                double outer = (shape.Radius + shape.Width / 2) * unit;
+                mark.Width = mark.Height = outer * 2;
+                Canvas.SetLeft(mark, x - outer);
+                Canvas.SetTop(mark, y - outer);
+                mark.Visibility = Visibility.Visible;
+            }
+        }
+        for (int i = used; i < _clickMarks.Count; i++)
+        {
+            _clickMarks[i].Visibility = Visibility.Collapsed;
         }
 
         if (_motion.PoseAt(original) is not { } pose || CursorLayer.Shown(pose.X, pose.Y, _area) is not { } tip)
@@ -2839,6 +2887,7 @@ public partial class VideoEditWindow : Window
         matrix.Rotate(pose.Angle);
         matrix.Translate(tipX, tipY);
         PointerGlyph.RenderTransform = new MatrixTransform(matrix);
+        PointerGlyph.Opacity = pose.Opacity;
         PointerGlyph.Visibility = Visibility.Visible;
     }
 
