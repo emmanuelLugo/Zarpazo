@@ -36,7 +36,7 @@ internal static class ZoomRenderer
     /// of a canvas of that shape, on the frame's background (with no frame chosen, only the background).</param>
     public static async Task RenderAsync(string source, string target, ZoomCamera camera, VideoFrameStyle? frame, IProgress<double>? progress = null,
         CursorLayer? cursor = null, VideoCrop crop = default, PlayClock? clock = null, OverlayLayer? overlays = null, VideoExportOptions? output = null,
-        VideoAspect aspect = VideoAspect.Original)
+        VideoAspect aspect = VideoAspect.Original, bool motionBlur = false)
     {
         output ??= VideoExportOptions.Default;
         StorageFile file = await StorageFile.GetFileFromPathAsync(source);
@@ -96,6 +96,7 @@ internal static class ZoomRenderer
                 // The next pictures are decoded on another thread while this one draws the current one.
                 using var reader = new FrameReadAhead(source, sourceWidth, sourceHeight);
                 byte[]? full = shrunk ? new byte[width * height * 4] : null;
+                byte[]? sharp = motionBlur ? new byte[width * height * 4] : null; // a picture the camera moves in, before it is smeared
                 if (!reader.TryTake(out byte[] current, out TimeSpan currentTime))
                 {
                     return;
@@ -125,16 +126,31 @@ internal static class ZoomRenderer
                     byte[] picture = writer.RentPicture();
                     byte[] canvas = full ?? picture; // drawn at the picture's own size, then made smaller into the writer's
                     ZoomView view = camera.ViewAt(t);
+                    ZoomView before = view, after = view; // where the camera is as the shutter opens and closes
+                    int smear = 1;
+                    if (sharp != null)
+                    {
+                        before = camera.ViewAt(t - MotionBlur.ShutterSeconds / 2);
+                        after = camera.ViewAt(t + MotionBlur.ShutterSeconds / 2);
+                        smear = MotionBlur.Samples(MotionBlur.Travel(before, after, width, height));
+                    }
+                    byte[] scene = smear > 1 ? sharp! : canvas;
                     if (compositor != null)
                     {
-                        compositor.Render(current, canvas, view);
+                        compositor.Render(current, scene, view);
                     }
                     else
                     {
-                        ZoomResampler.Render(current, sourceWidth, sourceHeight, area.Pixels, canvas, width, height, view);
+                        ZoomResampler.Render(current, sourceWidth, sourceHeight, area.Pixels, scene, width, height, view);
                     }
-                    overlays?.Draw(canvas, width, height, t, view, layout);
-                    cursor?.Draw(canvas, width, height, t, view, layout);
+                    overlays?.Draw(scene, width, height, t, view, layout);
+                    if (smear > 1)
+                    {
+                        MotionBlur.Camera(scene, canvas, width, height, before, view, after, smear);
+                    }
+                    (ZoomView, ZoomView)? pointerShutter = sharp == null ? null
+                        : (camera.ViewAt(t - MotionBlur.PointerShutterSeconds / 2), camera.ViewAt(t + MotionBlur.PointerShutterSeconds / 2));
+                    cursor?.Draw(canvas, width, height, t, view, layout, pointerShutter);
                     if (full != null)
                     {
                         PictureShrinker.Shrink(full, width, height, picture, outWidth, outHeight);

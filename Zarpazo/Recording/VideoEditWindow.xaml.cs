@@ -979,7 +979,7 @@ public partial class VideoEditWindow : Window
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}{_zoomStyle.Follow && _track != null}" : "", string.Join(";", _timeline.Overlays), _export, _timeline.Aspect);
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}{_zoomStyle.Follow && _track != null}" : "", _zoomStyle.Blur, string.Join(";", _timeline.Overlays), _export, _timeline.Aspect);
 
     private void SetBusy(bool busy)
     {
@@ -1015,7 +1015,7 @@ public partial class VideoEditWindow : Window
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
                         _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect, _export, _timeline.Aspect,
-                        _zoomStyle.Follow);
+                        _zoomStyle.Follow, _zoomStyle.Blur);
                 }
                 else
                 {
@@ -2277,6 +2277,7 @@ public partial class VideoEditWindow : Window
         ZoomFocusedTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Focused;
         ZoomConnectBox.IsChecked = _zoomStyle.Connect;
         ZoomFollowBox.IsChecked = _zoomStyle.Follow;
+        ZoomBlurBox.IsChecked = _zoomStyle.Blur;
         ZoomFollowBox.IsEnabled = _timeline == null || _track != null; // nothing to follow without the pointer's record
         ShowZoomStyleValues();
         _showingZoomStyle = false;
@@ -2299,7 +2300,8 @@ public partial class VideoEditWindow : Window
             Math.Round(ZoomStyleDepthSlider.Value * 20) / 20,
             ZoomFocusedTile.IsChecked == true ? ZoomMotion.Focused : ZoomMotion.Smooth,
             ZoomConnectBox.IsChecked == true,
-            ZoomFollowBox.IsChecked == true);
+            ZoomFollowBox.IsChecked == true,
+            ZoomBlurBox.IsChecked == true);
         ChangeLook(Look with { Zoom = style });
         if (sender is Slider)
         {

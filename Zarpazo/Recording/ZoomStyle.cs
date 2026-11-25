@@ -7,7 +7,8 @@ namespace Zarpazo.Recording;
 /// <param name="Depth">How close every zoom goes (<see cref="ZoomRegion.MinScale"/> to <see cref="ZoomRegion.MaxScale"/>).</param>
 /// <param name="Connect">Zooms close to each other stay zoomed in and the camera glides between them; off, each one goes back out first.</param>
 /// <param name="Follow">While zoomed in, the camera moves along so the pointer stays in view.</param>
-internal sealed record ZoomStyle(double Depth, ZoomMotion Motion, bool Connect = true, bool Follow = true)
+/// <param name="Blur">The camera and the drawn pointer smear a little when they move fast (see <see cref="MotionBlur"/>).</param>
+internal sealed record ZoomStyle(double Depth, ZoomMotion Motion, bool Connect = true, bool Follow = true, bool Blur = true)
 {
     public static ZoomStyle Default { get; } = new(ZoomRegion.DefaultScale, ZoomMotion.Smooth);
 

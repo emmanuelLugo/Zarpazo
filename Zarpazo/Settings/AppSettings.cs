@@ -252,6 +252,9 @@ internal sealed class AppSettings
     /// <summary>Whether the camera follows the pointer while zoomed in (see <see cref="Recording.ZoomStyle.Follow"/>).</summary>
     public bool VideoZoomFollow { get; set; } = Recording.ZoomStyle.Default.Follow;
 
+    /// <summary>Whether fast moves are smeared (see <see cref="Recording.ZoomStyle.Blur"/>).</summary>
+    public bool VideoZoomBlur { get; set; } = Recording.ZoomStyle.Default.Blur;
+
     [JsonIgnore]
     public Recording.ZoomStyle VideoZoom
     {
@@ -259,13 +262,15 @@ internal sealed class AppSettings
             VideoZoomDepth,
             Enum.TryParse(VideoZoomMotion, out Recording.ZoomMotion motion) ? motion : Recording.ZoomStyle.Default.Motion,
             VideoZoomConnect,
-            VideoZoomFollow).Tidied();
+            VideoZoomFollow,
+            VideoZoomBlur).Tidied();
         set
         {
             VideoZoomDepth = value.Depth;
             VideoZoomMotion = value.Motion.ToString();
             VideoZoomConnect = value.Connect;
             VideoZoomFollow = value.Follow;
+            VideoZoomBlur = value.Blur;
         }
     }
 

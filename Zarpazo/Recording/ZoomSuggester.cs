@@ -2,7 +2,8 @@ namespace Zarpazo.Recording;
 
 /// <summary>
 /// Proposes zooms from the clicks of a recording: clicks close in time and in place make one zoom, centred on them, that
-/// starts a little before the first and ends a little after the last.
+/// starts a little before the first and ends a little after the last. Clicks that jump about faster than the camera can
+/// settle get no zoom: they are seen on the whole picture.
 /// </summary>
 internal static class ZoomSuggester
 {
@@ -20,6 +21,13 @@ internal static class ZoomSuggester
     private const double ArriveSeconds = 0.6;
     private const double LingerSeconds = 0.2;
 
+    // A group of clicks left for a faraway one sooner than this after it began is not zoomed in on: the camera would only
+    // swing from one side to the other. The whole picture shows for a moment around such clicks, longer than half the gap
+    // that joins two zooms (see ZoomTiming.JoinGapSeconds), so the camera does go all the way out.
+    private const double SettleSeconds = 2;
+    private const double ClearSeconds = 0.8;
+    private const double MinUsefulSeconds = 1.5; // a zoom squeezed shorter than it takes to go in is left out
+
     /// <summary>Clicks of one zoom must fit in this share of what the zoom shows, so none is left at the edge.</summary>
     private const double FitShare = 0.8;
 
@@ -34,14 +42,65 @@ internal static class ZoomSuggester
             .OrderBy(click => click.TimeMs)
             .ToList();
 
+        List<(double First, double Up, double FocusX, double FocusY)> groups = Group(clicks, track, scale);
+        bool Zoomed(int i) => i == groups.Count - 1 || groups[i + 1].First - groups[i].First >= SettleSeconds;
+
         var zooms = new List<ZoomRegion>();
         double previousUp = 0; // when the button of the last zoom's last click came up
+        for (int i = 0; i < groups.Count; i++)
+        {
+            if (!Zoomed(i))
+            {
+                continue;
+            }
+
+            (double first, double lastUp, double focusX, double focusY) = groups[i];
+            double start = first - PadSeconds;
+            double end = lastUp + PadSeconds;
+            if (end - start < MinSeconds)
+            {
+                // Centred on the group, then pushed back inside the recording.
+                double middle = (start + end) / 2;
+                (start, end) = (middle - MinSeconds / 2, middle + MinSeconds / 2);
+            }
+            (start, end) = ShiftInside(start, end, duration);
+
+            bool squeezed = false;
+            if (i > 0 && !Zoomed(i - 1) && start < groups[i - 1].Up + ClearSeconds)
+            {
+                (start, squeezed) = (groups[i - 1].Up + ClearSeconds, true);
+            }
+            if (i + 1 < groups.Count && !Zoomed(i + 1))
+            {
+                double leave = Math.Max(groups[i + 1].First - ClearSeconds, lastUp + LingerSeconds);
+                (end, squeezed) = (Math.Min(end, leave), squeezed || leave < end);
+            }
+            if (zooms.Count > 0 && start < zooms[^1].End)
+            {
+                // One right after the other: the camera moves across without zooming out.
+                double change = Math.Max(first - ArriveSeconds, Math.Max(previousUp + LingerSeconds, zooms[^1].Start + ZoomRegion.MinSeconds));
+                start = Math.Min(change, zooms[^1].End);
+                zooms[^1] = zooms[^1] with { End = start };
+            }
+
+            if (end - start >= (squeezed ? MinUsefulSeconds : ZoomRegion.MinSeconds))
+            {
+                zooms.Add(new ZoomRegion(start, end, scale, focusX, focusY).Clamped());
+                previousUp = lastUp;
+            }
+        }
+        return zooms;
+    }
+
+    // Each group grows while the next click is soon enough and still fits in the view around the others.
+    private static List<(double First, double Up, double FocusX, double FocusY)> Group(List<CursorClick> clicks, CursorTrack track, double scale)
+    {
+        var groups = new List<(double First, double Up, double FocusX, double FocusY)>();
         double maxWidth = track.Width / scale * FitShare;
         double maxHeight = track.Height / scale * FitShare;
         int first = 0;
         while (first < clicks.Count)
         {
-            // The group grows while the next click is soon enough and still fits in the view around the others.
             double lastUp = clicks[first].EndMs / 1000.0;
             (int left, int top, int right, int bottom) = (clicks[first].X, clicks[first].Y, clicks[first].X, clicks[first].Y);
             int next = first + 1;
@@ -58,34 +117,10 @@ internal static class ZoomSuggester
                 lastUp = Math.Max(lastUp, click.EndMs / 1000.0);
             }
 
-            double start = clicks[first].TimeMs / 1000.0 - PadSeconds;
-            double end = lastUp + PadSeconds;
-            if (end - start < MinSeconds)
-            {
-                // Centred on the group, then pushed back inside the recording.
-                double middle = (start + end) / 2;
-                (start, end) = (middle - MinSeconds / 2, middle + MinSeconds / 2);
-            }
-            (start, end) = ShiftInside(start, end, duration);
-            if (zooms.Count > 0 && start < zooms[^1].End)
-            {
-                // One right after the other: the camera moves across without zooming out.
-                double change = Math.Max(clicks[first].TimeMs / 1000.0 - ArriveSeconds,
-                    Math.Max(previousUp + LingerSeconds, zooms[^1].Start + ZoomRegion.MinSeconds));
-                start = Math.Min(change, zooms[^1].End);
-                zooms[^1] = zooms[^1] with { End = start };
-            }
-
-            if (end - start >= ZoomRegion.MinSeconds)
-            {
-                double focusX = (left + right) / 2.0 / track.Width;
-                double focusY = (top + bottom) / 2.0 / track.Height;
-                zooms.Add(new ZoomRegion(start, end, scale, focusX, focusY).Clamped());
-                previousUp = lastUp;
-            }
+            groups.Add((clicks[first].TimeMs / 1000.0, lastUp, (left + right) / 2.0 / track.Width, (top + bottom) / 2.0 / track.Height));
             first = next;
         }
-        return zooms;
+        return groups;
     }
 
     private static (double Start, double End) ShiftInside(double start, double end, double duration)

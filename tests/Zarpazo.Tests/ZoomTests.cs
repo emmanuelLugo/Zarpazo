@@ -39,10 +39,28 @@ public sealed class ZoomTests
     [Fact]
     public void Clicks_too_far_apart_to_fit_in_one_zoomed_view_get_their_own_zooms_without_overlapping()
     {
-        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(Clicks((3, 50, 50), (4, 950, 450)), duration: 20);
+        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(Clicks((3, 50, 50), (5.2, 950, 450)), duration: 20);
 
         Assert.Equal(2, zooms.Count);
         Assert.True(zooms[0].End <= zooms[1].Start);
+        Assert.True(zooms[1].Start < 5.2, "the second zoom starts before its click");
+    }
+
+    [Fact]
+    public void Clicks_that_jump_about_faster_than_the_camera_settles_are_seen_on_the_whole_picture()
+    {
+        // A calm stretch, then corner to corner about a second apart, then calm again.
+        CursorTrack track = Clicks((2, 300, 150), (3, 320, 160), (8, 970, 455), (9.1, 30, 435), (10.2, 970, 45), (11.3, 200, 250));
+
+        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(track, duration: 20);
+        var camera = new ZoomCamera([new VideoSegment(0, 20)], zooms);
+
+        Assert.Equal(2, zooms.Count);
+        foreach (double click in (double[])[8, 9.1, 10.2])
+        {
+            Assert.True(camera.ViewAt(click).IsFull, $"zoomed at {click}");
+        }
+        Assert.True(zooms[1].Start >= 10.3 && zooms[1].Start < 11.3);
     }
 
     [Fact]
@@ -120,7 +138,7 @@ public sealed class ZoomTests
         IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(track, 12);
         var camera = new ZoomCamera([new VideoSegment(0, 12)], zooms);
 
-        Assert.Equal(3, zooms.Count);
+        Assert.Single(zooms); // only where the pointer stays
         foreach ((long ms, int x, int y) in at)
         {
             ZoomView view = camera.ViewAt(ms / 1000.0);
@@ -162,6 +180,32 @@ public sealed class ZoomTests
             Assert.InRange(next.X - now.X, -0.001, 0.03);
             Assert.InRange(next.Y - now.Y, -0.001, 0.03);
         }
+    }
+
+    [Fact]
+    public void A_still_camera_leaves_the_picture_sharp_and_a_moving_one_smears_it_along_the_move()
+    {
+        const int width = 100, height = 20;
+        var picture = new byte[width * height * 4]; // black on the left, white on the right
+        for (int y = 0; y < height; y++)
+        {
+            picture.AsSpan(y * width * 4 + 50 * 4, 50 * 4).Fill(255);
+        }
+        var at = new ZoomView(0.25, 0.25, 0.5, 0.5);
+
+        Assert.Equal(1, MotionBlur.Samples(MotionBlur.Travel(at, at, width, height)));
+        var from = at with { X = 0.2 };
+        var to = at with { X = 0.3 };
+        int samples = MotionBlur.Samples(MotionBlur.Travel(from, to, width, height));
+        var smeared = new byte[picture.Length];
+        MotionBlur.Camera(picture, smeared, width, height, from, at, to, samples);
+
+        byte Blue(int x) => smeared[(10 * width + x) * 4];
+        Assert.True(samples > 2);
+        Assert.Equal(0, Blue(30));
+        Assert.Equal(255, Blue(70));
+        Assert.InRange(Blue(50), 60, 195); // the edge, spread over the 20 pixels travelled
+        Assert.True(Blue(45) < Blue(50) && Blue(50) < Blue(55));
     }
 
     [Fact]

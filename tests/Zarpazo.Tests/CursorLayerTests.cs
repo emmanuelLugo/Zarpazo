@@ -83,6 +83,25 @@ public sealed class CursorLayerTests
     }
 
     [Fact]
+    public void A_pointer_moving_fast_is_smeared_along_its_way_and_a_still_one_is_not()
+    {
+        // Right across the picture in a tenth of a second.
+        var track = new CursorTrack(Width, Height,
+            Enumerable.Range(0, 13).Select(i => new CursorSample(500 + i * 8, 50 + i * 25, 50)).ToList(), [], PointerInPicture: false);
+        CursorLayer layer = CursorLayer.For(track, Plain, [new VideoSegment(0, 5)])!;
+        byte[] sharp = Grey(), smeared = Grey(), still = Grey();
+
+        layer.Draw(sharp, Width, Height, 0.548, ZoomView.Full, layout: null);
+        layer.Draw(smeared, Width, Height, 0.548, ZoomView.Full, layout: null, (ZoomView.Full, ZoomView.Full));
+        layer.Draw(still, Width, Height, 3, ZoomView.Full, layout: null, (ZoomView.Full, ZoomView.Full));
+        byte[] resting = Grey();
+        layer.Draw(resting, Width, Height, 3, ZoomView.Full, layout: null);
+
+        Assert.True(Drawn(smeared).Width > Drawn(sharp).Width + 15, $"{Drawn(smeared).Width} against {Drawn(sharp).Width}");
+        Assert.Equal(resting, still);
+    }
+
+    [Fact]
     public void Zoomed_in_the_pointer_is_drawn_bigger_where_the_camera_shows_it()
     {
         CursorLayer layer = CursorLayer.For(StillAt(100, 50), Plain, [new VideoSegment(0, 5)])!;

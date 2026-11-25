@@ -12,6 +12,8 @@ namespace Zarpazo.Recording;
 /// </summary>
 internal sealed class CursorLayer
 {
+    private const double ReachUnits = 28;
+
     private readonly CursorMotion _motion;
     private readonly CursorStyle _style;
     private readonly double _pointerScale;
@@ -86,7 +88,10 @@ internal sealed class CursorLayer
     /// <param name="seconds">The picture's time in the edited video.</param>
     /// <param name="view">What the camera showed in it, in shares of the scene (of the recording, without a frame).</param>
     /// <param name="layout">Where the recording sits in its frame; null without one.</param>
-    public void Draw(byte[] picture, int width, int height, double seconds, ZoomView view, FrameLayout? layout)
+    /// <param name="shutter">What the camera showed as the pointer's shutter opened and closed (see
+    /// <see cref="MotionBlur.PointerShutterSeconds"/>), to smear a pointer that moves fast on the screen; null draws it sharp.</param>
+    public void Draw(byte[] picture, int width, int height, double seconds, ZoomView view, FrameLayout? layout,
+        (ZoomView Open, ZoomView Close)? shutter = null)
     {
         double original = ToOriginal(_segments, seconds);
         CursorPose? pose = _motion.PoseAt(original);
@@ -97,14 +102,31 @@ internal sealed class CursorLayer
         }
 
         double unit = Unit(_style, _pointerScale, view, layout);
-        PointF? At(double x, double y)
+        PointF? At(double x, double y, ZoomView seen)
         {
             if (Shown(x, y, _crop) is not { } shown)
             {
                 return null;
             }
-            (double px, double py) = ToPicture(shown.X, shown.Y, view, layout, width, height);
+            (double px, double py) = ToPicture(shown.X, shown.Y, seen, layout, width, height);
             return new PointF((float)px, (float)py);
+        }
+
+        // Where the tip was on the screen as the shutter opened or closed: the pointer's own move and the camera's together.
+        PointF? Then(double half, ZoomView seen) =>
+            _motion.PoseAt(ToOriginal(_segments, seconds + half)) is { } was ? At(was.X, was.Y, seen) : null;
+
+        PointF? tip = pose is { } shownPose ? At(shownPose.X, shownPose.Y, view) : null;
+        PointF? open = null, close = null;
+        int smear = 1;
+        if (shutter is { } camera && tip != null)
+        {
+            open = Then(-MotionBlur.PointerShutterSeconds / 2, camera.Open);
+            close = Then(MotionBlur.PointerShutterSeconds / 2, camera.Close);
+            if (open is { } a && close is { } b)
+            {
+                smear = MotionBlur.Samples(Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y)));
+            }
         }
 
         GCHandle pin = GCHandle.Alloc(picture, GCHandleType.Pinned);
@@ -115,19 +137,18 @@ internal sealed class CursorLayer
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            PointF? tip = pose is { } shown ? At(shown.X, shown.Y) : null;
             if (tip is { } under)
             {
                 DrawShapes(graphics, under, CursorArt.PointerShapes(_style, pose!.Value), unit);
             }
             foreach (ClickMark click in clicks)
             {
-                if (At(click.X, click.Y) is { } at)
+                if (At(click.X, click.Y, view) is { } at)
                 {
                     DrawShapes(graphics, at, CursorArt.ClickShapes(_style.Click, click), unit);
                 }
             }
-            if (tip is { } point)
+            if (tip is { } point && smear == 1)
             {
                 DrawPointer(graphics, point, pose!.Value, unit);
             }
@@ -136,6 +157,34 @@ internal sealed class CursorLayer
         {
             pin.Free();
         }
+
+        if (smear > 1) // over the rest, once GDI+ has let go of the picture
+        {
+            DrawSmearedPointer(picture, width, height, tip!.Value, open!.Value, close!.Value, pose!.Value, unit, smear);
+        }
+    }
+
+    // The pointer drawn once on its own, then laid along its move.
+    private void DrawSmearedPointer(byte[] picture, int width, int height, PointF tip, PointF open, PointF close, CursorPose pose, double unit, int samples)
+    {
+        int reach = (int)Math.Ceiling(ReachUnits * unit) + 2; // from the tip to the furthest the drawing goes, shadow included
+        int size = reach * 2;
+        int left = (int)Math.Floor(tip.X) - reach, top = (int)Math.Floor(tip.Y) - reach;
+        var sprite = new byte[size * size * 4];
+        GCHandle pin = GCHandle.Alloc(sprite, GCHandleType.Pinned);
+        try
+        {
+            using var bitmap = new Bitmap(size, size, size * 4, PixelFormat.Format32bppPArgb, pin.AddrOfPinnedObject());
+            using Graphics graphics = Graphics.FromImage(bitmap);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            DrawPointer(graphics, new PointF(tip.X - left, tip.Y - top), pose, unit);
+        }
+        finally
+        {
+            pin.Free();
+        }
+        MotionBlur.Sprite(picture, width, height, sprite, size, left, top, (open.X - tip.X, open.Y - tip.Y), (close.X - tip.X, close.Y - tip.Y), samples);
     }
 
     private void DrawShapes(Graphics graphics, PointF at, IEnumerable<ClickShape> shapes, double unit)

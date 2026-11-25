@@ -12,10 +12,11 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - El cursor dibujado cambia como en Windows: mano sobre los enlaces, barra sobre el texto y flechas al redimensionar o mover. Solo en videos grabados desde esta versión; con el estilo punto sigue siendo un punto.
 - «Halo alrededor del cursor»: un círculo del color elegido acompaña al puntero.
 - Al arrastrar (botón mantenido), un anillo sigue al puntero hasta soltarlo.
+- Panel Zoom: «Desenfoque al moverse» (encendido de fábrica). La cámara y el cursor se difuminan cuando van rápido, en el video guardado.
 - Panel Zoom: «Seguir al cursor» (encendido de fábrica). Con zoom, la cámara acompaña al puntero para que no salga de la vista.
 
 ### Corregido
-- Zoom automático: con clics seguidos en lugares alejados, la cámara llega antes de cada clic; antes el zoom podía empezar después de él y el clic quedaba fuera de la imagen.
+- Zoom automático: con clics rápidos de un extremo a otro ya no hace zoom en cada uno (la cámara iba y venía); se ve la pantalla completa. Y ningún zoom empieza después de su clic.
 - Al pasar de un zoom a otro hacia un lado alejado, la cámara se desliza de forma pareja, sin tirones.
 
 ### Cambiado

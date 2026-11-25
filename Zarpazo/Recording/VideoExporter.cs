@@ -32,7 +32,7 @@ internal static class VideoExporter
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
         double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null,
         VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null, bool connectZooms = true,
-        VideoExportOptions? output = null, VideoAspect aspect = VideoAspect.Original, bool followPointer = false)
+        VideoExportOptions? output = null, VideoAspect aspect = VideoAspect.Original, bool followPointer = false, bool motionBlur = false)
     {
         output ??= VideoExportOptions.Default;
         bool framed = frame is { Enabled: true };
@@ -73,7 +73,8 @@ internal static class VideoExporter
         bool whole = segments.Count == 1 && segments[0].Start <= 0 && segments[0].End >= sourceDuration - 0.001 && !segments[0].Muted && !segments[0].IsRetimed;
         if (whole)
         {
-            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn, output: output, aspect: aspect);
+            await ZoomRenderer.RenderAsync(source, target, camera, frame, progress, pointer, crop, overlays: drawn, output: output, aspect: aspect,
+                motionBlur: motionBlur);
             return;
         }
 
@@ -83,7 +84,7 @@ internal static class VideoExporter
         {
             await ExportAsync(source, joined, segments, new Progress<double>(value => progress?.Report(value * 0.2)));
             await ZoomRenderer.RenderAsync(joined, target, camera, frame, new Progress<double>(value => progress?.Report(0.2 + value * 0.8)), pointer, crop,
-                retimed ? new PlayClock(segments) : null, drawn, output, aspect);
+                retimed ? new PlayClock(segments) : null, drawn, output, aspect, motionBlur);
         }
         finally
         {

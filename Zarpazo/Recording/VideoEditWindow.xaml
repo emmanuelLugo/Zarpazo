@@ -897,6 +897,8 @@
                                       ToolTip="Si dos zooms están cerca, la cámara se desliza del uno al otro sin volver a la pantalla completa" />
                             <CheckBox x:Name="ZoomFollowBox" Content="Seguir al cursor" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnZoomStyleChanged"
                                       ToolTip="Con zoom, la cámara acompaña al puntero para que no salga de la vista" />
+                            <CheckBox x:Name="ZoomBlurBox" Content="Desenfoque al moverse" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnZoomStyleChanged"
+                                      ToolTip="La cámara y el cursor se difuminan cuando van rápido. Se ve en el video guardado, no en esta vista" />
                             <StackPanel x:Name="ZoomDetails" Visibility="Collapsed" Margin="0,8,0,0">
                                 <TextBlock Text="Zoom elegido" Style="{StaticResource PanelTitle}" />
                                 <Grid>
