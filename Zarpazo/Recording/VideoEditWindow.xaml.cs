@@ -2648,8 +2648,8 @@ public partial class VideoEditWindow : Window
                 ToolTip = effect switch
                 {
                     ClickEffect.None => "Sin efecto en los clics",
-                    ClickEffect.Pulse => "Pulso: una mancha suave que crece y se apaga. El clic derecho añade un anillo",
-                    _ => "Onda: un anillo que crece desde el puntero. El clic derecho hace dos anillos",
+                    ClickEffect.Pulse => "Pulso: una mancha suave que crece y se apaga. El clic derecho añade un anillo; al arrastrar, un anillo sigue al puntero",
+                    _ => "Onda: un anillo que crece desde el puntero. El clic derecho hace dos anillos; al arrastrar, uno sigue al puntero",
                 },
             };
             tile.Checked += OnCursorChanged;
@@ -2701,6 +2701,7 @@ public partial class VideoEditWindow : Window
             swatch.IsChecked = (ClickTint)swatch.Tag == _cursor.Tint;
         }
         CursorIdleBox.IsChecked = _cursor.HideWhenIdle;
+        CursorHaloBox.IsChecked = _cursor.Halo;
         CursorResetButton.IsEnabled = _cursor with { Visible = true } != CursorStyle.Default with { Visible = true };
         CursorBounceBox.IsChecked = _cursor.Bounce;
         ShowCursorValues();
@@ -2734,7 +2735,7 @@ public partial class VideoEditWindow : Window
         CursorSwayRow.Opacity = leans ? 1 : 0.5;
         CursorSwayRow.ToolTip = leans ? "Cuánto se inclina la flecha al moverse de lado" : "El punto no se inclina: elige una flecha";
 
-        CursorTints.IsEnabled = _cursor.Click != ClickEffect.None;
+        CursorTints.IsEnabled = _cursor.Click != ClickEffect.None || _cursor.Halo;
         CursorTints.Opacity = CursorTints.IsEnabled ? 1 : 0.5;
         Color tint = CursorArt.TintColor(_cursor.Tint);
         _rippleBrush.Color = tint;
@@ -2771,7 +2772,8 @@ public partial class VideoEditWindow : Window
             CursorClicks.Children.OfType<RadioButton>().FirstOrDefault(tile => tile.IsChecked == true)?.Tag as ClickEffect? ?? _cursor.Click,
             CursorBounceBox.IsChecked == true,
             CursorTints.Children.OfType<RadioButton>().FirstOrDefault(swatch => swatch.IsChecked == true)?.Tag as ClickTint? ?? _cursor.Tint,
-            CursorIdleBox.IsChecked == true).Tidied() });
+            CursorIdleBox.IsChecked == true,
+            CursorHaloBox.IsChecked == true).Tidied() });
         if (sender is not Slider)
         {
             ShowCursorChoices(); // a slider is left alone while it is dragged
@@ -2845,14 +2847,14 @@ public partial class VideoEditWindow : Window
 
         Color color = CursorArt.TintColor(_cursor.Tint);
         int used = 0;
-        foreach (ClickMark click in _motion.ClicksAt(original))
+        void Circles(double x, double y, IEnumerable<ClickShape> shapes)
         {
-            if (CursorLayer.Shown(click.X, click.Y, _area) is not { } clickAt)
+            if (CursorLayer.Shown(x, y, _area) is not { } shown)
             {
-                continue; // in the part cut away
+                return; // in the part cut away
             }
-            (double x, double y) = CursorLayer.ToPicture(clickAt.X, clickAt.Y, view, _layout, width, height);
-            foreach (ClickShape shape in CursorArt.ClickShapes(_cursor.Click, click))
+            (double centreX, double centreY) = CursorLayer.ToPicture(shown.X, shown.Y, view, _layout, width, height);
+            foreach (ClickShape shape in shapes)
             {
                 if (used == _clickMarks.Count)
                 {
@@ -2867,17 +2869,27 @@ public partial class VideoEditWindow : Window
                 // GDI+ draws the ring's line centred on the circle, WPF inside the ellipse: half a line wider matches them.
                 double outer = (shape.Radius + shape.Width / 2) * unit;
                 mark.Width = mark.Height = outer * 2;
-                Canvas.SetLeft(mark, x - outer);
-                Canvas.SetTop(mark, y - outer);
+                Canvas.SetLeft(mark, centreX - outer);
+                Canvas.SetTop(mark, centreY - outer);
                 mark.Visibility = Visibility.Visible;
             }
+        }
+
+        CursorPose? now = _motion.PoseAt(original);
+        if (now is { } with)
+        {
+            Circles(with.X, with.Y, CursorArt.PointerShapes(_cursor, with)); // first: under the clicks
+        }
+        foreach (ClickMark click in _motion.ClicksAt(original))
+        {
+            Circles(click.X, click.Y, CursorArt.ClickShapes(_cursor.Click, click));
         }
         for (int i = used; i < _clickMarks.Count; i++)
         {
             _clickMarks[i].Visibility = Visibility.Collapsed;
         }
 
-        if (_motion.PoseAt(original) is not { } pose || CursorLayer.Shown(pose.X, pose.Y, _area) is not { } tip)
+        if (now is not { } pose || CursorLayer.Shown(pose.X, pose.Y, _area) is not { } tip)
         {
             PointerGlyph.Visibility = Visibility.Collapsed; // none yet, or in the part cut away
             return;

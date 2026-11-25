@@ -69,6 +69,20 @@ public sealed class CursorLayerTests
     }
 
     [Fact]
+    public void The_halo_goes_round_the_pointer_when_chosen()
+    {
+        byte[] bare = Grey();
+        byte[] haloed = Grey();
+
+        CursorLayer.For(StillAt(100, 50), Plain, [new VideoSegment(0, 5)])!.Draw(bare, Width, Height, 0.5, ZoomView.Full, layout: null);
+        CursorLayer.For(StillAt(100, 50), Plain with { Halo = true }, [new VideoSegment(0, 5)])!
+            .Draw(haloed, Width, Height, 0.5, ZoomView.Full, layout: null);
+
+        Assert.False(Changed(bare, 70, 50)); // 30 px left of the tip, inside the 44 px of the halo at twice the size
+        Assert.True(Changed(haloed, 70, 50));
+    }
+
+    [Fact]
     public void Zoomed_in_the_pointer_is_drawn_bigger_where_the_camera_shows_it()
     {
         CursorLayer layer = CursorLayer.For(StillAt(100, 50), Plain, [new VideoSegment(0, 5)])!;

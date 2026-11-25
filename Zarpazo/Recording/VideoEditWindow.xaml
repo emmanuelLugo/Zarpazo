@@ -814,6 +814,8 @@
                                 <WrapPanel x:Name="CursorTints" Margin="0,10,0,0" />
                                 <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnCursorChanged"
                                           ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
+                                <CheckBox x:Name="CursorHaloBox" Content="Halo alrededor del cursor" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnCursorChanged"
+                                          ToolTip="Un círculo del color elegido acompaña siempre al puntero, para seguirlo con la vista" />
                             </StackPanel>
                         </StackPanel>
 

@@ -156,6 +156,22 @@ public sealed class CursorMotionTests
     }
 
     [Fact]
+    public void A_ring_goes_with_the_pointer_while_a_button_is_held_and_not_for_a_plain_click()
+    {
+        CursorTrack track = Track([new(0, 500, 250)],
+            new CursorClick(1000, 1100, 500, 250, ClickButton.Left), new CursorClick(3000, 4000, 500, 250, ClickButton.Left));
+        var motion = new CursorMotion(track, Exact with { Click = ClickEffect.Ripple });
+        double Held(double seconds) => motion.PoseAt(seconds)!.Value.Held;
+
+        Assert.Equal(0, Held(1.3));
+        Assert.Equal(0, Held(3.1)); // not yet a drag
+        Assert.Equal(1, Held(3.5));
+        Assert.InRange(Held(4 + CursorMotion.HoldFadeSeconds / 2), 0.4, 0.6);
+        Assert.Equal(0, Held(4.5));
+        Assert.Equal(0, new CursorMotion(track, Exact with { Click = ClickEffect.None }).PoseAt(3.5)!.Value.Held);
+    }
+
+    [Fact]
     public void A_right_click_adds_a_second_ring_to_its_effect()
     {
         CursorTrack track = Track([new(0, 500, 250)],

@@ -10,6 +10,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Editor de video, panel Cursor: color del efecto de clic (azul, rojo, amarillo, verde o blanco), «Ocultar si no se mueve» y tres formas de movimiento listas (Natural, Suave y Cinemático).
 - El clic derecho se distingue en el video con un segundo anillo.
 - El cursor dibujado cambia como en Windows: mano sobre los enlaces, barra sobre el texto y flechas al redimensionar o mover. Solo en videos grabados desde esta versión; con el estilo punto sigue siendo un punto.
+- «Halo alrededor del cursor»: un círculo del color elegido acompaña al puntero.
+- Al arrastrar (botón mantenido), un anillo sigue al puntero hasta soltarlo.
 
 ### Cambiado
 - Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.

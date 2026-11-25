@@ -115,16 +115,21 @@ internal sealed class CursorLayer
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
+            PointF? tip = pose is { } shown ? At(shown.X, shown.Y) : null;
+            if (tip is { } under)
+            {
+                DrawShapes(graphics, under, CursorArt.PointerShapes(_style, pose!.Value), unit);
+            }
             foreach (ClickMark click in clicks)
             {
                 if (At(click.X, click.Y) is { } at)
                 {
-                    DrawClick(graphics, at, click, unit);
+                    DrawShapes(graphics, at, CursorArt.ClickShapes(_style.Click, click), unit);
                 }
             }
-            if (pose is { } p && At(p.X, p.Y) is { } tip)
+            if (tip is { } point)
             {
-                DrawPointer(graphics, tip, p, unit);
+                DrawPointer(graphics, point, pose!.Value, unit);
             }
         }
         finally
@@ -133,10 +138,10 @@ internal sealed class CursorLayer
         }
     }
 
-    private void DrawClick(Graphics graphics, PointF at, ClickMark click, double unit)
+    private void DrawShapes(Graphics graphics, PointF at, IEnumerable<ClickShape> shapes, double unit)
     {
         MediaColor color = CursorArt.TintColor(_style.Tint);
-        foreach (ClickShape shape in CursorArt.ClickShapes(_style.Click, click))
+        foreach (ClickShape shape in shapes)
         {
             float radius = (float)(shape.Radius * unit);
             Color paint = ToDrawing(color, shape.Opacity * 255);

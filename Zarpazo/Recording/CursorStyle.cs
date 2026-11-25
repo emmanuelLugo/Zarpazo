@@ -10,9 +10,10 @@ namespace Zarpazo.Recording;
 /// <param name="Sway">0 keeps the arrow upright; 1 leans it the most as it moves sideways.</param>
 /// <param name="Bounce">The pointer shrinks a moment when it clicks, as if pressed.</param>
 /// <param name="Tint">The colour of the click effects.</param>
+/// <param name="Halo">A soft circle of the tint goes with the pointer all the time, to follow it by.</param>
 /// <param name="HideWhenIdle">The pointer fades away after standing still a while, and is back by the time it moves.</param>
 internal sealed record CursorStyle(bool Visible, CursorShape Shape, double Size, double Smoothing, double Sway, ClickEffect Click, bool Bounce,
-    ClickTint Tint = ClickTint.Blue, bool HideWhenIdle = false)
+    ClickTint Tint = ClickTint.Blue, bool HideWhenIdle = false, bool Halo = false)
 {
     public const double MinSize = 1;
     public const double MaxSize = 3;

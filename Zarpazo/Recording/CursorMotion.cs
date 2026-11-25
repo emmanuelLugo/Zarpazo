@@ -29,6 +29,10 @@ internal sealed class CursorMotion
     /// <summary>How long it takes to fade away, and to come back.</summary>
     public const double FadeSeconds = 0.3;
 
+    /// <summary>How long a button has to stay down to count as held (a drag), and how long its ring takes to come and go.</summary>
+    public const double HoldSeconds = 0.25;
+    public const double HoldFadeSeconds = 0.15;
+
     // At full smoothing each pass follows the hand with this time constant.
     private const double MaxGlideSeconds = 0.08;
 
@@ -48,7 +52,7 @@ internal sealed class CursorMotion
     private readonly double[] _x;
     private readonly double[] _y;
     private readonly double[] _angle;
-    private readonly (double Time, double X, double Y, bool Secondary)[] _clicks;
+    private readonly (double Time, double End, double X, double Y, bool Secondary)[] _clicks;
     private readonly (double Start, double End)[] _activity; // when the mouse did something, in order, without overlaps
     private readonly (double Time, CursorKind Kind)[] _kinds;
 
@@ -105,13 +109,18 @@ internal sealed class CursorMotion
             {
                 PinAt(_x, rawX, click.TimeMs / 1000.0);
                 PinAt(_y, rawY, click.TimeMs / 1000.0);
+                if ((click.EndMs - click.TimeMs) / 1000.0 >= HoldSeconds)
+                {
+                    PinAt(_x, rawX, click.EndMs / 1000.0); // a drag also ends where it was let go
+                    PinAt(_y, rawY, click.EndMs / 1000.0);
+                }
             }
         }
 
         _angle = Lean(_x, track.Width / (double)track.Height, style.Sway);
         _clicks = track.Clicks
-            .Select(click => (Time: click.TimeMs / 1000.0, click.Button))
-            .Select(click => (click.Time, Sample(_x, click.Time), Sample(_y, click.Time), click.Button == ClickButton.Right))
+            .Select(click => (Time: click.TimeMs / 1000.0, End: click.EndMs / 1000.0, click.Button))
+            .Select(click => (click.Time, click.End, Sample(_x, click.Time), Sample(_y, click.Time), click.Button == ClickButton.Right))
             .ToArray();
         _activity = Activity(track);
         _kinds = (track.Kinds ?? []).Select(change => (change.TimeMs / 1000.0, change.Kind)).ToArray();
@@ -157,7 +166,7 @@ internal sealed class CursorMotion
         double scale = 1;
         if (_style.Bounce)
         {
-            foreach ((double time, _, _, _) in _clicks)
+            foreach ((double time, _, _, _, _) in _clicks)
             {
                 double share = (seconds - time) / BounceSeconds;
                 if (share is >= 0 and <= 1)
@@ -169,7 +178,7 @@ internal sealed class CursorMotion
         // A dot stays a dot; only the arrow leans.
         CursorKind kind = _style.Shape == CursorShape.Dot ? CursorKind.Arrow : KindAt(seconds);
         double angle = kind == CursorKind.Arrow ? Sample(_angle, seconds) : 0;
-        return new CursorPose(x, y, angle, scale, opacity, kind);
+        return new CursorPose(x, y, angle, scale, opacity, kind, HeldAt(seconds));
     }
 
     /// <summary>The clicks whose effect shows at <paramref name="seconds"/>, oldest first.</summary>
@@ -181,7 +190,7 @@ internal sealed class CursorMotion
         }
 
         List<ClickMark>? marks = null;
-        foreach ((double time, double x, double y, bool secondary) in _clicks)
+        foreach ((double time, _, double x, double y, bool secondary) in _clicks)
         {
             double share = (seconds - time) / ClickSeconds;
             if (share is >= 0 and <= 1)
@@ -190,6 +199,25 @@ internal sealed class CursorMotion
             }
         }
         return marks ?? (IReadOnlyList<ClickMark>)[];
+    }
+
+    // The ring of a held button comes once it counts as held and goes after it is let go.
+    private double HeldAt(double seconds)
+    {
+        double held = 0;
+        if (_style.Click != ClickEffect.None)
+        {
+            foreach ((double time, double end, _, _, _) in _clicks)
+            {
+                if (end - time >= HoldSeconds)
+                {
+                    double coming = (seconds - time - HoldSeconds) / HoldFadeSeconds;
+                    double leaving = 1 - (seconds - end) / HoldFadeSeconds;
+                    held = Math.Max(held, Math.Clamp(Math.Min(coming, leaving), 0, 1));
+                }
+            }
+        }
+        return held;
     }
 
     // The last change at or before the moment.

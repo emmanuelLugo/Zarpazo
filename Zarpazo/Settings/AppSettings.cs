@@ -206,6 +206,7 @@ internal sealed class AppSettings
     public bool VideoCursorBounce { get; set; } = Recording.CursorStyle.Default.Bounce;
     public string VideoCursorTint { get; set; } = Recording.CursorStyle.Default.Tint.ToString();
     public bool VideoCursorHideWhenIdle { get; set; } = Recording.CursorStyle.Default.HideWhenIdle;
+    public bool VideoCursorHalo { get; set; } = Recording.CursorStyle.Default.Halo;
 
     [JsonIgnore]
     public Recording.CursorStyle VideoCursor
@@ -219,7 +220,8 @@ internal sealed class AppSettings
             Enum.TryParse(VideoCursorClick, out Recording.ClickEffect click) ? click : Recording.CursorStyle.Default.Click,
             VideoCursorBounce,
             Enum.TryParse(VideoCursorTint, out Recording.ClickTint tint) ? tint : Recording.CursorStyle.Default.Tint,
-            VideoCursorHideWhenIdle).Tidied();
+            VideoCursorHideWhenIdle,
+            VideoCursorHalo).Tidied();
         set
         {
             VideoCursorVisible = value.Visible;
@@ -231,6 +233,7 @@ internal sealed class AppSettings
             VideoCursorBounce = value.Bounce;
             VideoCursorTint = value.Tint.ToString();
             VideoCursorHideWhenIdle = value.HideWhenIdle;
+            VideoCursorHalo = value.Halo;
         }
     }
 

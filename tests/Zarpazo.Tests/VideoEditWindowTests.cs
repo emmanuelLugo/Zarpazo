@@ -577,6 +577,14 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Pump(() => false, 100);
                 Shot(window, folder, "editor-cursor-dot.png");
 
+                window.CursorHaloBox.IsChecked = true;
+                window.CursorHaloBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 100);
+                Assert.True(window.PointerStyle.Halo);
+                window.CursorHaloBox.BringIntoView();
+                Pump(() => false, 100);
+                Shot(window, folder, "editor-cursor-halo.png");
+
                 window.CursorBox.IsChecked = false;
                 window.CursorBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 100); // drawn again with the next frame

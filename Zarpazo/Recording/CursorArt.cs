@@ -87,7 +87,24 @@ internal static class CursorArt
     /// <summary>The ring a right click adds inside its effect, as a share of the effect's radius.</summary>
     public const double SecondaryRingShare = 0.55;
 
-    /// <summary>The colours offered for the click effects: bright ones, that show on dark and light windows alike.</summary>
+    public const double HaloRadius = 22;
+    public const double HaloOpacity = 0.35;
+    public const double HoldRadius = 15;
+
+    /// <summary>The circles that go with the pointer, centred on its tip: the halo, and the ring of a button held down.</summary>
+    public static IEnumerable<ClickShape> PointerShapes(CursorStyle style, CursorPose pose)
+    {
+        if (style.Halo)
+        {
+            yield return new ClickShape(HaloRadius, 0, HaloOpacity * pose.Opacity);
+        }
+        if (pose.Held > 0)
+        {
+            yield return new ClickShape(HoldRadius, RippleWidth, pose.Held);
+        }
+    }
+
+    /// <summary>The colours offered for the click effects and the halo: bright ones, that show on dark and light windows alike.</summary>
     public static Color TintColor(ClickTint tint) => tint switch
     {
         ClickTint.Red => Color.FromRgb(0xFF, 0x4D, 0x4D),
