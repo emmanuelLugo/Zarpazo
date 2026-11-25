@@ -20,6 +20,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Al pasar de un zoom a otro hacia un lado alejado, la cámara se desliza de forma pareja, sin tirones.
 
 ### Cambiado
+- Zoom «Suave»: la cámara acerca y aleja de forma más pareja, sin el tirón del comienzo. El zoom automático empieza un poco antes de cada clic.
 - Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.
 
 ## [0.12.0] - 2026-11-25

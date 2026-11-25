@@ -25,7 +25,7 @@ public sealed class ZoomTests
     {
         ZoomRegion zoom = Assert.Single(ZoomSuggester.Suggest(Clicks((3, 400, 200), (4.5, 440, 220), (6, 420, 240)), duration: 20));
 
-        Assert.Equal(2.5, zoom.Start, 3);
+        Assert.Equal(3 - ZoomSuggester.LeadSeconds, zoom.Start, 3);
         Assert.Equal(6.6, zoom.End, 3); // the last button comes up at 6.1 s
         Assert.Equal((0.42, 0.44), (zoom.FocusX, zoom.FocusY));
     }
@@ -81,7 +81,7 @@ public sealed class ZoomTests
         var camera = new ZoomCamera([new VideoSegment(0, 20)], [new ZoomRegion(5, 10, 2, 0.5, 0.5)]);
 
         Assert.True(camera.ViewAt(4.9).IsFull);
-        Assert.InRange(camera.ViewAt(5.3).Scale, 1.3, 1.95); // on its way in
+        Assert.InRange(camera.ViewAt(5.3).Scale, 1.15, 1.95); // on its way in
         Assert.Equal(2, camera.ViewAt(7.5).Scale, 2);
         Assert.InRange(camera.ViewAt(9.5).Scale, 1.0, 1.9); // on its way out
         Assert.True(camera.ViewAt(10.1).IsFull);
@@ -206,6 +206,20 @@ public sealed class ZoomTests
         Assert.Equal(255, Blue(70));
         Assert.InRange(Blue(50), 60, 195); // the edge, spread over the 20 pixels travelled
         Assert.True(Blue(45) < Blue(50) && Blue(50) < Blue(55));
+    }
+
+    [Fact]
+    public void The_smooth_camera_never_rushes_as_it_zooms_in()
+    {
+        var camera = new ZoomCamera([new VideoSegment(0, 20)], [new ZoomRegion(5, 10, 2, 0.5, 0.5)]);
+        double fastest = 0;
+        for (double t = 5; t < 5 + ZoomTiming.Smooth.InSeconds; t += 0.01)
+        {
+            fastest = Math.Max(fastest, (camera.ViewAt(t + 0.01).Scale - camera.ViewAt(t).Scale) / 0.01);
+        }
+
+        Assert.InRange(fastest, 0.9, 1.35); // scale a second, going from 1 to 2; the stiff spring peaks at 1.8
+        Assert.Equal(2, camera.ViewAt(5 + ZoomTiming.Smooth.InSeconds).Scale, 2);
     }
 
     [Fact]

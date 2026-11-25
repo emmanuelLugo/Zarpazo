@@ -10,7 +10,9 @@ internal static class ZoomSuggester
     /// <summary>A click this soon after the previous one (counting from when its button came up) joins its zoom.</summary>
     public const double MergeGapSeconds = 2.5;
 
-    /// <summary>The zoom starts this long before the first click and ends this long after the last.</summary>
+    /// <summary>The zoom starts this long before the first click, so the camera is nearly there when it happens, and ends
+    /// this long after the last.</summary>
+    public const double LeadSeconds = 0.8;
     public const double PadSeconds = 0.5;
 
     /// <summary>A zoom for a single click lasts at least this long, so it is not over before it is seen.</summary>
@@ -55,7 +57,7 @@ internal static class ZoomSuggester
             }
 
             (double first, double lastUp, double focusX, double focusY) = groups[i];
-            double start = first - PadSeconds;
+            double start = first - LeadSeconds;
             double end = lastUp + PadSeconds;
             if (end - start < MinSeconds)
             {
@@ -69,6 +71,7 @@ internal static class ZoomSuggester
             if (i > 0 && !Zoomed(i - 1) && start < groups[i - 1].Up + ClearSeconds)
             {
                 (start, squeezed) = (groups[i - 1].Up + ClearSeconds, true);
+                end = Math.Max(end, Math.Min(duration, start + MinSeconds)); // what is lost at the start is made up after
             }
             if (i + 1 < groups.Count && !Zoomed(i + 1))
             {

@@ -68,8 +68,8 @@ internal sealed class ZoomCamera
                 continue;
             }
 
-            double zoomIn = ZoomEasing.Out((time - start) / _timing.InSeconds);
-            double zoomOut = ZoomEasing.Out((time - (end - _timing.OutSeconds)) / _timing.OutSeconds);
+            double zoomIn = ZoomEasing.Out((time - start) / _timing.InSeconds, _timing.Stiffness);
+            double zoomOut = ZoomEasing.Out((time - (end - _timing.OutSeconds)) / _timing.OutSeconds, _timing.Stiffness);
             double strength = zoomIn * (1 - zoomOut);
             (double scale, double focusX, double focusY) = TargetAt(chain, time);
 

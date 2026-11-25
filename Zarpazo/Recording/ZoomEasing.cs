@@ -3,15 +3,17 @@ namespace Zarpazo.Recording;
 /// <summary>The curves the camera moves along, so it never starts or stops with a jolt.</summary>
 internal static class ZoomEasing
 {
-    private const double Stiffness = 7.4; // how quickly the spring settles: at the end it is within half a percent
+    /// <summary>How quickly the spring settles: the stiffer, the more of the move happens at its start.</summary>
+    public const double Stiff = 7.4;
 
-    private static readonly double SpringEnd = 1 - (1 + Stiffness) * Math.Exp(-Stiffness);
+    /// <summary>Softer: the same time to get there, with a top speed about 30 % lower.</summary>
+    public const double Soft = 5;
 
     /// <summary>
     /// Like a camera on a spring that is just stiff enough not to bounce: it starts from rest, speeds up, and settles gently
     /// into place. For zooming in and out. (A curve that is fast from the first instant felt like a jump.)
     /// </summary>
-    public static double Out(double t)
+    public static double Out(double t, double stiffness = Stiff)
     {
         if (t <= 0)
         {
@@ -21,8 +23,8 @@ internal static class ZoomEasing
         {
             return 1;
         }
-        double k = Stiffness * t;
-        return (1 - (1 + k) * Math.Exp(-k)) / SpringEnd;
+        double k = stiffness * t;
+        return (1 - (1 + k) * Math.Exp(-k)) / (1 - (1 + stiffness) * Math.Exp(-stiffness));
     }
 
     /// <summary>Gentle at both ends: for moving the camera from one zoom to the next.</summary>
