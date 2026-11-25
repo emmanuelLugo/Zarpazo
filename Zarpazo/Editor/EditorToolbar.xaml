@@ -1,6 +1,7 @@
 <UserControl x:Class="Zarpazo.Editor.EditorToolbar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Zarpazo.Editor"
              Cursor="Arrow">
     <UserControl.Resources>
         <Style x:Key="Choice" TargetType="RadioButton">
@@ -29,16 +30,122 @@
             </Setter>
         </Style>
 
+        <local:ShortcutTipConverter x:Key="ShortcutTip" />
+
+        <!-- Tooltips in the look of the bars: the name, its key as a key cap, and the rest in grey underneath. -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="#F2202124" BorderBrush="#33FFFFFF" BorderThickness="1" CornerRadius="7" Padding="10,7" MaxWidth="340">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.4" />
+                            </Border.Effect>
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Converter={StaticResource ShortcutTip}, ConverterParameter=title}" Foreground="#E8EAED"
+                                           FontFamily="Segoe UI" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <Border Margin="8,0,0,0" Background="#3B3E44" BorderBrush="#4A4D55" BorderThickness="1,1,1,2" CornerRadius="4" Padding="6,0"
+                                        VerticalAlignment="Center" Visibility="{Binding Converter={StaticResource ShortcutTip}, ConverterParameter=keyShown}">
+                                    <TextBlock Text="{Binding Converter={StaticResource ShortcutTip}, ConverterParameter=key}" Foreground="#E8EAED"
+                                               FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding Converter={StaticResource ShortcutTip}, ConverterParameter=detail}" Foreground="#9BA1AA"
+                                       FontFamily="Segoe UI" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
+                                       Visibility="{Binding Converter={StaticResource ShortcutTip}, ConverterParameter=detailShown}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The card of every pop-up: the same border and shadow as the bars. The margin is room for the shadow. -->
+        <Style x:Key="PopupCard" TargetType="Border">
+            <Setter Property="Background" Value="#F2202124" />
+            <Setter Property="BorderBrush" Value="#26FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Margin" Value="8" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.45" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A tool in the bar: the one in use is tinted red and has the red bar at its side, like the menus. -->
+        <Style x:Key="ToolChoice" TargetType="RadioButton" BasedOn="{StaticResource Choice}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Border x:Name="Box" MinWidth="32" Height="32" CornerRadius="6" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-4,7,0,7" Background="#EF5350" Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#26FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#3DEF5350" />
+                                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- One of a few options side by side, as parts of one control. -->
+        <Style x:Key="SegChoice" TargetType="RadioButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="#B3FFFFFF" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="12.5" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnChoicePressed" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Box" Height="26" CornerRadius="6" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#4DEF5350" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="Action" TargetType="Button">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Margin" Value="1" />
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Box" MinWidth="32" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
+                        <Border x:Name="Box" MinWidth="32" Height="32" Padding="8,0" CornerRadius="6" Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -121,15 +228,20 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Box" MinWidth="150" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
-                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid>
+                            <Border x:Name="Box" MinWidth="150" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-4,7,0,7" Background="#EF5350" Visibility="Collapsed" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Box" Property="Background" Value="#26FFFFFF" />
+                                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#4DFFFFFF" />
+                                <Setter TargetName="Box" Property="Background" Value="#3DEF5350" />
+                                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -146,12 +258,16 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Box" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
-                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid>
+                            <Border x:Name="Box" Height="32" Padding="8,0" CornerRadius="6" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-4,7,0,7" Background="#EF5350" Visibility="Collapsed" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Box" Property="Background" Value="#26FFFFFF" />
+                                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Box" Property="Background" Value="#4DFFFFFF" />
@@ -171,7 +287,7 @@
             <!-- "Adjust the area" has no button: pressing the active tool again, or its entry in a group, goes back to it. -->
             <RadioButton x:Name="SelectTool" GroupName="tool" Tag="Select" IsChecked="True" Style="{StaticResource Choice}"
                          Visibility="Collapsed" AutomationProperties.Name="Ajustar zona" />
-            <RadioButton GroupName="tool" Tag="Move" Style="{StaticResource Choice}"
+            <RadioButton GroupName="tool" Tag="Move" Style="{StaticResource ToolChoice}"
                          AutomationProperties.Name="Mover anotaciones"
                          ToolTip="Mover y estirar anotaciones (V). Supr borra la seleccionada">
                 <Path Style="{StaticResource Icon}"
@@ -183,11 +299,11 @@
             <!-- Tools that belong together share one button showing the one used last; the groups are built in code. -->
             <ContentControl x:Name="ShapesSlot" Focusable="False" IsTabStop="False" />
             <ContentControl x:Name="DrawSlot" Focusable="False" IsTabStop="False" />
-            <RadioButton GroupName="tool" Tag="Text" Style="{StaticResource Choice}"
+            <RadioButton GroupName="tool" Tag="Text" Style="{StaticResource ToolChoice}"
                          AutomationProperties.Name="Texto" ToolTip="Texto (T). Enter confirma, Mayús+Enter salto de línea">
                 <Path Style="{StaticResource Icon}" Data="M3,4 V3 H13 V4 M8,3 V13 M6,13 H10" />
             </RadioButton>
-            <RadioButton GroupName="tool" Tag="Step" Style="{StaticResource Choice}"
+            <RadioButton GroupName="tool" Tag="Step" Style="{StaticResource ToolChoice}"
                          AutomationProperties.Name="Numeración de pasos" ToolTip="Numeración de pasos (N): un clic por número">
                 <Grid Width="16" Height="16">
                     <Ellipse Margin="0.75" Stroke="White" StrokeThickness="1.5" />
@@ -195,7 +311,7 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
             </RadioButton>
-            <RadioButton GroupName="tool" Tag="Pixelate" Style="{StaticResource Choice}"
+            <RadioButton GroupName="tool" Tag="Pixelate" Style="{StaticResource ToolChoice}"
                          AutomationProperties.Name="Pixelar" ToolTip="Pixelar para ocultar datos (B)">
                 <Grid Width="16" Height="16">
                     <Path Style="{StaticResource Icon}" StrokeThickness="0" Fill="#99FFFFFF"
@@ -221,7 +337,7 @@
                    Placement="Right"
                    StaysOpen="False"
                    AllowsTransparency="True">
-                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="6">
+                <Border Style="{StaticResource PopupCard}" Padding="4">
                     <StackPanel RadioButton.Checked="OnChoice">
                         <WrapPanel Width="204">
                             <RadioButton GroupName="color" Tag="#E53935" IsChecked="True" Style="{StaticResource Choice}" ToolTip="Rojo">
@@ -300,7 +416,7 @@
                    AllowsTransparency="True"
                    Opened="OnRecordPopupOpened"
                    Closed="OnRecordPopupClosed">
-                <Border Background="#F2202124" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                <Border Style="{StaticResource PopupCard}" Padding="10">
                     <StackPanel Width="250" RadioButton.Checked="OnRecordChoice">
                         <TextBlock Text="Formato" Style="{StaticResource PanelLabel}" Margin="2,0,0,3" />
                         <StackPanel Orientation="Horizontal">
@@ -385,8 +501,17 @@
                 </Border>
             </Popup>
 
-            <Button x:Name="MoreButton" Style="{StaticResource Action}" ToolTip="Más: copiar el texto, fijar sobre la pantalla, captura con scroll, embellecer, tamaño de salida"
+            <Button x:Name="MoreButton" ToolTip="Más: copiar el texto, fijar sobre la pantalla, captura con scroll, embellecer, tamaño de salida"
                     AutomationProperties.Name="Más" Click="OnMoreButton">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource Action}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsOpen, ElementName=MorePopup}" Value="True">
+                                <Setter Property="Background" Value="#3DEF5350" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
                 <Grid Width="16" Height="16">
                     <Path Fill="White" Data="M2.2,8 A1.3,1.3 0 1 0 4.8,8 A1.3,1.3 0 1 0 2.2,8 Z M6.7,8 A1.3,1.3 0 1 0 9.3,8 A1.3,1.3 0 1 0 6.7,8 Z M11.2,8 A1.3,1.3 0 1 0 13.8,8 A1.3,1.3 0 1 0 11.2,8 Z" />
                     <!-- Shows when Embellecer is on, so a forgotten setting doesn't surprise anyone. -->
@@ -399,7 +524,7 @@
                    Placement="Top"
                    StaysOpen="False"
                    AllowsTransparency="True">
-                <Border Background="#F2202124" CornerRadius="8" Padding="4" Margin="0,0,0,6">
+                <Border Style="{StaticResource PopupCard}" Padding="4">
                     <StackPanel Width="264">
                         <Button Style="{StaticResource MenuAction}" Click="OnMoreOcr" AutomationProperties.Name="Copiar texto"
                                 ToolTip="Lee el texto de la zona y lo copia">
@@ -480,20 +605,22 @@
                             </Grid>
                         </Button>
                         <TextBlock Text="Tamaño al copiar y guardar" Style="{StaticResource PanelLabel}" Margin="8,8,0,3" />
-                        <StackPanel Orientation="Horizontal" Margin="4,0,0,4" RadioButton.Checked="OnOutputScaleChoice">
-                            <RadioButton GroupName="outputScale" Tag="1" IsChecked="True" Style="{StaticResource Choice}" AutomationProperties.Name="Tamaño original">
-                                <TextBlock Text="100%" Margin="8,0" />
-                            </RadioButton>
-                            <RadioButton GroupName="outputScale" Tag="0.75" Style="{StaticResource Choice}" AutomationProperties.Name="Tres cuartos del tamaño">
-                                <TextBlock Text="75%" Margin="8,0" />
-                            </RadioButton>
-                            <RadioButton GroupName="outputScale" Tag="0.5" Style="{StaticResource Choice}" AutomationProperties.Name="La mitad del tamaño">
-                                <TextBlock Text="50%" Margin="8,0" />
-                            </RadioButton>
-                            <RadioButton GroupName="outputScale" Tag="0.25" Style="{StaticResource Choice}" AutomationProperties.Name="Un cuarto del tamaño">
-                                <TextBlock Text="25%" Margin="8,0" />
-                            </RadioButton>
-                        </StackPanel>
+                        <Border Margin="4,0,4,4" Padding="3" CornerRadius="8" Background="#14FFFFFF">
+                            <UniformGrid Rows="1" RadioButton.Checked="OnOutputScaleChoice">
+                                <RadioButton GroupName="outputScale" Tag="1" IsChecked="True" Style="{StaticResource SegChoice}" AutomationProperties.Name="Tamaño original">
+                                    <TextBlock Text="100%" />
+                                </RadioButton>
+                                <RadioButton GroupName="outputScale" Tag="0.75" Style="{StaticResource SegChoice}" AutomationProperties.Name="Tres cuartos del tamaño">
+                                    <TextBlock Text="75%" />
+                                </RadioButton>
+                                <RadioButton GroupName="outputScale" Tag="0.5" Style="{StaticResource SegChoice}" AutomationProperties.Name="La mitad del tamaño">
+                                    <TextBlock Text="50%" />
+                                </RadioButton>
+                                <RadioButton GroupName="outputScale" Tag="0.25" Style="{StaticResource SegChoice}" AutomationProperties.Name="Un cuarto del tamaño">
+                                    <TextBlock Text="25%" />
+                                </RadioButton>
+                            </UniformGrid>
+                        </Border>
                     </StackPanel>
                 </Border>
             </Popup>
@@ -502,7 +629,7 @@
                    Placement="Top"
                    StaysOpen="False"
                    AllowsTransparency="True">
-                <Border Background="#F2202124" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                <Border Style="{StaticResource PopupCard}" Padding="10">
                     <StackPanel Width="288" RadioButton.Checked="OnBeautifyChoice">
                         <CheckBox x:Name="BeautifyEnabledBox" Content="Embellecer al copiar y guardar" Foreground="White"
                                   FontFamily="Segoe UI" FontSize="13" Focusable="False" Click="OnBeautifyEnabled" />

@@ -105,6 +105,7 @@ public partial class EditorToolbar : UserControl
         public required Button Face { get; init; }
         public required Popup Menu { get; init; }
         public required Border Corner { get; init; }
+        public required Border Bar { get; init; }
     }
 
     /// <summary>The menu of a group and the corner that opens it; for the tests, which can't point a real mouse.</summary>
@@ -141,7 +142,18 @@ public partial class EditorToolbar : UserControl
             VerticalAlignment = VerticalAlignment.Bottom,
             Cursor = Cursors.Hand,
         };
-        box.Child = new Grid { Children = { face, triangle, corner } };
+        // The red bar of the tool in use, as in the tools that have a button of their own.
+        var bar = new Border
+        {
+            Width = 3,
+            CornerRadius = new CornerRadius(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(-5, 7, 0, 7),
+            Background = new SolidColorBrush(Color.FromRgb(0xEF, 0x53, 0x50)),
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false,
+        };
+        box.Child = new Grid { Children = { face, triangle, corner, bar } };
 
         var list = new StackPanel();
         var rows = new List<(RadioButton Row, ToolEntry Entry)>();
@@ -189,15 +201,13 @@ public partial class EditorToolbar : UserControl
             AllowsTransparency = true,
             Child = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(0xF2, 0x20, 0x21, 0x24)),
-                CornerRadius = new CornerRadius(8),
+                Style = (Style)FindResource("PopupCard"),
                 Padding = new Thickness(4),
-                Margin = new Thickness(6),
                 Child = list,
             },
         };
 
-        var group = new ToolGroup { Title = title, Entries = entries, Remembered = first, Box = box, Icon = icon, Face = face, Menu = menu, Corner = corner };
+        var group = new ToolGroup { Title = title, Entries = entries, Remembered = first, Box = box, Icon = icon, Face = face, Menu = menu, Corner = corner, Bar = bar };
         face.Click += (_, _) => ApplyTool(group.Entries.Any(entry => entry.Tool == Tool) ? AnnotationTool.Select : group.Remembered);
         face.MouseRightButtonUp += (_, e) =>
         {
@@ -282,7 +292,8 @@ public partial class EditorToolbar : UserControl
 
                 ToolEntry shown = group.Entries.First(entry => entry.Tool == group.Remembered);
                 group.Icon.Content = FindResource(shown.IconKey);
-                group.Box.Background = used ? new SolidColorBrush(Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF)) : Brushes.Transparent;
+                group.Box.Background = used ? new SolidColorBrush(Color.FromArgb(0x3D, 0xEF, 0x53, 0x50)) : Brushes.Transparent;
+                group.Bar.Visibility = used ? Visibility.Visible : Visibility.Collapsed;
                 group.Face.ToolTip = $"{group.Title}: {ToolShortcuts.WithKey(shown.Label, shown.Tool)}. Pulsa otra vez para soltarla; el triángulo o el clic derecho muestran las demás";
                 group.Menu.IsOpen = false;
             }
