@@ -6,12 +6,15 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.12.0] - 2026-11-25
+
 ### Cambiado
 - Configuración renovada: cada grupo de ajustes va en una tarjeta, con la explicación junto a su control, interruptores en lugar de casillas y un menú lateral con iconos.
 - Los menús (el de la bandeja y los de clic derecho) tienen un aspecto propio: resalte redondeado con una barrita roja, en tema claro y oscuro.
 - Barras del editor: la herramienta en uso se marca en rojo, los menús desplegables llevan borde y sombra, los avisos al pasar el mouse son oscuros y muestran la tecla aparte, y el tamaño al copiar y guardar es un solo control.
 - La tecla de la herramienta en uso la suelta (por ejemplo, T y otra vez T), y vuelves a ajustar la zona.
 - Historial renovado: buscador con lupa, filtro a la vista, tarjetas con la fecha y las medidas, y acciones rápidas (copiar, editar, conservar) al pasar el mouse. «Copiar» es el botón principal; «Abrir», «Conservar» y «Abrir carpeta» están en «Más».
+- Editor de video: cada botón de la izquierda lleva su nombre, los ajustes con barra muestran nombre, barra y valor sin encimarse, los botones de edición van agrupados y el panel Marco está más ordenado.
 
 ## [0.11.0] - 2026-11-23
 
@@ -188,7 +191,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.11.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.0...v0.9.1
