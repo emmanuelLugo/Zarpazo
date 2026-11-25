@@ -74,6 +74,15 @@ internal sealed record CursorTrack(int Width, int Height, IReadOnlyList<CursorSa
         return (Moves[low].X / (double)Width, Moves[low].Y / (double)Height);
     }
 
+    /// <summary>
+    /// The pointer for the camera to follow: where it was at a moment of the original, in shares of the scene (the cropped
+    /// picture, inside its frame), null while it was off the picture shown. See <see cref="CropArea"/>.
+    /// </summary>
+    public Func<double, (double X, double Y)?> InScene(CropArea? crop, FrameLayout? layout) => seconds =>
+        PositionAt((long)Math.Round(seconds * 1000)) is { } at && CursorLayer.Shown(at.X, at.Y, crop) is { } shown && CropArea.Shows(shown.X, shown.Y)
+            ? layout?.ToScene(shown.X, shown.Y) ?? shown
+            : null;
+
     /// <summary>Copies the pointer of <paramref name="video"/>, if it has one, to go with <paramref name="copy"/>.</summary>
     public static void CopyAlong(string video, string copy)
     {

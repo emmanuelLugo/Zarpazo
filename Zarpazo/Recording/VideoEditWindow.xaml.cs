@@ -241,6 +241,7 @@ public partial class VideoEditWindow : Window
             }
             RebuildPointer();
             ShowCursorChoices();
+            ShowZoomStyle();
             ShowFrameValues(); // the corners in pixels of this video
             ShowCropChoices();
             _shownAspect = _timeline.Aspect;
@@ -978,7 +979,7 @@ public partial class VideoEditWindow : Window
     // Every choice that changes the finished video: when it is the same as last time, the video already made is used again.
     private string Recipe => _timeline == null ? "" : string.Join("|",
         string.Join(";", _timeline.Segments), string.Join(";", _timeline.Zooms), _frame, CursorLayer.For(_track, _cursor, _timeline.Segments) != null ? _cursor : "",
-        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}" : "", string.Join(";", _timeline.Overlays), _export, _timeline.Aspect);
+        _timeline.Crop, _timeline.Zooms.Count > 0 ? $"{_zoomStyle.Motion}{_zoomStyle.Connect}{_zoomStyle.Follow && _track != null}" : "", string.Join(";", _timeline.Overlays), _export, _timeline.Aspect);
 
     private void SetBusy(bool busy)
     {
@@ -1013,7 +1014,8 @@ public partial class VideoEditWindow : Window
                 if (NeedsRendering)
                 {
                     await VideoExporter.ExportAsync(_source, target, _timeline.Segments, _timeline.Zooms, _timeline.SourceDuration, _frame, progress,
-                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect, _export, _timeline.Aspect);
+                        _track, _cursor, _timeline.Crop, _zoomStyle.Motion, _timeline.Overlays, _zoomStyle.Connect, _export, _timeline.Aspect,
+                        _zoomStyle.Follow);
                 }
                 else
                 {
@@ -1927,7 +1929,8 @@ public partial class VideoEditWindow : Window
         {
             zooms = layout.ToScene(zooms);
         }
-        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion, _zoomStyle.Connect);
+        _previewCamera = new ZoomCamera(_timeline.Segments, zooms, _zoomStyle.Motion, _zoomStyle.Connect,
+            _zoomStyle.Follow ? _track?.InScene(_area, _layout) : null);
     }
 
     // ---------- crop
@@ -2273,6 +2276,8 @@ public partial class VideoEditWindow : Window
         ZoomSmoothTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Smooth;
         ZoomFocusedTile.IsChecked = _zoomStyle.Motion == ZoomMotion.Focused;
         ZoomConnectBox.IsChecked = _zoomStyle.Connect;
+        ZoomFollowBox.IsChecked = _zoomStyle.Follow;
+        ZoomFollowBox.IsEnabled = _timeline == null || _track != null; // nothing to follow without the pointer's record
         ShowZoomStyleValues();
         _showingZoomStyle = false;
     }
@@ -2293,7 +2298,8 @@ public partial class VideoEditWindow : Window
         var style = new ZoomStyle(
             Math.Round(ZoomStyleDepthSlider.Value * 20) / 20,
             ZoomFocusedTile.IsChecked == true ? ZoomMotion.Focused : ZoomMotion.Smooth,
-            ZoomConnectBox.IsChecked == true);
+            ZoomConnectBox.IsChecked == true,
+            ZoomFollowBox.IsChecked == true);
         ChangeLook(Look with { Zoom = style });
         if (sender is Slider)
         {

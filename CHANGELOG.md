@@ -12,6 +12,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - El cursor dibujado cambia como en Windows: mano sobre los enlaces, barra sobre el texto y flechas al redimensionar o mover. Solo en videos grabados desde esta versión; con el estilo punto sigue siendo un punto.
 - «Halo alrededor del cursor»: un círculo del color elegido acompaña al puntero.
 - Al arrastrar (botón mantenido), un anillo sigue al puntero hasta soltarlo.
+- Panel Zoom: «Seguir al cursor» (encendido de fábrica). Con zoom, la cámara acompaña al puntero para que no salga de la vista.
 
 ### Cambiado
 - Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.

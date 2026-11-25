@@ -249,18 +249,23 @@ internal sealed class AppSettings
     /// <summary>Whether zooms close to each other are joined (see <see cref="Recording.ZoomStyle.Connect"/>).</summary>
     public bool VideoZoomConnect { get; set; } = Recording.ZoomStyle.Default.Connect;
 
+    /// <summary>Whether the camera follows the pointer while zoomed in (see <see cref="Recording.ZoomStyle.Follow"/>).</summary>
+    public bool VideoZoomFollow { get; set; } = Recording.ZoomStyle.Default.Follow;
+
     [JsonIgnore]
     public Recording.ZoomStyle VideoZoom
     {
         get => new Recording.ZoomStyle(
             VideoZoomDepth,
             Enum.TryParse(VideoZoomMotion, out Recording.ZoomMotion motion) ? motion : Recording.ZoomStyle.Default.Motion,
-            VideoZoomConnect).Tidied();
+            VideoZoomConnect,
+            VideoZoomFollow).Tidied();
         set
         {
             VideoZoomDepth = value.Depth;
             VideoZoomMotion = value.Motion.ToString();
             VideoZoomConnect = value.Connect;
+            VideoZoomFollow = value.Follow;
         }
     }
 

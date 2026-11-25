@@ -32,12 +32,13 @@ internal static class VideoExporter
     public static async Task ExportAsync(string source, string target, IReadOnlyList<VideoSegment> segments, IReadOnlyList<ZoomRegion> zooms,
         double sourceDuration, VideoFrameStyle? frame, IProgress<double>? progress = null, CursorTrack? track = null, CursorStyle? cursor = null,
         VideoCrop crop = default, ZoomMotion motion = ZoomMotion.Smooth, IReadOnlyList<VideoOverlay>? overlays = null, bool connectZooms = true,
-        VideoExportOptions? output = null, VideoAspect aspect = VideoAspect.Original)
+        VideoExportOptions? output = null, VideoAspect aspect = VideoAspect.Original, bool followPointer = false)
     {
         output ??= VideoExportOptions.Default;
         bool framed = frame is { Enabled: true };
         bool letterboxed = false;
         CropArea? area = null;
+        FrameLayout? layout = null;
         if (framed || !crop.IsNone || aspect != VideoAspect.Original)
         {
             // The zooms and the pointer look at points of the recording: into the crop first (see CropArea), then, in a
@@ -51,11 +52,12 @@ internal static class VideoExporter
             if (framed)
             {
                 (int sceneWidth, int sceneHeight) = aspect.SceneSize(area.Value.Width, area.Value.Height);
-                zooms = FrameLayout.ForExport(frame, sceneWidth, sceneHeight, area.Value.Width, area.Value.Height).ToScene(zooms);
+                layout = FrameLayout.ForExport(frame, sceneWidth, sceneHeight, area.Value.Width, area.Value.Height);
+                zooms = layout.Value.ToScene(zooms);
             }
         }
 
-        var camera = new ZoomCamera(segments, zooms, motion, connectZooms);
+        var camera = new ZoomCamera(segments, zooms, motion, connectZooms, followPointer ? track?.InScene(area, layout) : null);
         CursorLayer? pointer = CursorLayer.For(track, cursor, segments, area);
         OverlayLayer? drawn = OverlayLayer.For(overlays, segments, area);
         bool cropped = area is { IsWhole: false };

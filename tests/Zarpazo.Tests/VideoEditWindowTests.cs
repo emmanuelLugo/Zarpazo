@@ -553,6 +553,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
             {
                 Assert.True(Pump(() => window.Timeline != null), "the video should open");
                 Assert.True(window.CursorBox.IsEnabled);
+                Assert.True(window.ZoomFollowBox.IsEnabled && window.ZoomFollowBox.IsChecked == true);
                 Assert.Equal(Visibility.Visible, window.PointerLayer.Visibility);
                 Assert.Equal(Visibility.Visible, window.PointerGlyph.Visibility);
                 Assert.Equal(3, window.CursorShapes.Children.Count);

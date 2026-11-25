@@ -88,6 +88,41 @@ public sealed class ZoomTests
     }
 
     [Fact]
+    public void The_camera_follows_a_pointer_that_would_leave_the_view_and_comes_back_with_it()
+    {
+        // Resting on the point of the zoom, then down to the bottom right between 8 and 9 s, and back between 12 and 13 s.
+        static (double X, double Y)? Pointer(double t)
+        {
+            double share = Math.Clamp(t - 8, 0, 1) - Math.Clamp(t - 12, 0, 1);
+            return (0.3 + 0.6 * share, 0.3 + 0.6 * share);
+        }
+        var camera = new ZoomCamera([new VideoSegment(0, 20)], [new ZoomRegion(5, 16, 2, 0.3, 0.3)], pointer: Pointer);
+        var still = new ZoomCamera([new VideoSegment(0, 20)], [new ZoomRegion(5, 16, 2, 0.3, 0.3)]);
+
+        Assert.Equal(still.ViewAt(7).X, camera.ViewAt(7).X, 3); // within reach: where the zoom says
+        ZoomView away = camera.ViewAt(10.5);
+        Assert.InRange(0.9, away.X, away.X + away.Width);
+        Assert.InRange(0.9, away.Y, away.Y + away.Height);
+        Assert.Equal(still.ViewAt(14.4).X, camera.ViewAt(14.4).X, 2); // and back
+        for (double t = 5; t < 16; t += 1.0 / 30)
+        {
+            Assert.True(Math.Abs(camera.ViewAt(t + 1.0 / 30).X - camera.ViewAt(t).X) < 0.04, $"the camera jumps at {t:F2}");
+        }
+    }
+
+    [Fact]
+    public void A_pointer_off_the_picture_leaves_the_camera_where_the_zoom_says()
+    {
+        var track = new CursorTrack(100, 100, [new CursorSample(0, 150, 150)], []);
+        VideoSegment[] whole = [new VideoSegment(0, 20)];
+        ZoomRegion[] zoom = [new ZoomRegion(5, 10, 2, 0.3, 0.3)];
+
+        var camera = new ZoomCamera(whole, zoom, pointer: track.InScene(null, null));
+
+        Assert.Equal(new ZoomCamera(whole, zoom).ViewAt(7.5), camera.ViewAt(7.5));
+    }
+
+    [Fact]
     public void Zooms_close_together_stay_zoomed_in_and_the_camera_glides_between_them()
     {
         var camera = new ZoomCamera([new VideoSegment(0, 30)],

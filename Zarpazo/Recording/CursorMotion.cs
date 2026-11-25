@@ -286,7 +286,7 @@ internal sealed class CursorMotion
     }
 
     // An exponential follower run forwards and then backwards: each pass lags by as much as the other leads.
-    private static void SmoothBothWays(double[] values, double seconds)
+    internal static void SmoothBothWays(double[] values, double seconds)
     {
         double keep = Math.Exp(-StepSeconds / seconds);
         for (int i = 1; i < values.Length; i++)
