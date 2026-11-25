@@ -15,6 +15,8 @@ internal sealed class WindowsInputState : IInputState
 
     public Point CursorPosition => GetCursorPos(out NativePoint point) ? new Point(point.X, point.Y) : Point.Empty;
 
+    public CursorKind PointerKind => CursorPainter.CurrentKind();
+
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint
     {

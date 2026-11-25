@@ -14,8 +14,9 @@ namespace Zarpazo.Recording;
 /// draw another. Recordings made before the editor drew its own have it, and files of theirs lack the field: hence true.</param>
 /// <param name="PointerScale">How many pixels of the video the pointer on screen measured per pixel of its picture: the
 /// video's size over the area's, times the screen's scaling (a 150 % screen has a pointer 1.5 times as big).</param>
+/// <param name="Kinds">Which pointer showed, each time it changed, oldest first; null in recordings made before it was kept.</param>
 internal sealed record CursorTrack(int Width, int Height, IReadOnlyList<CursorSample> Moves, IReadOnlyList<CursorClick> Clicks,
-    bool PointerInPicture = true, double PointerScale = 1)
+    bool PointerInPicture = true, double PointerScale = 1, IReadOnlyList<CursorKindChange>? Kinds = null)
 {
     public const string Extension = ".cursor.json";
 

@@ -88,11 +88,35 @@ internal static class CursorPainter
         }
     }
 
+    /// <summary>Which of Windows' pointers is showing now.</summary>
+    public static CursorKind CurrentKind()
+    {
+        var info = new CursorInfo { Size = Marshal.SizeOf<CursorInfo>() };
+        return GetCursorInfo(ref info) && SystemId(info.Cursor) is { } id
+            ? id switch
+            {
+                32513 => CursorKind.Text,
+                32642 => CursorKind.ResizeDiagonalDown,
+                32643 => CursorKind.ResizeDiagonalUp,
+                32644 => CursorKind.ResizeHorizontal,
+                32645 => CursorKind.ResizeVertical,
+                32646 => CursorKind.Move,
+                32649 => CursorKind.Hand,
+                _ => CursorKind.Arrow,
+            }
+            : CursorKind.Arrow;
+    }
+
+    private static int? SystemId(IntPtr cursor)
+    {
+        _systemHandles ??= SystemCursors.ToDictionary(id => LoadCursor(IntPtr.Zero, id), id => id);
+        return _systemHandles.TryGetValue(cursor, out int id) ? id : null;
+    }
+
     // The same Windows pointer loaded at a bigger size, or null for a pointer of some program.
     private static (IntPtr Cursor, int HotspotX, int HotspotY)? LargeSystemCursor(IntPtr current, int size)
     {
-        _systemHandles ??= SystemCursors.ToDictionary(id => LoadCursor(IntPtr.Zero, id), id => id);
-        if (!_systemHandles.TryGetValue(current, out int id))
+        if (SystemId(current) is not { } id)
         {
             return null;
         }

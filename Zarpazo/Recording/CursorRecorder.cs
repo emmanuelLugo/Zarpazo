@@ -18,6 +18,7 @@ internal sealed class CursorRecorder
     private readonly int _height;
     private readonly List<CursorSample> _moves = [];
     private readonly List<CursorClick> _clicks = [];
+    private readonly List<CursorKindChange> _kinds = [];
     private readonly int?[] _heldClick = new int?[Buttons.Length]; // the click each button is holding down, as an index into _clicks
 
     /// <param name="region">The part of the screen being recorded, in physical pixels.</param>
@@ -39,6 +40,12 @@ internal sealed class CursorRecorder
         if (_moves.Count == 0 || _moves[^1].X != x || _moves[^1].Y != y)
         {
             _moves.Add(new CursorSample(timeMs, x, y));
+        }
+
+        CursorKind kind = _input.PointerKind;
+        if (_kinds.Count == 0 || _kinds[^1].Kind != kind)
+        {
+            _kinds.Add(new CursorKindChange(timeMs, kind)); // apart from the moves: it can change under a still mouse
         }
 
         for (int i = 0; i < Buttons.Length; i++)
@@ -72,6 +79,6 @@ internal sealed class CursorRecorder
                 clicks[index] = clicks[index] with { EndMs = Math.Max(clicks[index].TimeMs, endMs) };
             }
         }
-        return new CursorTrack(_width, _height, _moves.ToList(), clicks);
+        return new CursorTrack(_width, _height, _moves.ToList(), clicks, Kinds: _kinds.ToList());
     }
 }

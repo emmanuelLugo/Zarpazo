@@ -163,7 +163,7 @@ internal sealed class CursorLayer
         }
         else
         {
-            path.AddPolygon(CursorArt.Arrow.Select(point => new PointF((float)point.X, (float)point.Y)).ToArray());
+            path.AddPolygon(CursorArt.Outline(pose.Kind).Select(point => new PointF((float)point.X, (float)point.Y)).ToArray());
         }
 
         GraphicsState state = graphics.Save();

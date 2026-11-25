@@ -12,6 +12,7 @@ internal sealed class FrameInputState(IInputState input) : IInputState
     private readonly Dictionary<int, bool> _down = [];
     private readonly Dictionary<int, bool> _pressed = [];
     private Point? _cursor;
+    private CursorKind? _kind;
 
     /// <summary>Forgets what was read, so the next questions look at the real keyboard and mouse again. Call it once per picture.</summary>
     public void Refresh()
@@ -19,6 +20,7 @@ internal sealed class FrameInputState(IInputState input) : IInputState
         _down.Clear();
         _pressed.Clear();
         _cursor = null;
+        _kind = null;
     }
 
     public bool IsDown(int virtualKey)
@@ -42,4 +44,6 @@ internal sealed class FrameInputState(IInputState input) : IInputState
     }
 
     public Point CursorPosition => _cursor ??= input.CursorPosition;
+
+    public CursorKind PointerKind => _kind ??= input.PointerKind;
 }

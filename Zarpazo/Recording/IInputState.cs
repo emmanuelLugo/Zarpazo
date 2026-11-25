@@ -13,4 +13,7 @@ internal interface IInputState
 
     /// <summary>Where the pointer is, in screen pixels.</summary>
     Point CursorPosition { get; }
+
+    /// <summary>Which pointer is showing.</summary>
+    CursorKind PointerKind { get; }
 }

@@ -15,6 +15,58 @@ internal static class CursorArt
         new(0, 0), new(0, 17.2), new(4.3, 13.3), new(6.9, 19.3), new(9.7, 18.1), new(7.1, 12.2), new(12.4, 12.2),
     ];
 
+    // The other pointers Windows changes to, each with the point that clicks at (0, 0): the finger's tip, or the middle.
+    private static readonly Point[] Hand =
+    [
+        new(-1.5, 0.7), new(-0.6, 0), new(0.6, 0), new(1.5, 0.7), new(1.8, 7.8), new(2.6, 6.9), new(3.9, 6.9), new(4.6, 8.2),
+        new(5.4, 7.5), new(6.7, 7.6), new(7.4, 9), new(8.2, 8.5), new(9.4, 8.8), new(10, 10.2), new(10, 13.6), new(8.8, 17),
+        new(8.4, 19.4), new(1, 19.4), new(-1.4, 16.2), new(-4.8, 11.9), new(-4.5, 10.5), new(-3.1, 10.2), new(-1.7, 11.5),
+    ];
+
+    private static readonly Point[] TextBeam =
+    [
+        new(-4, -9), new(-1.2, -9), new(0, -8.2), new(1.2, -9), new(4, -9), new(4, -7.4), new(0.9, -7.4), new(0.9, 7.4),
+        new(4, 7.4), new(4, 9), new(1.2, 9), new(0, 8.2), new(-1.2, 9), new(-4, 9), new(-4, 7.4), new(-0.9, 7.4),
+        new(-0.9, -7.4), new(-4, -7.4),
+    ];
+
+    private static readonly Point[] DoubleArrow =
+    [
+        new(-9.5, 0), new(-4.5, -4.8), new(-4.5, -1.4), new(4.5, -1.4), new(4.5, -4.8), new(9.5, 0), new(4.5, 4.8),
+        new(4.5, 1.4), new(-4.5, 1.4), new(-4.5, 4.8),
+    ];
+
+    private static readonly Point[] FourArrows =
+    [
+        new(0, -10), new(4, -6), new(1.3, -6), new(1.3, -1.3), new(6, -1.3), new(6, -4), new(10, 0), new(6, 4), new(6, 1.3),
+        new(1.3, 1.3), new(1.3, 6), new(4, 6), new(0, 10), new(-4, 6), new(-1.3, 6), new(-1.3, 1.3), new(-6, 1.3), new(-6, 4),
+        new(-10, 0), new(-6, -4), new(-6, -1.3), new(-1.3, -1.3), new(-1.3, -6), new(-4, -6),
+    ];
+
+    private static readonly Point[] VerticalArrow = Turned(DoubleArrow, 90);
+    private static readonly Point[] DownArrow = Turned(DoubleArrow, 45);
+    private static readonly Point[] UpArrow = Turned(DoubleArrow, -45);
+
+    /// <summary>The outline of one of Windows' pointers, as an arrow style draws it.</summary>
+    public static Point[] Outline(CursorKind kind) => kind switch
+    {
+        CursorKind.Hand => Hand,
+        CursorKind.Text => TextBeam,
+        CursorKind.ResizeHorizontal => DoubleArrow,
+        CursorKind.ResizeVertical => VerticalArrow,
+        CursorKind.ResizeDiagonalDown => DownArrow,
+        CursorKind.ResizeDiagonalUp => UpArrow,
+        CursorKind.Move => FourArrows,
+        _ => Arrow,
+    };
+
+    private static Point[] Turned(Point[] points, double degrees)
+    {
+        var turn = System.Windows.Media.Matrix.Identity;
+        turn.Rotate(degrees);
+        return points.Select(turn.Transform).ToArray();
+    }
+
     /// <summary>How wide the contrasting edge round the arrow and the dot is.</summary>
     public const double EdgeWidth = 1.6;
 
@@ -75,15 +127,16 @@ internal static class CursorArt
     public static double ClickGrowth(double progress) => ZoomEasing.Out(Math.Clamp(progress, 0, 1));
 
     /// <summary>The shape as a WPF geometry, in the same units, for the editor's preview.</summary>
-    public static Geometry Geometry(CursorShape shape)
+    public static Geometry Geometry(CursorShape shape, CursorKind kind = CursorKind.Arrow)
     {
         if (shape == CursorShape.Dot)
         {
             return new EllipseGeometry(new Point(0, 0), DotRadius, DotRadius);
         }
 
-        var figure = new PathFigure { StartPoint = Arrow[0], IsClosed = true, IsFilled = true };
-        figure.Segments.Add(new PolyLineSegment(Arrow[1..], isStroked: true));
+        Point[] outline = Outline(kind);
+        var figure = new PathFigure { StartPoint = outline[0], IsClosed = true, IsFilled = true };
+        figure.Segments.Add(new PolyLineSegment(outline[1..], isStroked: true));
         var geometry = new PathGeometry([figure]);
         geometry.Freeze();
         return geometry;

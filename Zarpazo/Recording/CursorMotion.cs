@@ -50,6 +50,7 @@ internal sealed class CursorMotion
     private readonly double[] _angle;
     private readonly (double Time, double X, double Y, bool Secondary)[] _clicks;
     private readonly (double Start, double End)[] _activity; // when the mouse did something, in order, without overlaps
+    private readonly (double Time, CursorKind Kind)[] _kinds;
 
     public CursorMotion(CursorTrack track, CursorStyle style)
     {
@@ -60,6 +61,7 @@ internal sealed class CursorMotion
             _x = _y = _angle = [];
             _clicks = [];
             _activity = [];
+            _kinds = [];
             return;
         }
 
@@ -112,6 +114,7 @@ internal sealed class CursorMotion
             .Select(click => (click.Time, Sample(_x, click.Time), Sample(_y, click.Time), click.Button == ClickButton.Right))
             .ToArray();
         _activity = Activity(track);
+        _kinds = (track.Kinds ?? []).Select(change => (change.TimeMs / 1000.0, change.Kind)).ToArray();
     }
 
     // The same path in another style: only the smoothing and the sway shape the path, so for any other change (size, shape,
@@ -124,6 +127,7 @@ internal sealed class CursorMotion
         _angle = path._angle;
         _clicks = path._clicks;
         _activity = path._activity;
+        _kinds = path._kinds;
     }
 
     /// <summary>This path in <paramref name="style"/>; worked out again only if the smoothing or the sway differ.</summary>
@@ -162,7 +166,10 @@ internal sealed class CursorMotion
                 }
             }
         }
-        return new CursorPose(x, y, Sample(_angle, seconds), scale, opacity);
+        // A dot stays a dot; only the arrow leans.
+        CursorKind kind = _style.Shape == CursorShape.Dot ? CursorKind.Arrow : KindAt(seconds);
+        double angle = kind == CursorKind.Arrow ? Sample(_angle, seconds) : 0;
+        return new CursorPose(x, y, angle, scale, opacity, kind);
     }
 
     /// <summary>The clicks whose effect shows at <paramref name="seconds"/>, oldest first.</summary>
@@ -183,6 +190,25 @@ internal sealed class CursorMotion
             }
         }
         return marks ?? (IReadOnlyList<ClickMark>)[];
+    }
+
+    // The last change at or before the moment.
+    private CursorKind KindAt(double seconds)
+    {
+        int low = 0, high = _kinds.Length;
+        while (low < high)
+        {
+            int middle = (low + high) / 2;
+            if (_kinds[middle].Time <= seconds)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+        return low > 0 ? _kinds[low - 1].Kind : CursorKind.Arrow;
     }
 
     // Every move is a moment of activity and every click a span of it (the button held down counts).

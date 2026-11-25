@@ -19,6 +19,8 @@ public sealed class CursorRecorderTests : IDisposable
 
         public Point CursorPosition { get; set; }
 
+        public CursorKind PointerKind { get; set; }
+
         public int Reads { get; private set; }
 
         public void Press(int key) => _down.Add(key);
@@ -106,6 +108,23 @@ public sealed class CursorRecorderTests : IDisposable
     }
 
     [Fact]
+    public void Each_change_of_pointer_is_written_down_once_even_under_a_still_mouse()
+    {
+        var mouse = new FakeMouse();
+        var recorder = new CursorRecorder(mouse, new Rectangle(0, 0, 100, 100), 100, 100);
+
+        recorder.Update(0);
+        recorder.Update(33);
+        mouse.PointerKind = CursorKind.Hand;
+        recorder.Update(66);
+        recorder.Update(99);
+
+        CursorTrack track = recorder.ToTrack(100);
+        Assert.Equal([new CursorKindChange(0, CursorKind.Arrow), new CursorKindChange(66, CursorKind.Hand)], track.Kinds);
+        Assert.Single(track.Moves);
+    }
+
+    [Fact]
     public void The_shared_input_answers_everyone_the_same_until_the_next_picture()
     {
         var mouse = new FakeMouse();
@@ -127,7 +146,8 @@ public sealed class CursorRecorderTests : IDisposable
     {
         Directory.CreateDirectory(_folder);
         string video = Path.Combine(_folder, "Grabación.mp4");
-        var track = new CursorTrack(320, 180, [new CursorSample(0, 1, 2)], [new CursorClick(10, 90, 3, 4, ClickButton.Middle)]);
+        var track = new CursorTrack(320, 180, [new CursorSample(0, 1, 2)], [new CursorClick(10, 90, 3, 4, ClickButton.Middle)],
+            Kinds: [new CursorKindChange(5, CursorKind.Text)]);
 
         track.Save(video);
 
@@ -137,6 +157,7 @@ public sealed class CursorRecorderTests : IDisposable
         Assert.Equal((320, 180), (read.Width, read.Height));
         Assert.Equal(track.Moves, read.Moves);
         Assert.Equal(track.Clicks, read.Clicks);
+        Assert.Equal(track.Kinds, read.Kinds);
     }
 
     [Fact]

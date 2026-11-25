@@ -63,6 +63,7 @@ public partial class VideoEditWindow : Window
     private IReadOnlyList<ZoomRegion>? _seenZooms;
     private IReadOnlyList<VideoPreset> _presets;
     private long _presetsClosedAt; // see OnPresets
+    private CursorKind _shownKind; // the pointer the preview is drawing
     private readonly List<Ellipse> _clickMarks = [];
     private readonly SolidColorBrush _rippleBrush = new(); // the drawings of the click effects, in the chosen colour
     private readonly SolidColorBrush _pulseBrush = new();
@@ -2605,9 +2606,9 @@ public partial class VideoEditWindow : Window
                 Content = drawing,
                 ToolTip = shape switch
                 {
-                    CursorShape.LightArrow => "Flecha blanca, como la de Windows",
+                    CursorShape.LightArrow => "Flecha blanca, como la de Windows; cambia a mano o texto igual que ella",
                     CursorShape.Dot => "Un punto: marca dónde está sin tapar nada",
-                    _ => "Flecha negra con borde blanco: se ve sobre ventanas claras y oscuras",
+                    _ => "Flecha negra con borde blanco: se ve sobre ventanas claras y oscuras. Cambia a mano o texto como en Windows",
                 },
             };
             tile.Checked += OnCursorChanged;
@@ -2820,6 +2821,7 @@ public partial class VideoEditWindow : Window
         (Color fill, Color edge) = CursorArt.Paint(_cursor.Shape);
         Geometry geometry = CursorArt.Geometry(_cursor.Shape);
         PointerEdge.Data = PointerFill.Data = geometry;
+        _shownKind = CursorKind.Arrow;
         PointerEdge.Fill = PointerEdge.Stroke = new SolidColorBrush(edge);
         PointerEdge.StrokeThickness = CursorArt.EdgeWidth * 2;
         PointerFill.Fill = new SolidColorBrush(fill);
@@ -2888,6 +2890,11 @@ public partial class VideoEditWindow : Window
         matrix.Translate(tipX, tipY);
         PointerGlyph.RenderTransform = new MatrixTransform(matrix);
         PointerGlyph.Opacity = pose.Opacity;
+        if (pose.Kind != _shownKind)
+        {
+            _shownKind = pose.Kind;
+            PointerEdge.Data = PointerFill.Data = CursorArt.Geometry(_cursor.Shape, pose.Kind);
+        }
         PointerGlyph.Visibility = Visibility.Visible;
     }
 

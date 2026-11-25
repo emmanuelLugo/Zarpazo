@@ -140,6 +140,22 @@ public sealed class CursorMotionTests
     }
 
     [Fact]
+    public void The_pointer_is_the_one_that_showed_at_that_moment_and_only_the_arrow_leans()
+    {
+        CursorTrack track = Track(Every33Ms(2, t => (100 + 400 * t, 250))) with
+        {
+            Kinds = [new CursorKindChange(0, CursorKind.Arrow), new CursorKindChange(1000, CursorKind.Hand)],
+        };
+        var motion = new CursorMotion(track, Exact with { Sway = 1 });
+
+        Assert.Equal(CursorKind.Arrow, motion.PoseAt(0.5)!.Value.Kind);
+        Assert.True(motion.PoseAt(0.5)!.Value.Angle > 5);
+        Assert.Equal(CursorKind.Hand, motion.PoseAt(1.5)!.Value.Kind);
+        Assert.Equal(0, motion.PoseAt(1.5)!.Value.Angle);
+        Assert.Equal(CursorKind.Arrow, new CursorMotion(track, Exact with { Shape = CursorShape.Dot }).PoseAt(1.5)!.Value.Kind);
+    }
+
+    [Fact]
     public void A_right_click_adds_a_second_ring_to_its_effect()
     {
         CursorTrack track = Track([new(0, 500, 250)],

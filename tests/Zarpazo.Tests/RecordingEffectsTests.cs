@@ -14,6 +14,8 @@ public sealed class RecordingEffectsTests
 
         public Point CursorPosition { get; set; } = new(100, 60);
 
+        public CursorKind PointerKind => CursorKind.Arrow;
+
         public void Press(params int[] keys)
         {
             foreach (int key in keys)

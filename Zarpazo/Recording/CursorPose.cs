@@ -5,4 +5,5 @@ namespace Zarpazo.Recording;
 /// <param name="Angle">How far it leans, in degrees; positive turns it clockwise around the tip.</param>
 /// <param name="Scale">1 at rest; a little less for a moment after a click.</param>
 /// <param name="Opacity">1 normally; less while it fades away for standing still, and back.</param>
-internal readonly record struct CursorPose(double X, double Y, double Angle, double Scale, double Opacity = 1);
+internal readonly record struct CursorPose(double X, double Y, double Angle, double Scale, double Opacity = 1,
+    CursorKind Kind = CursorKind.Arrow);
