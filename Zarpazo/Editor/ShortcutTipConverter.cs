@@ -22,7 +22,7 @@ internal sealed partial class ShortcutTipConverter : IValueConverter
         string title = match.Success ? match.Groups["title"].Value : text;
         string? key = match.Success ? match.Groups["key"].Value : null;
         string? detail = match.Success && match.Groups["detail"].Success ? match.Groups["detail"].Value : null;
-        return parameter as string switch
+        return (parameter as string) switch
         {
             "title" => title,
             "key" => key,
