@@ -25,6 +25,7 @@ public class HistoryWindowTests
                 Assert.True(window.MoreButton.IsEnabled); // "Abrir carpeta" needs nothing picked
                 Assert.Equal("Impr Pant", window.EmptyHotKey.Text);
                 Assert.Equal(Visibility.Collapsed, window.EmptyPanel.Visibility); // not before the list is read
+                window.Close(); // or it keeps following the theme from a thread that no longer exists
             });
         }
         finally
