@@ -185,35 +185,48 @@
                 </Setter>
             </Style>
 
-            <!-- The icons down the left that choose the panel: the chosen one lit up in the accent colour. -->
+            <!-- The buttons down the left that choose the panel: an icon over its name (the Tag); the open one has the red bar. -->
             <Style x:Key="RailButton" TargetType="RadioButton">
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
                 <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Margin" Value="0,0,0,4" />
+                <Setter Property="AutomationProperties.Name" Value="{Binding Tag, RelativeSource={RelativeSource Self}}" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="Box" Width="40" Height="40" CornerRadius="10" Background="Transparent">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
+                            <Grid>
+                                <Border x:Name="Box" Width="62" Height="54" CornerRadius="9" Background="Transparent">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <ContentPresenter HorizontalAlignment="Center" />
+                                        <TextBlock x:Name="Name" Text="{TemplateBinding Tag}" FontSize="10.5" Margin="0,4,0,0" HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource TextSecondary}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-5,13,0,13"
+                                        Background="{DynamicResource Accent}" Visibility="Collapsed" />
+                            </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                    <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource TextPrimary}" />
                                 </Trigger>
                                 <Trigger Property="IsChecked" Value="True">
                                     <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                    <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                                    <Setter TargetName="Name" Property="FontWeight" Value="SemiBold" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
                 <Style.Triggers>
-                    <Trigger Property="IsChecked" Value="True">
-                        <Setter Property="Foreground" Value="{DynamicResource Accent}" />
-                    </Trigger>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                    </Trigger>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource Accent}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -225,78 +238,28 @@
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Margin" Value="0,0,0,12" />
             </Style>
-            <!-- A setting as a row, like Recordly's: the whole row is the slider, filled up to its value, with a thin knob;
-                 its name and value are written over it by the panel. A click anywhere on it moves the value there. -->
-            <Style x:Key="RowFill" TargetType="RepeatButton">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="IsTabStop" Value="False" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="RepeatButton">
-                            <Border Background="{DynamicResource Pressed}" CornerRadius="8,0,0,8" />
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-            <Style x:Key="RowRest" TargetType="RepeatButton">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="IsTabStop" Value="False" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="RepeatButton">
-                            <Border Background="Transparent" />
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-            <Style x:Key="RowKnob" TargetType="Thumb">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Thumb">
-                            <Border Width="10" Background="Transparent">
-                                <Border Width="2" Height="18" CornerRadius="1" Background="{DynamicResource TextPrimary}" />
-                            </Border>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-            <Style x:Key="RowSlider" TargetType="Slider">
+            <!-- A setting on one line: its name, the slider and its value. The name and the value are written by the panel over the
+                 margins the slider leaves free. A click anywhere on the bar moves the value there. -->
+            <Style x:Key="RowSlider" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="local:SliderDrag.Anywhere" Value="True" />
                 <Setter Property="Cursor" Value="SizeWE" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Slider">
-                            <Border Height="38" CornerRadius="8" Background="{DynamicResource Surface}">
-                                <Track x:Name="PART_Track">
-                                    <Track.DecreaseRepeatButton>
-                                        <RepeatButton Style="{StaticResource RowFill}" Command="Slider.DecreaseLarge" />
-                                    </Track.DecreaseRepeatButton>
-                                    <Track.IncreaseRepeatButton>
-                                        <RepeatButton Style="{StaticResource RowRest}" Command="Slider.IncreaseLarge" />
-                                    </Track.IncreaseRepeatButton>
-                                    <Track.Thumb>
-                                        <Thumb Style="{StaticResource RowKnob}" />
-                                    </Track.Thumb>
-                                </Track>
-                            </Border>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Margin" Value="80,0,56,0" />
             </Style>
             <Style x:Key="RowLabel" TargetType="TextBlock">
                 <Setter Property="IsHitTestVisible" Value="False" />
+                <Setter Property="HorizontalAlignment" Value="Left" />
                 <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Margin" Value="14,0" />
             </Style>
             <Style x:Key="RowValue" TargetType="TextBlock" BasedOn="{StaticResource RowLabel}">
                 <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
             </Style>
             <Style x:Key="Row" TargetType="Grid">
-                <Setter Property="Margin" Value="0,0,0,8" />
+                <Setter Property="Margin" Value="0,0,0,4" />
             </Style>
 
             <!-- An on/off setting as a switch, with its name on the left. -->
@@ -391,6 +354,28 @@
             </Style>
             <Style x:Key="SubHeader" TargetType="TextBlock" BasedOn="{StaticResource PanelHeader}">
                 <Setter Property="Margin" Value="0,18,0,10" />
+            </Style>
+            <!-- One of two or three words side by side, as parts of one control. -->
+            <Style x:Key="SegTile" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Box" Height="28" CornerRadius="6" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Pressed}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
             <!-- A choice written in words (Suave, Enfocado), ringed when chosen like the other tiles. -->
             <Style x:Key="WordTile" TargetType="RadioButton" BasedOn="{StaticResource Tile}">
@@ -520,28 +505,28 @@
         <!-- the icons, the chosen panel, and the video -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="60" />
+                <ColumnDefinition Width="76" />
                 <ColumnDefinition Width="292" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Margin="10,14,0,0">
-                <RadioButton x:Name="FrameTab" Style="{StaticResource RailButton}" GroupName="sidePanel" IsChecked="True" Checked="OnPanelTab" ToolTip="Marco y fondo">
+            <StackPanel Margin="8,14,0,0">
+                <RadioButton x:Name="FrameTab" Tag="Marco" Style="{StaticResource RailButton}" GroupName="sidePanel" IsChecked="True" Checked="OnPanelTab" ToolTip="Marco y fondo">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource FrameGlyph}" />
                 </RadioButton>
-                <RadioButton x:Name="CursorTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Cursor">
+                <RadioButton x:Name="CursorTab" Tag="Cursor" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Cursor">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource PointerGlyphIcon}" />
                 </RadioButton>
-                <RadioButton x:Name="ZoomTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Zoom">
+                <RadioButton x:Name="ZoomTab" Tag="Zoom" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Zoom">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource ZoomGlyph}" />
                 </RadioButton>
-                <RadioButton x:Name="CropTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Recorte">
+                <RadioButton x:Name="CropTab" Tag="Recorte" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Recorte">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource CropGlyph}" />
                 </RadioButton>
-                <RadioButton x:Name="OverlayTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Desenfoque, texto y flechas">
+                <RadioButton x:Name="OverlayTab" Tag="Capas" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Desenfoque, texto y flechas">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource OverlayGlyph}" />
                 </RadioButton>
-                <RadioButton x:Name="ExportTab" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Exportar: tamaño, calidad y cuadros por segundo">
+                <RadioButton x:Name="ExportTab" Tag="Exportar" Style="{StaticResource RailButton}" GroupName="sidePanel" Checked="OnPanelTab" ToolTip="Exportar: tamaño, calidad y cuadros por segundo">
                     <Path Style="{StaticResource Glyph}" Data="{StaticResource ExportGlyph}" />
                 </RadioButton>
             </StackPanel>
@@ -553,42 +538,54 @@
                     <Grid>
                         <!-- The frame: a background behind the recording, room around it, rounded corners and a shadow. -->
                         <StackPanel x:Name="FramePanel">
-                            <Grid>
-                                <TextBlock Text="MARCO" Style="{StaticResource PanelHeader}" />
-                                <Button x:Name="FrameResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Click="OnFrameReset" ToolTip="Vuelve a los valores de fábrica del marco" />
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Marco" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Button x:Name="FrameResetButton" Grid.Column="1" Content="Restablecer" Style="{StaticResource LinkButton}" VerticalAlignment="Center"
+                                        Margin="0,0,14,0" Click="OnFrameReset" ToolTip="Vuelve a los valores de fábrica del marco" />
+                                <CheckBox x:Name="FrameBox" Grid.Column="2" Style="{StaticResource Switch}" Click="OnFrameChanged" AutomationProperties.Name="Poner marco"
+                                          ToolTip="Poner marco: el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
                             </Grid>
-                            <CheckBox x:Name="FrameBox" Content="Poner marco" Style="{StaticResource Switch}" Click="OnFrameChanged"
-                                      ToolTip="Pone el video sobre un fondo, con margen, esquinas redondeadas y sombra. Con zoom, el video crece y el fondo sale de la imagen" />
                             <StackPanel x:Name="FrameOptions">
-                                <Grid Margin="0,10,0,6">
+                                <Border Height="1" Margin="0,10,0,0" Background="{DynamicResource Border}" />
+                                <Grid Margin="0,6,0,6">
                                     <ToggleButton x:Name="FrameLooksToggle" Content="ESTILOS" Style="{StaticResource SectionToggle}" IsChecked="True" Click="OnFrameSection" Tag="looks" />
                                 </Grid>
                                 <StackPanel x:Name="FrameLooksBody" Visibility="{Binding IsChecked, ElementName=FrameLooksToggle, Converter={StaticResource SectionVisible}}">
-                                <WrapPanel x:Name="FrameLooks" />
+                                <UniformGrid x:Name="FrameLooks" Columns="3" Margin="0,0,-6,0" />
                                 </StackPanel>
-                                <Grid Margin="0,10,0,6">
+                                <Border Height="1" Margin="0,10,0,0" Background="{DynamicResource Border}" />
+                                <Grid Margin="0,6,0,6">
                                     <ToggleButton x:Name="FrameBackgroundToggle" Content="FONDO" Style="{StaticResource SectionToggle}" IsChecked="True" Click="OnFrameSection" Tag="background" />
                                     <Button x:Name="FrameBackgroundReset" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                             Click="OnFrameSectionReset" Tag="background" ToolTip="Vuelve al fondo de fábrica" />
                                 </Grid>
                                 <StackPanel x:Name="FrameBackgroundBody" Visibility="{Binding IsChecked, ElementName=FrameBackgroundToggle, Converter={StaticResource SectionVisible}}">
-                                <WrapPanel x:Name="FrameBackgrounds" />
-                                <TextBlock Text="PROPIO" Style="{StaticResource SubHeader}" />
-                                <WrapPanel Margin="0,0,0,8">
-                                    <Button x:Name="FrameFromButton" Width="34" Height="34" Margin="0,0,6,6" Padding="3" Focusable="False" Click="OnFrameFromColor"
+                                <UniformGrid x:Name="FrameBackgrounds" Columns="6" />
+                                <Grid Margin="0,8,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="FrameFromButton" Width="32" Height="32" Margin="0,0,6,0" Padding="3" Focusable="False" Click="OnFrameFromColor"
                                             ToolTip="Color inicial del fondo">
-                                        <Border x:Name="FrameFromFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="24" Height="24" />
+                                        <Border x:Name="FrameFromFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="22" Height="22" />
                                     </Button>
-                                    <Button x:Name="FrameToButton" Width="34" Height="34" Margin="0,0,6,6" Padding="3" Focusable="False" Click="OnFrameToColor"
+                                    <Button x:Name="FrameToButton" Grid.Column="1" Width="32" Height="32" Margin="0,0,6,0" Padding="3" Focusable="False" Click="OnFrameToColor"
                                             ToolTip="Color final del fondo. Con el mismo color en los dos, el fondo es liso">
-                                        <Border x:Name="FrameToFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="24" Height="24" />
+                                        <Border x:Name="FrameToFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="22" Height="22" />
                                     </Button>
-                                    <Button x:Name="FrameImageButton" Content="Imagen…" Height="34" Margin="0,0,6,6" Padding="12,0" Focusable="False" Click="OnFrameImage"
+                                    <Button x:Name="FrameImageButton" Grid.Column="2" Content="Imagen…" Height="32" Margin="0,0,6,0" Padding="4,0" Focusable="False" Click="OnFrameImage"
                                             ToolTip="Usa una imagen de tu disco como fondo" />
-                                    <Button x:Name="FrameRandomButton" Content="Al azar" Height="34" Margin="0,0,6,6" Padding="12,0" Focusable="False" Click="OnFrameRandom"
+                                    <Button x:Name="FrameRandomButton" Grid.Column="3" Content="Al azar" Height="32" Padding="4,0" Focusable="False" Click="OnFrameRandom"
                                             ToolTip="Un degradado nuevo cada vez" />
-                                </WrapPanel>
+                                </Grid>
                                 <Grid x:Name="FrameAngleRow" Style="{StaticResource Row}">
                                     <Slider x:Name="FrameAngleSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="345" TickFrequency="15" IsSnapToTickEnabled="True"
                                             SmallChange="15" LargeChange="45" ValueChanged="OnFrameAngle" ToolTip="Hacia dónde corre el degradado" />
@@ -596,7 +593,8 @@
                                     <TextBlock x:Name="FrameAngleText" Style="{StaticResource RowValue}" />
                                 </Grid>
                                 </StackPanel>
-                                <Grid Margin="0,10,0,6">
+                                <Border Height="1" Margin="0,10,0,0" Background="{DynamicResource Border}" />
+                                <Grid Margin="0,6,0,6">
                                     <ToggleButton x:Name="FrameShapeToggle" Content="FORMA" Style="{StaticResource SectionToggle}" IsChecked="True" Click="OnFrameSection" Tag="shape" />
                                     <Button x:Name="FrameShapeReset" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                             Click="OnFrameSectionReset" Tag="shape" ToolTip="Vuelve al relleno y a las esquinas de fábrica" />
@@ -644,7 +642,8 @@
                                     <TextBlock x:Name="FrameRadiusText" Style="{StaticResource RowValue}" />
                                 </Grid>
                                 </StackPanel>
-                                <Grid Margin="0,10,0,6">
+                                <Border Height="1" Margin="0,10,0,0" Background="{DynamicResource Border}" />
+                                <Grid Margin="0,6,0,6">
                                     <ToggleButton x:Name="FrameShadowToggle" Content="SOMBRA" Style="{StaticResource SectionToggle}" IsChecked="True" Click="OnFrameSection" Tag="shadow" />
                                     <Button x:Name="FrameShadowReset" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                             Click="OnFrameSectionReset" Tag="shadow" ToolTip="Vuelve a la sombra de fábrica" />
@@ -653,7 +652,7 @@
                                 <Grid Style="{StaticResource Row}">
                                     <Slider x:Name="FrameShadowSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.2"
                                             ValueChanged="OnFrameSlider" ToolTip="Cuán oscura es la sombra bajo el video" />
-                                    <TextBlock Text="Sombra" Style="{StaticResource RowLabel}" />
+                                    <TextBlock Text="Intensidad" Style="{StaticResource RowLabel}" />
                                     <TextBlock x:Name="FrameShadowText" Style="{StaticResource RowValue}" />
                                 </Grid>
                                 <StackPanel x:Name="FrameShadowDetails">
@@ -663,49 +662,45 @@
                                         <TextBlock Text="Desenfoque" Style="{StaticResource RowLabel}" />
                                         <TextBlock x:Name="FrameShadowBlurText" Style="{StaticResource RowValue}" />
                                     </Grid>
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid>
+                                    <Grid Style="{StaticResource Row}">
                                             <Slider x:Name="FrameShadowOffsetSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.04" SmallChange="0.001" LargeChange="0.005"
                                                     ValueChanged="OnFrameSlider" ToolTip="Cuánto se desplaza la sombra hacia abajo" />
                                             <TextBlock Text="Distancia" Style="{StaticResource RowLabel}" />
                                             <TextBlock x:Name="FrameShadowOffsetText" Style="{StaticResource RowValue}" />
                                         </Grid>
-                                        <Button x:Name="FrameShadowColorButton" Grid.Column="1" Width="38" Height="38" Margin="8,0,0,0" Padding="4" Focusable="False" Click="OnFrameShadowColor"
-                                                ToolTip="Color de la sombra">
-                                            <Border x:Name="FrameShadowFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="26" Height="26" />
-                                        </Button>
-                                    </Grid>
+                                        <Grid Margin="0,0,0,4">
+                                            <TextBlock Text="Color" VerticalAlignment="Center" />
+                                            <Button x:Name="FrameShadowColorButton" Width="32" Height="32" Padding="3" HorizontalAlignment="Right" Focusable="False" Click="OnFrameShadowColor"
+                                                    ToolTip="Color de la sombra">
+                                                <Border x:Name="FrameShadowFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="22" Height="22" />
+                                            </Button>
+                                        </Grid>
                                 </StackPanel>
                                 </StackPanel>
-                                <Grid Margin="0,10,0,6">
+                                <Border Height="1" Margin="0,10,0,0" Background="{DynamicResource Border}" />
+                                <Grid Margin="0,6,0,6">
                                     <ToggleButton x:Name="FrameBorderToggle" Content="BORDE" Style="{StaticResource SectionToggle}" IsChecked="True" Click="OnFrameSection" Tag="border" />
                                     <Button x:Name="FrameBorderReset" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                             Click="OnFrameSectionReset" Tag="border" ToolTip="Quita el borde" />
                                 </Grid>
                                 <StackPanel x:Name="FrameBorderBody" Visibility="{Binding IsChecked, ElementName=FrameBorderToggle, Converter={StaticResource SectionVisible}}">
 
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid>
-                                        <Slider x:Name="FrameBorderSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.008" SmallChange="0.0005" LargeChange="0.002"
+                                <Grid Style="{StaticResource Row}">
+                                            <Slider x:Name="FrameBorderSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="0.008" SmallChange="0.0005" LargeChange="0.002"
                                                 ValueChanged="OnFrameSlider" ToolTip="El grosor de la línea que rodea el video. En 0 no hay borde" />
                                         <TextBlock Text="Grosor" Style="{StaticResource RowLabel}" />
                                         <TextBlock x:Name="FrameBorderText" Style="{StaticResource RowValue}" />
-                                    </Grid>
-                                    <Button x:Name="FrameBorderColorButton" Grid.Column="1" Width="38" Height="38" Margin="8,0,0,0" Padding="4" Focusable="False" Click="OnFrameBorderColor"
-                                            ToolTip="Color del borde">
-                                        <Border x:Name="FrameBorderFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="26" Height="26" />
-                                    </Button>
-                                </Grid>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,4">
+                                            <TextBlock Text="Color" VerticalAlignment="Center" />
+                                            <Button x:Name="FrameBorderColorButton" Width="32" Height="32" Padding="3" HorizontalAlignment="Right" Focusable="False" Click="OnFrameBorderColor"
+                                                    ToolTip="Color del borde">
+                                                <Border x:Name="FrameBorderFill" CornerRadius="5" BorderThickness="1" BorderBrush="#40FFFFFF" Width="22" Height="22" />
+                                            </Button>
+                                        </Grid>
                                 </StackPanel>
-                                <Grid Margin="0,10,0,6">
+                                <Border Height="1" Margin="0,10,0,0" Background="{DynamicResource Border}" />
+                                <Grid Margin="0,6,0,6">
                                     <ToggleButton x:Name="FrameBarToggle" Content="BARRA DE VENTANA" Style="{StaticResource SectionToggle}" IsChecked="True" Click="OnFrameSection" Tag="bar" />
                                     <Button x:Name="FrameBarReset" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                             Click="OnFrameSectionReset" Tag="bar" ToolTip="Quita la barra de ventana" />
@@ -751,20 +746,22 @@
                                         </StackPanel>
                                     </RadioButton>
                                 </UniformGrid>
-                                <UniformGrid x:Name="FrameBarToneRow" Columns="2" Margin="0,0,0,8">
-                                    <RadioButton x:Name="FrameBarDark" Style="{StaticResource Tile}" Width="Auto" Height="34" Margin="0,0,6,0" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos oscuros">
+                                <Border Padding="3" Margin="0,0,0,8" CornerRadius="8" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                                <UniformGrid x:Name="FrameBarToneRow" Columns="2">
+                                    <RadioButton x:Name="FrameBarDark" Style="{StaticResource SegTile}" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos oscuros">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                             <Ellipse Width="12" Height="12" Fill="#2B2D31" Stroke="#80808080" StrokeThickness="1" Margin="0,0,7,0" />
                                             <TextBlock Text="Oscura" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
                                         </StackPanel>
                                     </RadioButton>
-                                    <RadioButton x:Name="FrameBarLight" Style="{StaticResource Tile}" Width="Auto" Height="34" Margin="0" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos claros">
+                                    <RadioButton x:Name="FrameBarLight" Style="{StaticResource SegTile}" GroupName="frameBarTone" Checked="OnFrameChanged" ToolTip="Barra de tonos claros">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                             <Ellipse Width="12" Height="12" Fill="#F1F3F4" Stroke="#80808080" StrokeThickness="1" Margin="0,0,7,0" />
                                             <TextBlock Text="Clara" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
                                         </StackPanel>
                                     </RadioButton>
                                 </UniformGrid>
+                                </Border>
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
@@ -1088,7 +1085,9 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border HorizontalAlignment="Left" VerticalAlignment="Center" Padding="2,1" CornerRadius="10" Background="{DynamicResource Surface}"
+                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                    <StackPanel Orientation="Horizontal">
                         <Button x:Name="SplitButton" Style="{StaticResource IconButton}" Click="OnSplit" IsEnabled="False"
                                 ToolTip="Dividir: corta la parte donde está la línea roja (S)">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource SplitGlyph}" />
@@ -1101,6 +1100,7 @@
                                 ToolTip="Duplicar la parte seleccionada justo después (Ctrl+D)">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource DuplicateGlyph}" />
                         </Button>
+                        <Border Width="1" Height="18" Margin="3,0" Background="{DynamicResource Border}" />
                         <Button x:Name="MuteButton" Style="{StaticResource IconButton}" Click="OnMute" IsEnabled="False"
                                 ToolTip="Silenciar la parte seleccionada (M)">
                             <Path x:Name="MuteIcon" Style="{StaticResource Glyph}" Data="{StaticResource SoundGlyph}" />
@@ -1112,6 +1112,7 @@
                                 <ContextMenu x:Name="SpeedMenu" Placement="Top" Opened="OnSpeedMenuOpened" />
                             </Button.ContextMenu>
                         </Button>
+                        <Border Width="1" Height="18" Margin="3,0" Background="{DynamicResource Border}" />
                         <Button x:Name="MoveLeftButton" Style="{StaticResource IconButton}" Click="OnMoveLeft" IsEnabled="False"
                                 ToolTip="Pasar la parte seleccionada antes de la anterior (Alt+←). También se arrastra por su título">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveLeftGlyph}" />
@@ -1121,10 +1122,9 @@
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveRightGlyph}" />
                         </Button>
                     </StackPanel>
+                    </Border>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock x:Name="PositionText" Width="132" TextAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
-                                   Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource TextSecondary}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Button x:Name="BackButton" Style="{StaticResource IconButton}" Click="OnStepBack" IsEnabled="False"
                                 ToolTip="Un cuadro atrás (←). Con Mayús, un segundo">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource StepBackGlyph}" />
@@ -1137,12 +1137,13 @@
                                 ToolTip="Un cuadro adelante (→). Con Mayús, un segundo">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource StepForwardGlyph}" />
                         </Button>
-                        <Border Width="142" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="PositionText" Width="112" TextAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0"
+                                   Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource TextSecondary}" />
                         <Path Style="{StaticResource Glyph}" Data="{StaticResource TimelineZoomGlyph}" Stroke="{DynamicResource TextSecondary}" Margin="0,0,8,0" />
-                        <Slider x:Name="ZoomSlider" Width="130" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
+                        <Slider x:Name="ZoomSlider" Width="110" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
                                 VerticalAlignment="Center" Focusable="False" ToolTip="Acerca la línea de tiempo (Ctrl + rueda del ratón)" />
                     </StackPanel>
                 </Grid>

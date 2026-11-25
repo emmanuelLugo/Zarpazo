@@ -1439,7 +1439,7 @@ public partial class VideoEditWindow : Window
         // Looks to start from: a click puts in the background, room, corners and shadow that go together (the switch is left as it is).
         foreach ((string name, string tip, VideoFrameStyle look) in VideoFrameStyle.Looks)
         {
-            var button = new Button { Content = name, ToolTip = tip, Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 6, 6), Focusable = false, Tag = look };
+            var button = new Button { Content = name, ToolTip = tip, Padding = new Thickness(4, 6, 4, 6), Margin = new Thickness(0, 0, 6, 6), Focusable = false, Tag = look };
             button.Click += OnFrameLook;
             FrameLooks.Children.Add(button);
         }
