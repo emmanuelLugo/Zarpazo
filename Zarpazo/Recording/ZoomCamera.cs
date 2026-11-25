@@ -19,7 +19,7 @@ internal sealed class ZoomCamera
     private const double FollowSeconds = 0.2;
 
     private readonly List<List<ZoomSpan>> _chains = [];
-    private readonly List<(double[] X, double[] Y)> _follow = []; // how far each chain moves off its zooms' points, over time
+    private readonly List<(double[] X, double[] Y)> _follow = []; // where each chain looks over time, following the pointer
     private readonly ZoomTiming _timing;
 
     /// <param name="connect">False: every zoom goes back out before the next one, however close they are.</param>
@@ -76,18 +76,22 @@ internal sealed class ZoomCamera
             // The point is pulled in just enough that the zoomed view stays inside the picture, then the camera moves
             // towards it as it zooms, so the point grows from where it is instead of sliding in from the side.
             double half = 0.5 / scale;
-            (double moveX, double moveY) = _follow.Count > 0 ? (At(_follow[i].X, time - start), At(_follow[i].Y, time - start)) : (0, 0);
-            double centerX = 0.5 + (Math.Clamp(Math.Clamp(focusX, half, 1 - half) + moveX, half, 1 - half) - 0.5) * strength;
-            double centerY = 0.5 + (Math.Clamp(Math.Clamp(focusY, half, 1 - half) + moveY, half, 1 - half) - 0.5) * strength;
+            if (_follow.Count > 0)
+            {
+                (focusX, focusY) = (At(_follow[i].X, time - start), At(_follow[i].Y, time - start));
+            }
+            double centerX = 0.5 + (Math.Clamp(focusX, half, 1 - half) - 0.5) * strength;
+            double centerY = 0.5 + (Math.Clamp(focusY, half, 1 - half) - 0.5) * strength;
             return ZoomView.Around(1 + (scale - 1) * strength, centerX, centerY);
         }
         return ZoomView.Full;
     }
 
-    // At each step of the chain, how far the view has to move from the zoom's point to keep the pointer within reach of its
-    // middle (nothing while it is, or while there is no pointer), then smoothed. Measured from the zoom's point each time,
-    // so the camera comes back when the pointer does and never drifts. Until the pointer has been in what the zoom shows
-    // there is nothing to follow: it is still on its way there (or the zoom looks at something else on purpose).
+    // At each step of the chain, where to look: at the zoom's point, moved just enough to keep the pointer within reach of
+    // the middle, then smoothed. Worked out from the zoom's point each time, so the camera comes back when the pointer does
+    // and never drifts. The whole path is smoothed, not only the move off the point: smoothing that alone lagged behind a
+    // glide and made the camera bounce. Until the pointer has been in what the zoom shows there is nothing to follow: it is
+    // still on its way there (or the zoom looks at something else on purpose).
     private (double[] X, double[] Y) Follow(List<ZoomSpan> chain, IReadOnlyList<VideoSegment> segments, Func<double, (double X, double Y)?> pointer)
     {
         double start = chain[0].Start;
@@ -98,30 +102,24 @@ internal sealed class ZoomCamera
         for (int i = 0; i < count; i++)
         {
             double time = start + i * CursorMotion.StepSeconds;
+            (double scale, double focusX, double focusY) = TargetAt(chain, time);
+            (x[i], y[i]) = (focusX, focusY);
             if (pointer(CursorLayer.ToOriginal(segments, time)) is not { } at)
             {
                 continue;
             }
-            (double scale, double focusX, double focusY) = TargetAt(chain, time);
             double half = 0.5 / scale;
-            arrived |= Math.Abs(at.X - Math.Clamp(focusX, half, 1 - half)) <= half && Math.Abs(at.Y - Math.Clamp(focusY, half, 1 - half)) <= half;
-            if (!arrived)
+            arrived |= Math.Abs(at.X - focusX) <= half && Math.Abs(at.Y - focusY) <= half;
+            if (arrived)
             {
-                continue;
+                double reach = half * FollowReach;
+                x[i] = Math.Clamp(Math.Clamp(focusX, at.X - reach, at.X + reach), half, 1 - half);
+                y[i] = Math.Clamp(Math.Clamp(focusY, at.Y - reach, at.Y + reach), half, 1 - half);
             }
-            x[i] = Move(focusX, at.X, half);
-            y[i] = Move(focusY, at.Y, half);
         }
         CursorMotion.SmoothBothWays(x, FollowSeconds);
         CursorMotion.SmoothBothWays(y, FollowSeconds);
         return (x, y);
-
-        static double Move(double focus, double at, double half)
-        {
-            double anchor = Math.Clamp(focus, half, 1 - half);
-            double reach = half * FollowReach;
-            return Math.Clamp(Math.Clamp(anchor, at - reach, at + reach), half, 1 - half) - anchor;
-        }
     }
 
     private static double At(double[] values, double seconds) =>
@@ -138,16 +136,24 @@ internal sealed class ZoomCamera
             double glideEnd = Math.Min(to.Start + (to.End - to.Start) / 2, to.Start + _timing.GlideHalfSeconds);
             if (time < glideStart)
             {
-                return (from.Scale, from.FocusX, from.FocusY);
+                return Looking(from);
             }
             if (time < glideEnd)
             {
                 double t = ZoomEasing.InOut((time - glideStart) / (glideEnd - glideStart));
-                return (Lerp(from.Scale, to.Scale, t), Lerp(from.FocusX, to.FocusX, t), Lerp(from.FocusY, to.FocusY, t));
+                (double Scale, double X, double Y) a = Looking(from), b = Looking(to);
+                return (Lerp(a.Scale, b.Scale, t), Lerp(a.X, b.X, t), Lerp(a.Y, b.Y, t));
             }
         }
-        ZoomSpan last = chain[^1];
-        return (last.Scale, last.FocusX, last.FocusY);
+        return Looking(chain[^1]);
+    }
+
+    // A zoom's point pulled inside the picture before any gliding: blending the points as given and pulling the result in
+    // left the camera still for part of a glide and then rushing the rest.
+    private static (double Scale, double X, double Y) Looking(ZoomSpan span)
+    {
+        double half = 0.5 / span.Scale;
+        return (span.Scale, Math.Clamp(span.FocusX, half, 1 - half), Math.Clamp(span.FocusY, half, 1 - half));
     }
 
     private static double Lerp(double a, double b, double t) => a + (b - a) * t;

@@ -16,6 +16,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ### Corregido
 - Zoom automático: con clics seguidos en lugares alejados, la cámara llega antes de cada clic; antes el zoom podía empezar después de él y el clic quedaba fuera de la imagen.
+- Al pasar de un zoom a otro hacia un lado alejado, la cámara se desliza de forma pareja, sin tirones.
 
 ### Cambiado
 - Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.

@@ -142,6 +142,28 @@ public sealed class ZoomTests
         Assert.Equal(new ZoomCamera(whole, zoom).ViewAt(5.5).Y, camera.ViewAt(5.5).Y, 3);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_glide_to_the_far_corner_goes_one_way_without_rushing(bool follow)
+    {
+        // The pointer waits at the top left while the glide starts, then goes to the next zoom in half a second.
+        static (double X, double Y)? Pointer(double t)
+        {
+            double share = Math.Clamp((t - 9) / 0.6, 0, 1);
+            return (0.09 + 0.82 * share, 0.13 + 0.77 * share);
+        }
+        var camera = new ZoomCamera([new VideoSegment(0, 15)],
+            [new ZoomRegion(3, 8.6, 1.5, 0.53, 0.12), new ZoomRegion(8.6, 12, 1.5, 0.91, 0.9)], pointer: follow ? Pointer : null);
+
+        for (double t = 8.5; t < 10; t += 1.0 / 30)
+        {
+            ZoomView now = camera.ViewAt(t), next = camera.ViewAt(t + 1.0 / 30);
+            Assert.InRange(next.X - now.X, -0.001, 0.03);
+            Assert.InRange(next.Y - now.Y, -0.001, 0.03);
+        }
+    }
+
     [Fact]
     public void A_pointer_off_the_picture_leaves_the_camera_where_the_zoom_says()
     {
