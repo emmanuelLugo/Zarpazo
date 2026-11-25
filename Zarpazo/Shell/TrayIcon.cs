@@ -128,23 +128,15 @@ internal sealed class TrayIcon : IDisposable
         _icon.ShowBalloonTip(8000, "Zarpazo", message, ToolTipIcon.Info);
     }
 
-    /// <summary>Paints the menu dark or back to the colours Windows gives it.</summary>
+    /// <summary>Paints the menu in Zarpazo's look, dark or light.</summary>
     public void SetDark(bool dark)
     {
+        var colors = new MenuColors(dark);
         foreach (ToolStripDropDown dropDown in new ToolStripDropDown[] { _menu, _delayedMenu.DropDown })
         {
-            if (dark)
-            {
-                dropDown.Renderer = new DarkMenuRenderer();
-                dropDown.BackColor = DarkMenuColors.Background;
-                dropDown.ForeColor = DarkMenuColors.Text;
-            }
-            else
-            {
-                dropDown.RenderMode = ToolStripRenderMode.ManagerRenderMode;
-                dropDown.ResetBackColor();
-                dropDown.ResetForeColor();
-            }
+            dropDown.Renderer = new MenuRenderer(colors);
+            dropDown.BackColor = colors.Background;
+            dropDown.ForeColor = colors.Text;
         }
     }
 

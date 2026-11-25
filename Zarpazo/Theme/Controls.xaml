@@ -141,6 +141,43 @@
         </Setter>
     </Style>
 
+    <!-- A CheckBox drawn as an on/off switch; the text of the setting lives next to it, so it has no content of its own. -->
+    <Style x:Key="Switch" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="Track" Width="40" Height="22" CornerRadius="11" BorderThickness="1"
+                            Background="{DynamicResource Border}" BorderBrush="{DynamicResource Border}">
+                        <Ellipse x:Name="Knob" Width="14" Height="14" HorizontalAlignment="Left" Margin="3,0,0,0"
+                                 Fill="{DynamicResource TextSecondary}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource Accent}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                            <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
+                            <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0" />
+                            <Setter TargetName="Knob" Property="Fill" Value="{DynamicResource OnAccent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ComboBox, the closed box and its pop-up list. Not editable: none of ours are. -->
     <Style TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
@@ -233,7 +270,12 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
-                    <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="4">
+                    <!-- The margin is room for the shadow; the pop-up window is transparent. -->
+                    <Border Margin="6,2,10,14" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1"
+                            CornerRadius="10" Padding="5">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.35" />
+                        </Border.Effect>
                         <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
                     </Border>
                 </ControlTemplate>
@@ -247,7 +289,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="Row" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="4">
+                    <Border x:Name="Row" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="6" Margin="0,1">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -255,9 +297,12 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
+                            <!-- The mark of Zarpazo: a thin red bar on the item under the pointer. -->
+                            <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Grid.ColumnSpan="4" Margin="-7,2,0,2"
+                                    Background="{DynamicResource Accent}" Visibility="Collapsed" />
                             <!-- A tick for the chosen one of a list; items that can be ticked keep its room so they line up. -->
                             <Path x:Name="Check" Width="10" Height="8" Margin="0,0,10,0" Stretch="Uniform" Visibility="Collapsed"
-                                  Data="M0,4 L3.5,7.5 L10,0" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.6"
+                                  Data="M0,4 L3.5,7.5 L10,0" Stroke="{DynamicResource Accent}" StrokeThickness="1.8"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" VerticalAlignment="Center" />
                             <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Margin="28,0,0,0"
@@ -266,10 +311,14 @@
                             <Path x:Name="Arrow" Grid.Column="3" Width="5" Height="9" Margin="24,0,0,0" Stretch="Uniform" Visibility="Collapsed"
                                   Data="M0,0 L4,4 L0,8" Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.4"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" VerticalAlignment="Center" />
-                            <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="8" VerticalOffset="-5" AllowsTransparency="True" Focusable="False"
+                            <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="2" VerticalOffset="-12" AllowsTransparency="True" Focusable="False"
                                    IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                                    PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}">
-                                <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="4">
+                                <Border Margin="6,2,10,14" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1"
+                                        CornerRadius="10" Padding="5">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.35" />
+                                    </Border.Effect>
                                     <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
                                 </Border>
                             </Popup>
@@ -287,9 +336,11 @@
                         </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Row" Property="Background" Value="{DynamicResource Hover}" />
+                            <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.5" />
+                            <Setter TargetName="Bar" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -301,7 +352,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Separator">
-                    <Border Height="1" Margin="6,4" Background="{DynamicResource Border}" />
+                    <Border Height="1" Margin="8,4" Background="{DynamicResource Border}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
