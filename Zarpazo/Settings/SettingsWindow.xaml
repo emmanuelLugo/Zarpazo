@@ -548,7 +548,7 @@
 
                     <TextBlock Style="{StaticResource Section}" Text="ALGO FALLÓ" />
                     <Border Style="{StaticResource Card}">
-                        <local:SettingRow Title="Copiar información para reportar"
+                        <local:SettingRow Title="Reporte de errores"
                                           Description="Copia la versión, tu Windows, tus pantallas y los últimos errores para pegarlos en un reporte. No incluye tus capturas.">
                             <Button Content="Copiar información para reportar" Click="OnCopyReport" />
                         </local:SettingRow>

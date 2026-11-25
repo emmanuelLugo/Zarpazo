@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Zarpazo.Ocr;
@@ -13,7 +14,7 @@ namespace Zarpazo.History;
 
 public partial class HistoryWindow : Window
 {
-    private const int ThumbnailWidth = 200;
+    private const int ThumbnailWidth = 228;
 
     private readonly CaptureHistory _history;
     private readonly SettingsStore _settings;
@@ -29,6 +30,8 @@ public partial class HistoryWindow : Window
         _history = history;
         _settings = settings;
         _onEdit = onEdit;
+        EmptyHotKey.Text = settings.Current.HotKey.Describe();
+        OnSelectionChanged(this, null!); // nothing is picked yet, and the list takes a moment to arrive
         Reload();
         Closed += (_, _) => _generation++;
     }
@@ -72,7 +75,9 @@ public partial class HistoryWindow : Window
         {
             try
             {
-                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind, entry.Kept)
+                (int width, int height) = CaptureHistory.PixelSize(entry.Path);
+                items.Add(new Item(entry.Path, CaptureHistory.LoadThumbnail(entry.Path, ThumbnailWidth), HistoryEntry.DateLabel(entry.Taken, DateTime.Now),
+                    $"{width} × {height}", $"{entry.Taken:dd/MM/yyyy HH:mm:ss}", entry.CanEdit, entry.MediaPath, entry.Kind, entry.Kept)
                 {
                     Text = entry.MediaPath == null ? _history.ReadText(entry.Path) : null,
                 });
@@ -87,7 +92,7 @@ public partial class HistoryWindow : Window
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
-    private void OnFilterChanged(object sender, SelectionChangedEventArgs e)
+    private void OnFilterChanged(object sender, RoutedEventArgs e)
     {
         if (IsInitialized)
         {
@@ -95,22 +100,21 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private bool MatchesKind(Item item) => KindFilter.SelectedIndex switch
-    {
-        1 => !item.IsRecording,
-        2 => item.IsRecording,
-        3 => item.Kept,
-        _ => true,
-    };
+    private bool MatchesKind(Item item) =>
+        FilterCaptures.IsChecked == true ? !item.IsRecording
+        : FilterRecordings.IsChecked == true ? item.IsRecording
+        : FilterKept.IsChecked != true || item.Kept;
 
     private void ApplyFilter()
     {
         List<Item> shown = _all.Where(item => MatchesKind(item) && CaptureHistory.Matches(item.Text, SearchBox.Text)).ToList();
         Items.ItemsSource = shown;
+        CountText.Text = shown.Count == 1 ? "1 elemento" : $"{shown.Count} elementos";
         EmptyText.Text = _all.Count == 0
-            ? "Todavía no hay nada. Aquí aparecen las capturas que copias o guardas, y tus grabaciones."
+            ? "Aquí aparecen las capturas que copias o guardas, y tus grabaciones."
             : "No hay nada que coincida con el filtro o el texto buscado.";
-        EmptyText.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyWelcome.Visibility = EmptyShortcut.Visibility = _all.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyPanel.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         OnSelectionChanged(this, null!);
     }
 
@@ -160,10 +164,28 @@ public partial class HistoryWindow : Window
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         bool any = Selected != null;
-        CopyButton.IsEnabled = SaveButton.IsEnabled = OpenButton.IsEnabled = DeleteButton.IsEnabled = KeepButton.IsEnabled = any;
-        KeepButton.Content = Selected?.Kept == true ? "No conservar" : "Conservar";
+        CopyButton.IsEnabled = SaveButton.IsEnabled = DeleteButton.IsEnabled = MoreOpenItem.IsEnabled = MoreKeepItem.IsEnabled = any;
         EditButton.IsEnabled = EditMenuItem.IsEnabled = Selected?.CanEdit == true; // captures from before the history could reopen them have no saved state
-        KeepMenuItem.Header = KeepButton.Content;
+        KeepMenuItem.Header = MoreKeepItem.Header = Selected?.KeepLabel ?? "Conservar";
+    }
+
+    private void OnMore(object sender, RoutedEventArgs e)
+    {
+        MoreMenu.PlacementTarget = MoreButton;
+        MoreMenu.IsOpen = true;
+    }
+
+    private void OnQuickCopy(object sender, RoutedEventArgs e) => OnCard(sender, OnCopy, e);
+
+    private void OnQuickEdit(object sender, RoutedEventArgs e) => OnCard(sender, OnEdit, e);
+
+    private void OnQuickKeep(object sender, RoutedEventArgs e) => OnCard(sender, OnKeep, e);
+
+    // A quick action sits on a card that may not be the picked one: pick it, then do what the button below would.
+    private void OnCard(object sender, RoutedEventHandler action, RoutedEventArgs e)
+    {
+        Items.SelectedItem = ((FrameworkElement)sender).DataContext;
+        action(sender, e);
     }
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
@@ -206,10 +228,23 @@ public partial class HistoryWindow : Window
     // A double click on a card, not on the empty space or the scroll bar.
     private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(Items, source) is ListBoxItem)
+        if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(Items, source) is ListBoxItem
+            && !IsOnButton(source)) // two quick clicks on a quick action are not a request to open the card
         {
             OnActivate();
         }
+    }
+
+    private static bool IsOnButton(DependencyObject source)
+    {
+        for (DependencyObject? node = source; node is Visual; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is Button)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>Opens the capture in the editor, or a recording in its player.</summary>
@@ -380,9 +415,11 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private sealed record Item(string Path, BitmapSource Thumbnail, string Caption, bool CanEdit, string? MediaPath, string Kind, bool Kept)
+    private sealed record Item(string Path, BitmapSource Thumbnail, string Date, string Size, string FullDate, bool CanEdit, string? MediaPath, string Kind, bool Kept)
     {
         public bool IsRecording => MediaPath != null;
+
+        public string KeepLabel => Kept ? "No conservar" : "Conservar";
 
         /// <summary>The text read from the picture; null until it has been read.</summary>
         public string? Text { get; set; }

@@ -8,6 +8,15 @@ internal sealed record HistoryEntry(string Path, DateTime Taken, bool CanEdit, s
 {
     public bool IsRecording => MediaPath != null;
 
+    /// <summary>The short date under a picture: "Hoy, 14:32", "Ayer, 09:20", the day and time this year, the full day before.</summary>
+    public static string DateLabel(DateTime taken, DateTime now) => (now.Date - taken.Date).Days switch
+    {
+        0 => $"Hoy, {taken:HH:mm}",
+        1 => $"Ayer, {taken:HH:mm}",
+        _ when taken.Year == now.Year => $"{taken:dd'/'MM, HH:mm}",
+        _ => $"{taken:dd'/'MM'/'yyyy}",
+    };
+
     /// <summary>"GIF" or "Video" for a recording.</summary>
     public string Kind => System.IO.Path.GetExtension(MediaPath ?? "").Equals(".gif", StringComparison.OrdinalIgnoreCase) ? "GIF" : "Video";
 }

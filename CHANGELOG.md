@@ -11,6 +11,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Los menús (el de la bandeja y los de clic derecho) tienen un aspecto propio: resalte redondeado con una barrita roja, en tema claro y oscuro.
 - Barras del editor: la herramienta en uso se marca en rojo, los menús desplegables llevan borde y sombra, los avisos al pasar el mouse son oscuros y muestran la tecla aparte, y el tamaño al copiar y guardar es un solo control.
 - La tecla de la herramienta en uso la suelta (por ejemplo, T y otra vez T), y vuelves a ajustar la zona.
+- Historial renovado: buscador con lupa, filtro a la vista, tarjetas con la fecha y las medidas, y acciones rápidas (copiar, editar, conservar) al pasar el mouse. «Copiar» es el botón principal; «Abrir», «Conservar» y «Abrir carpeta» están en «Más».
 
 ## [0.11.0] - 2026-11-23
 

@@ -298,6 +298,14 @@ internal sealed class CaptureHistory
     /// <summary>A small version for the list, decoded at that size so a hundred of them stay cheap.</summary>
     public static BitmapSource LoadThumbnail(string path, int width) => Decode(path, width);
 
+    /// <summary>The size of a picture in pixels, read from its header without decoding it.</summary>
+    public static (int Width, int Height) PixelSize(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        BitmapFrame frame = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0];
+        return (frame.PixelWidth, frame.PixelHeight);
+    }
+
     private static BitmapSource Decode(string path, int thumbnailWidth)
     {
         var image = new BitmapImage();
