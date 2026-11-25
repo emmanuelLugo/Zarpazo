@@ -14,6 +14,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Al arrastrar (botón mantenido), un anillo sigue al puntero hasta soltarlo.
 - Panel Zoom: «Seguir al cursor» (encendido de fábrica). Con zoom, la cámara acompaña al puntero para que no salga de la vista.
 
+### Corregido
+- Zoom automático: con clics seguidos en lugares alejados, la cámara llega antes de cada clic; antes el zoom podía empezar después de él y el clic quedaba fuera de la imagen.
+
 ### Cambiado
 - Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.
 

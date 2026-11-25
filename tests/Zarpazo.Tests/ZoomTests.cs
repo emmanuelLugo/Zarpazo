@@ -111,6 +111,38 @@ public sealed class ZoomTests
     }
 
     [Fact]
+    public void Quick_clicks_in_opposite_corners_are_both_in_view_when_they_happen()
+    {
+        // The pointer goes corner to corner and clicks about a second apart.
+        (long Ms, int X, int Y)[] at = [(3400, 40, 75), (4500, 970, 455), (5800, 30, 435)];
+        var track = new CursorTrack(1000, 500, [], at.Select(c => new CursorClick(c.Ms, c.Ms + 100, c.X, c.Y, ClickButton.Left)).ToList());
+
+        IReadOnlyList<ZoomRegion> zooms = ZoomSuggester.Suggest(track, 12);
+        var camera = new ZoomCamera([new VideoSegment(0, 12)], zooms);
+
+        Assert.Equal(3, zooms.Count);
+        foreach ((long ms, int x, int y) in at)
+        {
+            ZoomView view = camera.ViewAt(ms / 1000.0);
+            Assert.InRange(x / 1000.0, view.X, view.X + view.Width);
+            Assert.InRange(y / 500.0, view.Y, view.Y + view.Height);
+        }
+    }
+
+    [Fact]
+    public void The_camera_does_not_chase_a_pointer_that_has_not_reached_the_zoom_yet()
+    {
+        // At the bottom until 6 s, then on the point the zoom looks at.
+        static (double X, double Y)? Pointer(double t) => t < 6 ? (0.1, 0.9) : (0.3, 0.2);
+        VideoSegment[] whole = [new VideoSegment(0, 20)];
+        ZoomRegion[] zoom = [new ZoomRegion(5, 10, 2, 0.3, 0.2)];
+
+        var camera = new ZoomCamera(whole, zoom, pointer: Pointer);
+
+        Assert.Equal(new ZoomCamera(whole, zoom).ViewAt(5.5).Y, camera.ViewAt(5.5).Y, 3);
+    }
+
+    [Fact]
     public void A_pointer_off_the_picture_leaves_the_camera_where_the_zoom_says()
     {
         var track = new CursorTrack(100, 100, [new CursorSample(0, 150, 150)], []);

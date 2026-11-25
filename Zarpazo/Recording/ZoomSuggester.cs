@@ -15,6 +15,11 @@ internal static class ZoomSuggester
     /// <summary>A zoom for a single click lasts at least this long, so it is not over before it is seen.</summary>
     public const double MinSeconds = 2.5; // with a gentler zoom in and out, a shorter one never settles
 
+    // When the next click comes before a zoom is over, that zoom gives way this long before the click, so the camera is
+    // there when it happens (see ZoomTiming.GlideHalfSeconds); it still stays a moment after its own last click.
+    private const double ArriveSeconds = 0.6;
+    private const double LingerSeconds = 0.2;
+
     /// <summary>Clicks of one zoom must fit in this share of what the zoom shows, so none is left at the edge.</summary>
     private const double FitShare = 0.8;
 
@@ -30,6 +35,7 @@ internal static class ZoomSuggester
             .ToList();
 
         var zooms = new List<ZoomRegion>();
+        double previousUp = 0; // when the button of the last zoom's last click came up
         double maxWidth = track.Width / scale * FitShare;
         double maxHeight = track.Height / scale * FitShare;
         int first = 0;
@@ -63,7 +69,11 @@ internal static class ZoomSuggester
             (start, end) = ShiftInside(start, end, duration);
             if (zooms.Count > 0 && start < zooms[^1].End)
             {
-                start = zooms[^1].End; // right after the previous one: the camera moves across without zooming out
+                // One right after the other: the camera moves across without zooming out.
+                double change = Math.Max(clicks[first].TimeMs / 1000.0 - ArriveSeconds,
+                    Math.Max(previousUp + LingerSeconds, zooms[^1].Start + ZoomRegion.MinSeconds));
+                start = Math.Min(change, zooms[^1].End);
+                zooms[^1] = zooms[^1] with { End = start };
             }
 
             if (end - start >= ZoomRegion.MinSeconds)
@@ -71,6 +81,7 @@ internal static class ZoomSuggester
                 double focusX = (left + right) / 2.0 / track.Width;
                 double focusY = (top + bottom) / 2.0 / track.Height;
                 zooms.Add(new ZoomRegion(start, end, scale, focusX, focusY).Clamped());
+                previousUp = lastUp;
             }
             first = next;
         }

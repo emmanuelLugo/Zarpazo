@@ -86,13 +86,15 @@ internal sealed class ZoomCamera
 
     // At each step of the chain, how far the view has to move from the zoom's point to keep the pointer within reach of its
     // middle (nothing while it is, or while there is no pointer), then smoothed. Measured from the zoom's point each time,
-    // so the camera comes back when the pointer does and never drifts.
+    // so the camera comes back when the pointer does and never drifts. Until the pointer has been in what the zoom shows
+    // there is nothing to follow: it is still on its way there (or the zoom looks at something else on purpose).
     private (double[] X, double[] Y) Follow(List<ZoomSpan> chain, IReadOnlyList<VideoSegment> segments, Func<double, (double X, double Y)?> pointer)
     {
         double start = chain[0].Start;
         int count = (int)Math.Ceiling((chain[^1].End - start) / CursorMotion.StepSeconds) + 1;
         var x = new double[count];
         var y = new double[count];
+        bool arrived = false;
         for (int i = 0; i < count; i++)
         {
             double time = start + i * CursorMotion.StepSeconds;
@@ -102,6 +104,11 @@ internal sealed class ZoomCamera
             }
             (double scale, double focusX, double focusY) = TargetAt(chain, time);
             double half = 0.5 / scale;
+            arrived |= Math.Abs(at.X - Math.Clamp(focusX, half, 1 - half)) <= half && Math.Abs(at.Y - Math.Clamp(focusY, half, 1 - half)) <= half;
+            if (!arrived)
+            {
+                continue;
+            }
             x[i] = Move(focusX, at.X, half);
             y[i] = Move(focusY, at.Y, half);
         }
