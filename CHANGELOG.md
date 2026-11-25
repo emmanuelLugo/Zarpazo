@@ -6,6 +6,12 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Cambiado
+- Configuración renovada: cada grupo de ajustes va en una tarjeta, con la explicación junto a su control, interruptores en lugar de casillas y un menú lateral con iconos.
+- Los menús (el de la bandeja y los de clic derecho) tienen un aspecto propio: resalte redondeado con una barrita roja, en tema claro y oscuro.
+- Barras del editor: la herramienta en uso se marca en rojo, los menús desplegables llevan borde y sombra, los avisos al pasar el mouse son oscuros y muestran la tecla aparte, y el tamaño al copiar y guardar es un solo control.
+- La tecla de la herramienta en uso la suelta (por ejemplo, T y otra vez T), y vuelves a ajustar la zona.
+
 ## [0.11.0] - 2026-11-23
 
 ### Añadido

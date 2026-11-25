@@ -36,6 +36,21 @@ public class EditorToolbarTests
     });
 
     [Fact]
+    public void The_key_of_the_tool_in_use_lets_it_go()
+    {
+        Sta.Run(() =>
+        {
+            var toolbar = new EditorToolbar();
+            toolbar.Choose(AnnotationTool.Text);
+            Assert.Equal(AnnotationTool.Text, toolbar.Tool);
+            toolbar.Choose(AnnotationTool.Arrow); // another tool is simply picked
+            Assert.Equal(AnnotationTool.Arrow, toolbar.Tool);
+            toolbar.Choose(AnnotationTool.Arrow);
+            Assert.Equal(AnnotationTool.Select, toolbar.Tool);
+        });
+    }
+
+    [Fact]
     public void Starts_adjusting_the_area()
     {
         Sta.Run(() => Assert.Equal(AnnotationTool.Select, new EditorToolbar().Tool));

@@ -816,8 +816,8 @@ public partial class EditorToolbar : UserControl
     internal void SetGroupMode(bool on) =>
         CopyActionButton.ToolTip = on ? "Copiar al portapapeles (Ctrl+C). Enter añade al grupo (modo grupo)" : "Copiar al portapapeles (Enter)";
 
-    /// <summary>Picks a tool, as its button would.</summary>
-    internal void Choose(AnnotationTool tool) => ApplyTool(tool);
+    /// <summary>Picks a tool, as its button would: pressing the key of the tool in use lets it go, back to adjusting the area.</summary>
+    internal void Choose(AnnotationTool tool) => ApplyTool(tool == Tool ? AnnotationTool.Select : tool);
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }
