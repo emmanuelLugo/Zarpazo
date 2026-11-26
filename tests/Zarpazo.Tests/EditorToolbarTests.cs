@@ -253,6 +253,7 @@ public class EditorToolbarTests
             Assert.False(toolbar.RecordMicrophoneBox.IsEnabled);
             Assert.False(toolbar.RecordSystemSoundBox.IsEnabled);
             Assert.False(toolbar.RecordMicrophoneList.IsEnabled);
+            Assert.Equal(Visibility.Collapsed, toolbar.RecordSoundSection.Visibility);
         });
     }
 
@@ -268,6 +269,7 @@ public class EditorToolbarTests
             toolbar.RecordSystemSoundBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
             Assert.True(toolbar.RecordMicrophoneBox.IsEnabled);
+            Assert.Equal(Visibility.Visible, toolbar.RecordSoundSection.Visibility);
             Assert.Equal(new Zarpazo.Recording.RecordingOptions(Zarpazo.Recording.RecordingFormat.Video, false, true), toolbar.RecordingOptions);
         });
     }

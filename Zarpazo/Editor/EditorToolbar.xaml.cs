@@ -337,12 +337,13 @@ public partial class EditorToolbar : UserControl
         RecordHighlightBox.IsChecked = _recording.HighlightCursor;
         RecordKeysBox.IsChecked = _recording.ShowKeys;
         (_recording.CursorScale >= 1.75 ? RecordCursorHuge : _recording.CursorScale > 1.2 ? RecordCursorLarge : RecordCursorNormal).IsChecked = true;
-        // A GIF has no sound, so the boxes only mean something for a video.
-        RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = RecordSpeakersList.IsEnabled
-            = _recording.Format == RecordingFormat.Video;
+        bool video = _recording.Format == RecordingFormat.Video;
+        RecordFormatHint.Text = video ? "Con sonido opcional, hasta 30 minutos" : "Imagen animada sin sonido, hasta 30 segundos";
+        // A GIF has no sound, so the whole section goes.
+        RecordSoundSection.Visibility = RecordPointerVideoNote.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
+        RecordMicrophoneBox.IsEnabled = RecordSystemSoundBox.IsEnabled = RecordMicrophoneList.IsEnabled = RecordSpeakersList.IsEnabled = video;
         // A video's pointer is chosen in the editor; these only shape the one painted into a GIF.
-        RecordPointerGif.Visibility = _recording.Format == RecordingFormat.Video ? Visibility.Collapsed : Visibility.Visible;
-        RecordPointerVideoNote.Visibility = _recording.Format == RecordingFormat.Video ? Visibility.Visible : Visibility.Collapsed;
+        RecordPointerGif.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void OnRecordButton(object sender, RoutedEventArgs e)

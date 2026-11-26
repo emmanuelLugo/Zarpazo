@@ -33,7 +33,7 @@
         <local:ShortcutTipConverter x:Key="ShortcutTip" />
 
         <!-- Tooltips in the look of the bars: the name, its key as a key cap, and the rest in grey underneath. -->
-        <Style TargetType="ToolTip">
+        <Style x:Key="BarTip" TargetType="ToolTip">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToolTip">
@@ -67,6 +67,8 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style TargetType="ToolTip" BasedOn="{StaticResource BarTip}" />
 
         <!-- The card of every pop-up: the same border and shadow as the bars. The margin is room for the shadow. -->
         <Style x:Key="PopupCard" TargetType="Border">
@@ -128,6 +130,40 @@
                                 <Setter TargetName="Box" Property="Background" Value="#4DEF5350" />
                                 <Setter Property="Foreground" Value="White" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVisible" />
+
+        <!-- An on/off option: its name on the left, a switch on the right, and the whole row presses it. -->
+        <Style x:Key="SwitchRow" TargetType="CheckBox">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Row" Height="34" Padding="6,0" CornerRadius="6" Background="Transparent">
+                            <DockPanel>
+                                <Border x:Name="Track" DockPanel.Dock="Right" Width="34" Height="18" CornerRadius="9" Background="#33FFFFFF" VerticalAlignment="Center">
+                                    <Ellipse x:Name="Knob" Width="12" Height="12" Margin="3,0" Fill="#CCFFFFFF" HorizontalAlignment="Left" />
+                                </Border>
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="#E53935" />
+                                <Setter TargetName="Knob" Property="Fill" Value="White" />
+                                <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -417,77 +453,109 @@
                    Opened="OnRecordPopupOpened"
                    Closed="OnRecordPopupClosed">
                 <Border Style="{StaticResource PopupCard}" Padding="10">
-                    <StackPanel Width="250" RadioButton.Checked="OnRecordChoice">
-                        <TextBlock Text="Formato" Style="{StaticResource PanelLabel}" Margin="2,0,0,3" />
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="RecordGifChoice" GroupName="recordFormat" Tag="gif" Style="{StaticResource Choice}"
-                                         ToolTip="Imagen animada, sin sonido, hasta 30 segundos">
-                                <TextBlock Text="GIF" Margin="10,0" />
-                            </RadioButton>
-                            <RadioButton x:Name="RecordVideoChoice" GroupName="recordFormat" Tag="video" Style="{StaticResource Choice}"
-                                         ToolTip="Video MP4 con sonido opcional, hasta 30 minutos">
-                                <TextBlock Text="Video MP4" Margin="10,0" />
-                            </RadioButton>
+                    <StackPanel Width="280" RadioButton.Checked="OnRecordChoice">
+                        <Border Padding="3" CornerRadius="8" Background="#14FFFFFF">
+                            <UniformGrid Rows="1">
+                                <RadioButton x:Name="RecordVideoChoice" GroupName="recordFormat" Tag="video" Style="{StaticResource SegChoice}" Content="Video MP4" />
+                                <RadioButton x:Name="RecordGifChoice" GroupName="recordFormat" Tag="gif" Style="{StaticResource SegChoice}" Content="GIF" />
+                            </UniformGrid>
+                        </Border>
+                        <TextBlock x:Name="RecordFormatHint" Style="{StaticResource PanelLabel}" Margin="2,5,0,0" TextAlignment="Center" />
+
+                        <!-- The lists take the dark look of the ordinary windows. -->
+                        <StackPanel x:Name="RecordSoundSection">
+                            <StackPanel.Resources>
+                                <ResourceDictionary>
+                                    <ResourceDictionary.MergedDictionaries>
+                                        <ResourceDictionary Source="/Zarpazo;component/Theme/Dark.xaml" />
+                                        <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
+                                    </ResourceDictionary.MergedDictionaries>
+                                    <Style TargetType="ToolTip" BasedOn="{StaticResource BarTip}" />
+                                </ResourceDictionary>
+                            </StackPanel.Resources>
+
+                            <Border Style="{StaticResource DividerH}" Margin="0,8" />
+                            <CheckBox x:Name="RecordMicrophoneBox" Style="{StaticResource SwitchRow}" AutomationProperties.Name="Micrófono" Click="OnRecordMicrophone">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource Icon}" Data="M6,3.5 A2,2 0 0 1 10,3.5 V7.5 A2,2 0 0 1 6,7.5 Z M3.5,7.5 A4.5,4.5 0 0 0 12.5,7.5 M8,12 V14.5 M5.5,14.5 H10.5" />
+                                    <TextBlock Text="Micrófono" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </CheckBox>
+                            <!-- The device and its level only take room while the source is on. -->
+                            <StackPanel Margin="32,2,6,4" Visibility="{Binding IsChecked, ElementName=RecordMicrophoneBox, Converter={StaticResource BoolToVisible}}">
+                                <ComboBox x:Name="RecordMicrophoneList" Padding="10,5,26,5" FontFamily="Segoe UI" FontSize="12"
+                                          DisplayMemberPath="Name" SelectionChanged="OnRecordMicrophoneChosen" AutomationProperties.Name="Qué micrófono"
+                                          ToolTip="El micrófono que se graba. 'Predeterminado de Windows' usa el que Windows tenga elegido." />
+                                <Border x:Name="MicrophoneLevelTrack" Height="6" Margin="0,6,0,0" CornerRadius="3" Background="#33FFFFFF"
+                                        ToolTip="Nivel del micrófono: si habla alguien y la barra se mueve, se está grabando">
+                                    <Border x:Name="MicrophoneLevelFill" Width="0" CornerRadius="3" HorizontalAlignment="Left" />
+                                </Border>
+                                <TextBlock x:Name="MicrophoneLevelHint" Margin="0,4,0,0" Foreground="#80FFFFFF" FontFamily="Segoe UI" FontSize="11"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <CheckBox x:Name="RecordSystemSoundBox" Style="{StaticResource SwitchRow}" AutomationProperties.Name="Sonido de Windows" Click="OnRecordSystemSound"
+                                      ToolTip="Lo que suena por tus altavoces o auriculares: música, videollamadas, el propio video que veas">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource Icon}" Data="M2,6 H4.5 L8,3 V13 L4.5,10 H2 Z M10.5,5.5 A3.5,3.5 0 0 1 10.5,10.5 M12,3.5 A6,6 0 0 1 12,12.5" />
+                                    <TextBlock Text="Sonido de Windows" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </CheckBox>
+                            <StackPanel Margin="32,2,6,4" Visibility="{Binding IsChecked, ElementName=RecordSystemSoundBox, Converter={StaticResource BoolToVisible}}">
+                                <ComboBox x:Name="RecordSpeakersList" Padding="10,5,26,5" FontFamily="Segoe UI" FontSize="12"
+                                          DisplayMemberPath="Name" SelectionChanged="OnRecordSpeakersChosen" AutomationProperties.Name="Qué altavoces"
+                                          ToolTip="De qué altavoces o auriculares se toma el sonido. 'Predeterminado de Windows' usa los que Windows tenga elegidos." />
+                                <Border x:Name="SpeakersLevelTrack" Height="6" Margin="0,6,0,0" CornerRadius="3" Background="#33FFFFFF"
+                                        ToolTip="Nivel del sonido de Windows: se mueve cuando suena algo por tus altavoces o auriculares">
+                                    <Border x:Name="SpeakersLevelFill" Width="0" CornerRadius="3" HorizontalAlignment="Left" />
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
 
-                        <TextBlock Text="Sonido (solo en video)" Style="{StaticResource PanelLabel}" />
-                        <CheckBox x:Name="RecordMicrophoneBox" Content="Micrófono" Foreground="White" FontFamily="Segoe UI" FontSize="13"
-                                  Focusable="False" Click="OnRecordMicrophone" />
-                        <ComboBox x:Name="RecordMicrophoneList" Margin="20,4,0,2" FontFamily="Segoe UI" FontSize="12"
-                                  DisplayMemberPath="Name" SelectionChanged="OnRecordMicrophoneChosen"
-                                  ToolTip="El micrófono que se graba. 'Predeterminado de Windows' usa el que Windows tenga elegido." />
-                        <Border x:Name="MicrophoneLevelTrack" Height="8" Margin="20,4,0,0" CornerRadius="4" Background="#33FFFFFF"
-                                ToolTip="Nivel del micrófono: si habla alguien y la barra se mueve, se está grabando">
-                            <Border x:Name="MicrophoneLevelFill" Width="0" CornerRadius="4" HorizontalAlignment="Left" />
-                        </Border>
-                        <TextBlock x:Name="MicrophoneLevelHint" Margin="20,2,0,0" Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="11"
-                                   TextWrapping="Wrap" />
-                        <CheckBox x:Name="RecordSystemSoundBox" Content="Sonido de Windows" ToolTip="Lo que suena por tus altavoces o auriculares: música, videollamadas, el propio video que veas" Foreground="White" FontFamily="Segoe UI" FontSize="13"
-                                  Margin="0,6,0,0" Focusable="False" Click="OnRecordSystemSound" />
-                        <ComboBox x:Name="RecordSpeakersList" Margin="20,4,0,2" FontFamily="Segoe UI" FontSize="12"
-                                  DisplayMemberPath="Name" SelectionChanged="OnRecordSpeakersChosen"
-                                  ToolTip="De qué altavoces o auriculares se toma el sonido. 'Predeterminado de Windows' usa los que Windows tenga elegidos." />
-                        <Border x:Name="SpeakersLevelTrack" Height="8" Margin="20,4,0,0" CornerRadius="4" Background="#33FFFFFF"
-                                ToolTip="Nivel del sonido de Windows: se mueve cuando suena algo por tus altavoces o auriculares">
-                            <Border x:Name="SpeakersLevelFill" Width="0" CornerRadius="4" HorizontalAlignment="Left" />
-                        </Border>
-
-                        <TextBlock Text="Efectos" Style="{StaticResource PanelLabel}" />
-                        <CheckBox x:Name="RecordKeysBox" Content="Mostrar atajos de teclado" Foreground="White" FontFamily="Segoe UI" FontSize="13"
-                                  ToolTip="Muestra Ctrl+C, Alt+Tab, Enter, F5… Nunca muestra las letras que escribes, para que una contraseña no quede a la vista"
-                                  Focusable="False" Click="OnRecordKeys" />
-                        <!-- A video is recorded without the pointer: the editor draws its own, in the style chosen there. A GIF has it painted in. -->
-                        <TextBlock x:Name="RecordPointerVideoNote" Text="En video, el cursor se elige en el editor: estilo, tamaño, suavizado y efecto de clic."
-                                   Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="12" TextWrapping="Wrap" MaxWidth="260" HorizontalAlignment="Left" Margin="0,8,0,0" />
-                        <StackPanel x:Name="RecordPointerGif" Margin="0,6,0,0">
-                            <CheckBox x:Name="RecordHighlightBox" Content="Resaltar el cursor y los clics" Foreground="White" FontFamily="Segoe UI" FontSize="13"
-                                      ToolTip="Un halo alrededor del puntero y un anillo en cada clic, para que se siga mejor lo que haces"
-                                      Focusable="False" Click="OnRecordHighlight" />
-                            <TextBlock Text="Tamaño del puntero" Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="12" Margin="0,8,0,3" />
+                        <Border Style="{StaticResource DividerH}" Margin="0,8" />
+                        <CheckBox x:Name="RecordKeysBox" Style="{StaticResource SwitchRow}" AutomationProperties.Name="Mostrar atajos de teclado" Click="OnRecordKeys"
+                                  ToolTip="Muestra Ctrl+C, Alt+Tab, Enter, F5… Nunca muestra las letras que escribes, para que una contraseña no quede a la vista">
                             <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="RecordCursorNormal" GroupName="recordCursor" Tag="1" Style="{StaticResource Choice}"
-                                             ToolTip="Como se ve en la pantalla">
-                                    <TextBlock Text="Normal" Margin="8,0" />
-                                </RadioButton>
-                                <RadioButton x:Name="RecordCursorLarge" GroupName="recordCursor" Tag="1.5" Style="{StaticResource Choice}"
-                                             ToolTip="Una vez y media: se sigue mejor, sobre todo con zoom">
-                                    <TextBlock Text="Grande" Margin="8,0" />
-                                </RadioButton>
-                                <RadioButton x:Name="RecordCursorHuge" GroupName="recordCursor" Tag="2" Style="{StaticResource Choice}"
-                                             ToolTip="El doble de grande">
-                                    <TextBlock Text="Muy grande" Margin="8,0" />
-                                </RadioButton>
+                                <Path Style="{StaticResource Icon}" Data="M1.5,4 H14.5 V12 H1.5 Z M4,6.5 H4.1 M7,6.5 H7.1 M9.9,6.5 H10 M12,6.5 H12.1 M5,9.5 H11" />
+                                <TextBlock Text="Mostrar atajos de teclado" Margin="10,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
+                        </CheckBox>
+                        <!-- A video is recorded without the pointer: the editor draws its own, in the style chosen there. A GIF has it painted in. -->
+                        <TextBlock x:Name="RecordPointerVideoNote" Text="El cursor se elige después, en el editor: estilo, tamaño, suavizado y efecto de clic."
+                                   Foreground="#80FFFFFF" FontFamily="Segoe UI" FontSize="11.5" TextWrapping="Wrap" Margin="6,4,6,0" />
+                        <StackPanel x:Name="RecordPointerGif">
+                            <CheckBox x:Name="RecordHighlightBox" Style="{StaticResource SwitchRow}" AutomationProperties.Name="Resaltar el cursor y los clics" Click="OnRecordHighlight"
+                                      ToolTip="Un halo alrededor del puntero y un anillo en cada clic, para que se siga mejor lo que haces">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource Icon}" Data="M4,1.5 L12.5,9.5 H8.5 L10.5,13.5 L8.5,14.5 L6.5,10.5 L4,13 Z" />
+                                    <TextBlock Text="Resaltar el cursor y los clics" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </CheckBox>
+                            <TextBlock Text="Tamaño del puntero" Style="{StaticResource PanelLabel}" Margin="6,6,0,4" />
+                            <Border Padding="3" CornerRadius="8" Background="#14FFFFFF">
+                                <UniformGrid Rows="1">
+                                    <RadioButton x:Name="RecordCursorNormal" GroupName="recordCursor" Tag="1" Style="{StaticResource SegChoice}"
+                                                 Content="Normal" ToolTip="Como se ve en la pantalla" />
+                                    <RadioButton x:Name="RecordCursorLarge" GroupName="recordCursor" Tag="1.5" Style="{StaticResource SegChoice}"
+                                                 Content="Grande" ToolTip="Una vez y media: se sigue mejor, sobre todo con zoom" />
+                                    <RadioButton x:Name="RecordCursorHuge" GroupName="recordCursor" Tag="2" Style="{StaticResource SegChoice}"
+                                                 Content="Muy grande" ToolTip="El doble de grande" />
+                                </UniformGrid>
+                            </Border>
                         </StackPanel>
 
                         <Button Margin="0,12,0,0" Focusable="False" Click="OnRecordStart" AutomationProperties.Name="Empezar a grabar">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border x:Name="Box" Height="32" CornerRadius="6" Background="#E53935">
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Ellipse Width="10" Height="10" Fill="White" Margin="0,0,8,0" />
-                                            <TextBlock Text="Empezar a grabar" Foreground="White" FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold" />
-                                        </StackPanel>
+                                    <Border x:Name="Box" Height="36" CornerRadius="8" Background="#E53935">
+                                        <Grid>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Ellipse Width="10" Height="10" Fill="White" Margin="0,0,8,0" />
+                                                <TextBlock Text="Empezar a grabar" Foreground="White" FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold" />
+                                            </StackPanel>
+                                            <TextBlock Text="Ctrl+G" Foreground="#B3FFFFFF" FontFamily="Segoe UI" FontSize="11" Margin="0,0,10,0"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </Grid>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">

@@ -239,7 +239,8 @@
                             </ToggleButton.Template>
                         </ToggleButton>
                         <ContentPresenter IsHitTestVisible="False" Margin="{TemplateBinding Padding}" Content="{TemplateBinding SelectionBoxItem}"
-                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True"
                                Focusable="False" PopupAnimation="Fade">
                             <Grid MinWidth="{Binding ActualWidth, ElementName=Toggle}" MaxHeight="{TemplateBinding MaxDropDownHeight}" Margin="10,2,10,12">
