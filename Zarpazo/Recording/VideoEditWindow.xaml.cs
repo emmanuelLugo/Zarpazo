@@ -1979,6 +1979,7 @@ public partial class VideoEditWindow : Window
         CropLeftText.Text = Percent(crop.Left);
         CropRightText.Text = Percent(crop.Right);
         CropResetButton.IsEnabled = !crop.IsNone;
+        CropResetButton.Visibility = crop.IsNone ? Visibility.Hidden : Visibility.Visible;
         CropSizeText.Text = OutputArea() is { } area
             ? crop.IsNone ? $"Imagen completa · {area.Width} × {area.Height} px" : $"El video quedará de {area.Width} × {area.Height} px"
             : "";

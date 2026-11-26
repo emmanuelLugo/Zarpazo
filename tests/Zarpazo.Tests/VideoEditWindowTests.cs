@@ -660,6 +660,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal(Visibility.Visible, window.CropPanel.Visibility);
                 Assert.Equal(Visibility.Visible, window.CropLayer.Visibility);
                 Assert.Equal(Visibility.Collapsed, window.PointerLayer.Visibility);
+                Assert.Equal(Visibility.Hidden, window.CropResetButton.Visibility);
 
                 // A drag along the "Inferior" row is one step to undo.
                 timeline.BeginGesture();
@@ -674,6 +675,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal("20 %", window.CropBottomText.Text.Replace(" ", " "));
                 Assert.True(window.NeedsRendering, "a cropped video is a different video");
                 Assert.True(timeline.HasChanges);
+                Assert.Equal(Visibility.Visible, window.CropResetButton.Visibility);
                 Shot(window, folder, "editor-crop-choosing.png");
 
                 window.FrameTab.IsChecked = true; // elsewhere, the result
