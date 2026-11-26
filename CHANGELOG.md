@@ -6,6 +6,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.13.0] - 2026-11-26
+
 ### Añadido
 - Editor de video, panel Cursor: color del efecto de clic (azul, rojo, amarillo, verde o blanco), «Ocultar si no se mueve» y tres formas de movimiento listas (Natural, Suave y Cinemático).
 - El clic derecho se distingue en el video con un segundo anillo.
@@ -16,10 +18,16 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 - Panel Zoom: «Seguir al cursor» (encendido de fábrica). Con zoom, la cámara acompaña al puntero para que no salga de la vista.
 
 ### Corregido
+- Editor de video: al maximizar o restaurar la ventana, la línea de tiempo vuelve a ocupar todo el ancho.
+- Panel de grabación: la lista de micrófonos y altavoces muestra sus nombres.
 - Zoom automático: con clics rápidos de un extremo a otro ya no hace zoom en cada uno (la cámara iba y venía); se ve la pantalla completa. Y ningún zoom empieza después de su clic.
 - Al pasar de un zoom a otro hacia un lado alejado, la cámara se desliza de forma pareja, sin tirones.
 
 ### Cambiado
+- Editor de video renovado, con un aspecto más limpio: los paneles Marco, Cursor, Zoom, Recorte, Capas y Exportar y el menú Presets usan grises, barras que se arrastran y botones planos; las opciones menos usadas quedan detrás de un botón.
+- Línea de tiempo: las miniaturas se ven enteras con una etiqueta para arrastrar cada parte, y la línea roja es continua. «Mover antes» y «Mover después» pasaron al clic derecho (Alt+← y Alt+→ siguen igual), el tiempo está junto a reproducir y los avisos salen al lado de los botones.
+- Panel de grabación (el círculo rojo de la barra) renovado: muestra solo lo que corresponde a video o a GIF, y los dispositivos de sonido solo cuando están encendidos.
+- Historial: buscador y filtros planos, tarjetas sin caja, la elegida con borde claro, eliminar y «más» como iconos, y las capturas conservadas marcadas con una estrella.
 - Al guardar un video con «Guardar…» ya no se crea además la copia del guardado automático: queda solo donde lo elegiste. Al copiarlo se sigue guardando solo.
 - Zoom «Suave»: la cámara acerca y aleja de forma más pareja, sin el tirón del comienzo. El zoom automático empieza un poco antes de cada clic.
 - Panel Cursor: «Tamaño» pasó a «Estilo», y el balanceo se desactiva con el estilo punto, donde no se nota.
@@ -209,7 +217,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.12.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.9.1...v0.10.0
