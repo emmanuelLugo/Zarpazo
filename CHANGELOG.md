@@ -6,6 +6,8 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+## [0.14.0] - 2026-11-26
+
 ### Añadido
 - Aviso breve en la esquina al copiar o guardar una captura, sin sonido. Se apaga en Configuración > Captura. Reemplaza el globo de Windows del guardado automático.
 - Captura: con la zona ya elegida, las flechas mueven 1 píxel el dibujo seleccionado o la zona; con Mayús, 10.
@@ -225,7 +227,8 @@ Primera versión.
 - Historial de capturas y grabaciones, ajustes de calidad e inicio con Windows.
 - Instalador por usuario sin permisos de administrador, y ejecutables sueltos `Zarpazo.exe` y `Zarpazo-ligero.exe`.
 
-[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.13.0...HEAD
+[Sin publicar]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/emmanuelLugo/Zarpazo/compare/v0.10.0...v0.11.0
