@@ -1431,7 +1431,7 @@ public partial class VideoEditWindow : Window
         {
             var swatch = new RadioButton
             {
-                Style = (Style)FindResource("Swatch"),
+                Style = (Style)FindResource("RoundSwatch"),
                 GroupName = "frameBackground",
                 Background = background.ToBrush(),
                 Tag = background.Key,
@@ -1453,7 +1453,7 @@ public partial class VideoEditWindow : Window
         // What was opened the last time stays open.
         foreach (ToggleButton toggle in new[] { FrameBackgroundMore, FrameShadowMore, FrameBorderMore })
         {
-            toggle.IsChecked = OpenFrameOptions.Contains((string)toggle.Tag);
+            toggle.IsChecked = OpenPanelOptions.Contains((string)toggle.Tag);
         }
         ShowFrameChoices();
     }
@@ -1487,19 +1487,19 @@ public partial class VideoEditWindow : Window
         };
     }
 
-    // Which extra options of the frame panel are open; kept while the app runs, so the next video opens the same way.
-    private static readonly HashSet<string> OpenFrameOptions = [];
+    // Which extra options of the panels are open; kept while the app runs, so the next video opens the same way.
+    private static readonly HashSet<string> OpenPanelOptions = [];
 
-    private void OnFrameMore(object sender, RoutedEventArgs e)
+    private void OnPanelMore(object sender, RoutedEventArgs e)
     {
         var toggle = (ToggleButton)sender;
         if (toggle.IsChecked == true)
         {
-            OpenFrameOptions.Add((string)toggle.Tag);
+            OpenPanelOptions.Add((string)toggle.Tag);
         }
         else
         {
-            OpenFrameOptions.Remove((string)toggle.Tag);
+            OpenPanelOptions.Remove((string)toggle.Tag);
         }
         ShowBackgroundSwatches();
     }
@@ -2629,7 +2629,7 @@ public partial class VideoEditWindow : Window
             };
             var tile = new RadioButton
             {
-                Style = (Style)FindResource("Tile"),
+                Style = (Style)FindResource("QuietTile"),
                 GroupName = "cursorShape",
                 Tag = shape,
                 Content = drawing,
@@ -2670,7 +2670,7 @@ public partial class VideoEditWindow : Window
             icon.Width = icon.Height = 24;
             var tile = new RadioButton
             {
-                Style = (Style)FindResource("Tile"),
+                Style = (Style)FindResource("QuietTile"),
                 GroupName = "cursorClick",
                 Tag = effect,
                 Content = icon,
@@ -2697,16 +2697,18 @@ public partial class VideoEditWindow : Window
             };
             var swatch = new RadioButton
             {
-                Style = (Style)FindResource("Swatch"),
+                Style = (Style)FindResource("RoundSwatch"),
                 GroupName = "cursorTint",
                 Tag = tint,
                 Background = new SolidColorBrush(CursorArt.TintColor(tint)),
                 ToolTip = name,
             };
             System.Windows.Automation.AutomationProperties.SetName(swatch, name);
+            swatch.Margin = new Thickness(0, 0, 8, 0);
             swatch.Checked += OnCursorChanged;
             CursorTints.Children.Add(swatch);
         }
+        CursorMotionMore.IsChecked = OpenPanelOptions.Contains((string)CursorMotionMore.Tag);
         ShowCursorChoices();
     }
 
@@ -2731,7 +2733,6 @@ public partial class VideoEditWindow : Window
         }
         CursorIdleBox.IsChecked = _cursor.HideWhenIdle;
         CursorHaloBox.IsChecked = _cursor.Halo;
-        CursorResetButton.IsEnabled = _cursor with { Visible = true } != CursorStyle.Default with { Visible = true };
         CursorBounceBox.IsChecked = _cursor.Bounce;
         ShowCursorValues();
 
@@ -2754,6 +2755,20 @@ public partial class VideoEditWindow : Window
         CursorSizeText.Text = $"{_cursor.Size.ToString("0.0", CultureInfo.CurrentCulture)}×";
         CursorSmoothingText.Text = $"{Math.Round(_cursor.Smoothing * 100)} %";
         CursorSwayText.Text = $"{Math.Round(_cursor.Sway * 100)} %";
+        CursorShapeName.Text = _cursor.Shape switch
+        {
+            CursorShape.LightArrow => "Flecha blanca",
+            CursorShape.Dot => "Punto",
+            _ => "Flecha negra",
+        };
+        CursorClickName.Text = _cursor.Click switch
+        {
+            ClickEffect.None => "Ninguno",
+            ClickEffect.Pulse => "Pulso",
+            _ => "Onda",
+        };
+        CursorResetButton.IsEnabled = _cursor with { Visible = true } != CursorStyle.Default with { Visible = true };
+        CursorResetButton.Visibility = CursorResetButton.IsEnabled ? Visibility.Visible : Visibility.Hidden;
         CursorNaturalTile.IsChecked = IsMotion(NaturalMotion);
         CursorSmoothTile.IsChecked = IsMotion(SmoothMotion);
         CursorCinematicTile.IsChecked = IsMotion(CinematicMotion);
@@ -2810,7 +2825,6 @@ public partial class VideoEditWindow : Window
         else
         {
             ShowCursorValues();
-            CursorResetButton.IsEnabled = true;
         }
     }
 

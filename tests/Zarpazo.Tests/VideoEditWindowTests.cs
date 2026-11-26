@@ -562,6 +562,8 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal(Visibility.Visible, window.PointerLayer.Visibility);
                 Assert.Equal(Visibility.Visible, window.PointerGlyph.Visibility);
                 Assert.Equal(3, window.CursorShapes.Children.Count);
+                Assert.Equal(Visibility.Hidden, window.CursorResetButton.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.CursorMotionDetails.Visibility);
                 Assert.True(window.NeedsRendering, "the pointer has to be drawn in");
 
                 window.CursorTab.IsChecked = true;
@@ -590,6 +592,18 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 window.CursorHaloBox.BringIntoView();
                 Pump(() => false, 100);
                 Shot(window, folder, "editor-cursor-halo.png");
+
+                window.CursorMotionMore.IsChecked = true;
+                window.CursorMotionMore.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump(() => false, 100);
+                Assert.Equal(Visibility.Visible, window.CursorMotionDetails.Visibility);
+                Assert.Equal("Punto", window.CursorShapeName.Text);
+                Assert.Equal(Visibility.Visible, window.CursorResetButton.Visibility);
+                window.CursorShapeName.BringIntoView();
+                Pump(() => false, 100);
+                Shot(window, folder, "editor-cursor-motion.png");
+                window.CursorMotionMore.IsChecked = false; // the panel remembers what was open
+                window.CursorMotionMore.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
                 window.CursorBox.IsChecked = false;
                 window.CursorBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));

@@ -21,6 +21,31 @@
                 <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- A colour to choose: a rounded swatch of it, ringed when chosen. -->
+            <Style x:Key="Swatch" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Width" Value="34" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="Margin" Value="0,0,6,6" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Ring" CornerRadius="9" BorderThickness="2" BorderBrush="Transparent" Padding="2">
+                                <Border CornerRadius="6" Background="{TemplateBinding Background}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Ring" Property="Opacity" Value="0.85" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <!-- A choice of the pointer's shape: a tile with a drawing of it, ringed when chosen. -->
             <Style x:Key="Tile" TargetType="RadioButton">
                 <Setter Property="Focusable" Value="False" />
@@ -319,7 +344,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            <!-- The frame panel is quiet: greys, and what is chosen is ringed in the colour of the text. -->
+            <!-- The frame and cursor panels are quiet: greys, and what is chosen is ringed in the colour of the text. -->
             <!-- A setting as a bar to drag: the whole row is the slider; its name and value are written over it. -->
             <Style x:Key="ScrubPart" TargetType="RepeatButton">
                 <Setter Property="Focusable" Value="False" />
@@ -399,7 +424,7 @@
                 </Setter>
             </Style>
             <!-- A background to choose: a round swatch of it. -->
-            <Style x:Key="Swatch" TargetType="RadioButton">
+            <Style x:Key="RoundSwatch" TargetType="RadioButton">
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="Width" Value="28" />
                 <Setter Property="Height" Value="28" />
@@ -458,6 +483,11 @@
                 </Setter>
             </Style>
             <Style x:Key="QuietSwitch" TargetType="CheckBox">
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45" />
+                    </Trigger>
+                </Style.Triggers>
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="VerticalAlignment" Value="Center" />
@@ -478,6 +508,60 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+            <!-- A choice shown as a drawing: a flat tile, ringed in the colour of the text when chosen. -->
+            <Style x:Key="QuietTile" TargetType="RadioButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Height" Value="44" />
+                <Setter Property="Margin" Value="0,0,6,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Box" CornerRadius="8" BorderThickness="1.5" BorderBrush="Transparent" Background="{DynamicResource Surface}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Pressed}" />
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource TextPrimary}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- An on/off setting as a row: its name, and the quiet switch at the end. The whole row presses it. -->
+            <Style x:Key="QuietRow" TargetType="CheckBox">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="CheckBox">
+                            <Border Height="34" CornerRadius="8" Padding="12,0,8,0" Background="{DynamicResource Surface}">
+                                <DockPanel>
+                                    <Border x:Name="Track" DockPanel.Dock="Right" Width="34" Height="19" CornerRadius="9.5" Background="{DynamicResource BorderStrong}">
+                                        <Ellipse x:Name="Knob" Width="13" Height="13" Fill="White" HorizontalAlignment="Left" Margin="3,0" />
+                                    </Border>
+                                    <ContentPresenter VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Track" Property="Background" Value="{DynamicResource TextPrimary}" />
+                                    <Setter TargetName="Knob" Property="Fill" Value="{DynamicResource InputBackground}" />
+                                    <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- The name of a group of the panel, with what is chosen written at the other end. -->
             <Style x:Key="GroupName" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
@@ -687,7 +771,7 @@
                                     </Grid.ColumnDefinitions>
                                     <UniformGrid x:Name="FrameBackgrounds" Columns="7" VerticalAlignment="Top" />
                                     <ToggleButton x:Name="FrameBackgroundMore" Grid.Column="1" Style="{StaticResource MoreToggle}" Width="28" Height="28"
-                                                  HorizontalAlignment="Center" Click="OnFrameMore" Tag="background" AutomationProperties.Name="Más fondos"
+                                                  HorizontalAlignment="Center" Click="OnPanelMore" Tag="background" AutomationProperties.Name="Más fondos"
                                                   ToolTip="Más fondos, colores propios, degradado al azar e imagen">
                                         <Path Style="{StaticResource Glyph}" Data="{StaticResource PlusGlyph}" />
                                     </ToggleButton>
@@ -771,7 +855,7 @@
                                         <TextBlock Text="Sombra" Style="{StaticResource ScrubLabel}" />
                                         <TextBlock x:Name="FrameShadowText" Style="{StaticResource ScrubValue}" />
                                     </Grid>
-                                    <ToggleButton x:Name="FrameShadowMore" Style="{StaticResource MoreToggle}" Click="OnFrameMore" Tag="shadow"
+                                    <ToggleButton x:Name="FrameShadowMore" Style="{StaticResource MoreToggle}" Click="OnPanelMore" Tag="shadow"
                                                   AutomationProperties.Name="Más opciones de la sombra" ToolTip="Desenfoque, distancia y color de la sombra">
                                         <Path Style="{StaticResource Glyph}" Data="{StaticResource ExportGlyph}" />
                                     </ToggleButton>
@@ -807,7 +891,7 @@
                                         <TextBlock Text="Borde" Style="{StaticResource ScrubLabel}" />
                                         <TextBlock x:Name="FrameBorderText" Style="{StaticResource ScrubValue}" />
                                     </Grid>
-                                    <ToggleButton x:Name="FrameBorderMore" Style="{StaticResource MoreToggle}" Click="OnFrameMore" Tag="border"
+                                    <ToggleButton x:Name="FrameBorderMore" Style="{StaticResource MoreToggle}" Click="OnPanelMore" Tag="border"
                                                   AutomationProperties.Name="Más opciones del borde" ToolTip="Color del borde">
                                         <Path Style="{StaticResource Glyph}" Data="{StaticResource ExportGlyph}" />
                                     </ToggleButton>
@@ -846,52 +930,78 @@
                         <!-- The pointer: the video is recorded without it, and the one drawn here goes into the saved video. -->
                         <StackPanel x:Name="CursorPanel" Visibility="Collapsed">
                             <Grid>
-                                <TextBlock Text="CURSOR" Style="{StaticResource PanelHeader}" />
-                                <Button x:Name="CursorResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Click="OnCursorReset" ToolTip="Vuelve a los valores de fábrica del cursor" />
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Cursor" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Button x:Name="CursorResetButton" Grid.Column="1" Style="{StaticResource IconButton}" Margin="0,-6,8,-6" Click="OnCursorReset"
+                                        AutomationProperties.Name="Restablecer el cursor" ToolTip="Restablecer: vuelve a los valores de fábrica del cursor">
+                                    <Path Style="{StaticResource Glyph}" Data="{StaticResource ResetGlyph}" />
+                                </Button>
+                                <CheckBox x:Name="CursorBox" Grid.Column="2" Style="{StaticResource QuietSwitch}" Click="OnCursorChanged" AutomationProperties.Name="Mostrar cursor"
+                                          ToolTip="Mostrar cursor: dibuja el puntero en el video, más grande, con movimiento suave y un efecto en cada clic" />
                             </Grid>
-                            <CheckBox x:Name="CursorBox" Content="Mostrar cursor" Style="{StaticResource Switch}" Click="OnCursorChanged"
-                                      ToolTip="Dibuja el puntero en el video: más grande, con movimiento suave y un efecto en cada clic" />
                             <TextBlock x:Name="CursorNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
                                        Margin="0,8,0,0" Visibility="Collapsed" />
                             <StackPanel x:Name="CursorOptions">
-                                <TextBlock Text="ESTILO" Style="{StaticResource SubHeader}" />
-                                <StackPanel x:Name="CursorShapes" Orientation="Horizontal" />
-                                <Grid Style="{StaticResource Row}" Margin="0,8,0,0">
-                                    <Slider x:Name="CursorSizeSlider" Style="{StaticResource RowSlider}" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5"
-                                            ValueChanged="OnCursorSlider" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
-                                    <TextBlock Text="Tamaño" Style="{StaticResource RowLabel}" />
-                                    <TextBlock x:Name="CursorSizeText" Style="{StaticResource RowValue}" />
+                                <Grid>
+                                    <TextBlock Text="Estilo" Style="{StaticResource GroupName}" />
+                                    <TextBlock x:Name="CursorShapeName" Style="{StaticResource GroupChoice}" />
                                 </Grid>
-                                <TextBlock Text="MOVIMIENTO" Style="{StaticResource SubHeader}" />
-                                <UniformGrid Columns="3" Margin="0,0,0,8">
-                                    <RadioButton x:Name="CursorNaturalTile" Style="{StaticResource WordTile}" GroupName="cursorMotion" Content="Natural" Click="OnCursorMotion"
-                                                 ToolTip="El puntero va exactamente como lo moviste" />
-                                    <RadioButton x:Name="CursorSmoothTile" Style="{StaticResource WordTile}" GroupName="cursorMotion" Content="Suave" Click="OnCursorMotion"
-                                                 ToolTip="Sin temblores y con un leve balanceo" />
-                                    <RadioButton x:Name="CursorCinematicTile" Style="{StaticResource WordTile}" GroupName="cursorMotion" Content="Cinemático" Click="OnCursorMotion"
-                                                 Margin="0" ToolTip="Se desliza mucho y se inclina al moverse: para demostraciones" />
-                                </UniformGrid>
-                                <Grid Style="{StaticResource Row}">
-                                    <Slider x:Name="CursorSmoothingSlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
-                                            ValueChanged="OnCursorSlider" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
-                                    <TextBlock Text="Suavizado" Style="{StaticResource RowLabel}" />
-                                    <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource RowValue}" />
+                                <UniformGrid x:Name="CursorShapes" Columns="3" Margin="0,0,-6,6" />
+                                <Grid>
+                                    <Slider x:Name="CursorSizeSlider" Style="{StaticResource Scrub}" Minimum="1" Maximum="3" SmallChange="0.1" LargeChange="0.5"
+                                            ValueChanged="OnCursorSlider" AutomationProperties.Name="Tamaño" ToolTip="Cuántas veces más grande que el puntero en la pantalla" />
+                                    <TextBlock Text="Tamaño" Style="{StaticResource ScrubLabel}" />
+                                    <TextBlock x:Name="CursorSizeText" Style="{StaticResource ScrubValue}" />
                                 </Grid>
-                                <Grid x:Name="CursorSwayRow" Style="{StaticResource Row}" Background="Transparent" ToolTipService.ShowOnDisabled="True">
-                                    <Slider x:Name="CursorSwaySlider" Style="{StaticResource RowSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
-                                            ValueChanged="OnCursorSlider" />
-                                    <TextBlock Text="Balanceo" Style="{StaticResource RowLabel}" />
-                                    <TextBlock x:Name="CursorSwayText" Style="{StaticResource RowValue}" />
+
+                                <TextBlock Text="Movimiento" Style="{StaticResource GroupName}" />
+                                <Grid Margin="0,0,0,6">
+                                    <Border Style="{StaticResource Segments}" Margin="0,0,36,0">
+                                        <UniformGrid Columns="3">
+                                            <RadioButton x:Name="CursorNaturalTile" Style="{StaticResource SegTile}" GroupName="cursorMotion" Content="Natural" Click="OnCursorMotion"
+                                                         ToolTip="El puntero va exactamente como lo moviste" />
+                                            <RadioButton x:Name="CursorSmoothTile" Style="{StaticResource SegTile}" GroupName="cursorMotion" Content="Suave" Click="OnCursorMotion"
+                                                         ToolTip="Sin temblores y con un leve balanceo" />
+                                            <RadioButton x:Name="CursorCinematicTile" Style="{StaticResource SegTile}" GroupName="cursorMotion" Content="Cinemático" Click="OnCursorMotion"
+                                                         ToolTip="Se desliza mucho y se inclina al moverse: para demostraciones" />
+                                        </UniformGrid>
+                                    </Border>
+                                    <ToggleButton x:Name="CursorMotionMore" Style="{StaticResource MoreToggle}" VerticalAlignment="Center" Click="OnPanelMore" Tag="motion"
+                                                  AutomationProperties.Name="Más opciones del movimiento" ToolTip="Ajustar el suavizado y el balanceo">
+                                        <Path Style="{StaticResource Glyph}" Data="{StaticResource ExportGlyph}" />
+                                    </ToggleButton>
                                 </Grid>
-                                <CheckBox x:Name="CursorIdleBox" Content="Ocultar si no se mueve" Style="{StaticResource Switch}" Margin="0,6,0,0" Click="OnCursorChanged"
+                                <StackPanel x:Name="CursorMotionDetails" Margin="14,0,36,0"
+                                            Visibility="{Binding IsChecked, ElementName=CursorMotionMore, Converter={StaticResource SectionVisible}}">
+                                    <Grid Margin="0,0,0,6">
+                                        <Slider x:Name="CursorSmoothingSlider" Style="{StaticResource Scrub}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
+                                                ValueChanged="OnCursorSlider" AutomationProperties.Name="Suavizado" ToolTip="Quita el temblor de la mano: el puntero se desliza en lugar de saltar" />
+                                        <TextBlock Text="Suavizado" Style="{StaticResource ScrubLabel}" />
+                                        <TextBlock x:Name="CursorSmoothingText" Style="{StaticResource ScrubValue}" />
+                                    </Grid>
+                                    <Grid x:Name="CursorSwayRow" Margin="0,0,0,6" Background="Transparent" ToolTipService.ShowOnDisabled="True">
+                                        <Slider x:Name="CursorSwaySlider" Style="{StaticResource Scrub}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.25"
+                                                ValueChanged="OnCursorSlider" AutomationProperties.Name="Balanceo" />
+                                        <TextBlock Text="Balanceo" Style="{StaticResource ScrubLabel}" />
+                                        <TextBlock x:Name="CursorSwayText" Style="{StaticResource ScrubValue}" />
+                                    </Grid>
+                                </StackPanel>
+                                <CheckBox x:Name="CursorIdleBox" Content="Ocultar si no se mueve" Style="{StaticResource QuietRow}" Click="OnCursorChanged"
                                           ToolTip="Tras 2 segundos quieto, el puntero se desvanece; vuelve justo cuando se mueve" />
-                                <TextBlock Text="EFECTO DE CLIC" Style="{StaticResource SubHeader}" />
-                                <StackPanel x:Name="CursorClicks" Orientation="Horizontal" />
-                                <WrapPanel x:Name="CursorTints" Margin="0,10,0,0" />
-                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnCursorChanged"
+
+                                <Grid>
+                                    <TextBlock Text="Efecto de clic" Style="{StaticResource GroupName}" />
+                                    <TextBlock x:Name="CursorClickName" Style="{StaticResource GroupChoice}" />
+                                </Grid>
+                                <UniformGrid x:Name="CursorClicks" Columns="3" Margin="0,0,-6,0" />
+                                <StackPanel x:Name="CursorTints" Orientation="Horizontal" Margin="0,8,0,6" />
+                                <CheckBox x:Name="CursorBounceBox" Content="Rebote al hacer clic" Style="{StaticResource QuietRow}" Click="OnCursorChanged"
                                           ToolTip="El puntero se encoge un instante en cada clic, como si se presionara" />
-                                <CheckBox x:Name="CursorHaloBox" Content="Halo alrededor del cursor" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnCursorChanged"
+                                <CheckBox x:Name="CursorHaloBox" Content="Halo alrededor del cursor" Style="{StaticResource QuietRow}" Click="OnCursorChanged"
                                           ToolTip="Un círculo del color elegido acompaña siempre al puntero, para seguirlo con la vista" />
                             </StackPanel>
                         </StackPanel>
