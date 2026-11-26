@@ -21,31 +21,6 @@
                 <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- A colour to choose: a rounded swatch of it, ringed when chosen. -->
-            <Style x:Key="Swatch" TargetType="RadioButton">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Width" Value="34" />
-                <Setter Property="Height" Value="34" />
-                <Setter Property="Margin" Value="0,0,6,6" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="Ring" CornerRadius="9" BorderThickness="2" BorderBrush="Transparent" Padding="2">
-                                <Border CornerRadius="6" Background="{TemplateBinding Background}" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Ring" Property="Opacity" Value="0.85" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
             <!-- A choice of the pointer's shape: a tile with a drawing of it, ringed when chosen. -->
             <Style x:Key="Tile" TargetType="RadioButton">
                 <Setter Property="Focusable" Value="False" />
@@ -344,7 +319,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            <!-- The frame, cursor, zoom and crop panels are quiet: greys, and what is chosen is ringed in the colour of the text. -->
+            <!-- The side panels are quiet: greys, and what is chosen is ringed in the colour of the text. -->
             <!-- A setting as a bar to drag: the whole row is the slider; its name and value are written over it. -->
             <Style x:Key="ScrubPart" TargetType="RepeatButton">
                 <Setter Property="Focusable" Value="False" />
@@ -511,6 +486,7 @@
             <!-- A choice shown as a drawing: a flat tile, ringed in the colour of the text when chosen. -->
             <Style x:Key="QuietTile" TargetType="RadioButton">
                 <Setter Property="Focusable" Value="False" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                 <Setter Property="Height" Value="44" />
                 <Setter Property="Margin" Value="0,0,6,0" />
                 <Setter Property="Cursor" Value="Hand" />
@@ -1154,37 +1130,52 @@
                         <!-- The overlays: a blur to hide something, a text, an arrow. Drawn on the picture; each one shows for a stretch
                              of time, set in its own row of the timeline. -->
                         <StackPanel x:Name="OverlayPanel" Visibility="Collapsed">
-                            <TextBlock Text="CAPAS" Style="{StaticResource PanelHeader}" />
-                            <UniformGrid Columns="3">
-                                <RadioButton x:Name="BlurToolTile" Style="{StaticResource WordTile}" GroupName="overlayTool" Content="Desenfocar" Tag="Blur"
-                                             Click="OnOverlayTool" ToolTip="Oculta una zona del video: una contraseña, un correo, datos de un cliente" />
-                                <RadioButton x:Name="TextToolTile" Style="{StaticResource WordTile}" GroupName="overlayTool" Content="Texto" Tag="Text"
-                                             Click="OnOverlayTool" ToolTip="Escribe un texto sobre el video" />
-                                <RadioButton x:Name="ArrowToolTile" Style="{StaticResource WordTile}" GroupName="overlayTool" Content="Flecha" Tag="Arrow"
-                                             Click="OnOverlayTool" Margin="0" ToolTip="Señala algo con una flecha" />
+                            <TextBlock Text="Capas" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,16" />
+                            <UniformGrid Columns="3" Margin="0,0,-6,0">
+                                <RadioButton x:Name="BlurToolTile" Style="{StaticResource QuietTile}" Height="56" GroupName="overlayTool" Tag="Blur"
+                                             Click="OnOverlayTool" AutomationProperties.Name="Desenfocar" ToolTip="Oculta una zona del video: una contraseña, un correo, datos de un cliente">
+                                    <StackPanel>
+                                        <Path Style="{StaticResource Glyph}" Data="M12,3 C15,7.5 18,10.5 18,14.5 A6,6 0 0 1 6,14.5 C6,10.5 9,7.5 12,3 Z M9.5,15 A2.5,2.5 0 0 0 12,17.5" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Desenfocar" FontSize="11.5" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="TextToolTile" Style="{StaticResource QuietTile}" Height="56" GroupName="overlayTool" Tag="Text"
+                                             Click="OnOverlayTool" AutomationProperties.Name="Texto" ToolTip="Escribe un texto sobre el video">
+                                    <StackPanel>
+                                        <Path Style="{StaticResource Glyph}" Data="M5,7 V5 H19 V7 M12,5 V19 M9,19 H15" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Texto" FontSize="11.5" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="ArrowToolTile" Style="{StaticResource QuietTile}" Height="56" GroupName="overlayTool" Tag="Arrow"
+                                             Click="OnOverlayTool" AutomationProperties.Name="Flecha" ToolTip="Señala algo con una flecha">
+                                    <StackPanel>
+                                        <Path Style="{StaticResource Glyph}" Data="M5,19 L19,5 M9,5 H19 V15" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Flecha" FontSize="11.5" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
                             </UniformGrid>
-                            <TextBlock x:Name="OverlayHint" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"
-                                       Text="Elige una herramienta y haz clic o arrastra sobre el video, en el momento donde está la línea roja. Cada capa dura 3 segundos: estira o mueve su bloque en la fila de abajo de la línea de tiempo." />
-                            <StackPanel x:Name="OverlayDetails" Visibility="Collapsed" Margin="0,8,0,0">
-                                <TextBlock x:Name="OverlayDetailsTitle" Style="{StaticResource PanelTitle}" />
+                            <TextBlock x:Name="OverlayHint" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,10,0,0"
+                                       Text="Elige una herramienta y haz clic o arrastra sobre el video: la capa empieza en la línea roja y dura 3 segundos. Muévela o alárgala en la línea de tiempo." />
+                            <StackPanel x:Name="OverlayDetails" Visibility="Collapsed">
+                                <TextBlock x:Name="OverlayDetailsTitle" Style="{StaticResource GroupName}" />
                                 <StackPanel x:Name="OverlayTextBlock">
                                     <TextBox x:Name="OverlayTextBox" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="120" MinHeight="58" VerticalContentAlignment="Top"
-                                             TextChanged="OnOverlayTextChanged" LostKeyboardFocus="OnOverlayTextLostFocus" ToolTip="Lo que dice el texto" />
+                                             Background="{DynamicResource Surface}" BorderBrush="Transparent"
+                                             TextChanged="OnOverlayTextChanged" LostKeyboardFocus="OnOverlayTextLostFocus" AutomationProperties.Name="Texto de la capa" ToolTip="Lo que dice el texto" />
                                 </StackPanel>
                                 <StackPanel x:Name="OverlayInkBlock">
-                                    <TextBlock Text="COLOR" Style="{StaticResource SubHeader}" />
+                                    <TextBlock Text="Color" Style="{StaticResource GroupName}" />
                                     <WrapPanel x:Name="OverlayInks" />
-                                    <Grid Style="{StaticResource Row}" Margin="0,8,0,8">
-                                        <Slider x:Name="OverlaySizeSlider" Style="{StaticResource RowSlider}" Minimum="0.01" Maximum="0.15" SmallChange="0.002" LargeChange="0.02"
-                                                ValueChanged="OnOverlaySizeChanged" />
-                                        <TextBlock x:Name="OverlaySizeLabel" Text="Tamaño" Style="{StaticResource RowLabel}" />
-                                        <TextBlock x:Name="OverlaySizeText" Style="{StaticResource RowValue}" />
+                                    <Grid Margin="0,6,0,0">
+                                        <Slider x:Name="OverlaySizeSlider" Style="{StaticResource Scrub}" Minimum="0.01" Maximum="0.15" SmallChange="0.002" LargeChange="0.02"
+                                                ValueChanged="OnOverlaySizeChanged" AutomationProperties.Name="Tamaño" />
+                                        <TextBlock x:Name="OverlaySizeLabel" Text="Tamaño" Style="{StaticResource ScrubLabel}" />
+                                        <TextBlock x:Name="OverlaySizeText" Style="{StaticResource ScrubValue}" />
                                     </Grid>
                                 </StackPanel>
-                                <TextBlock x:Name="OverlayBlurNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
+                                <TextBlock x:Name="OverlayBlurNote" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap"
                                            Text="Arrastra el rectángulo sobre el video para moverlo, o sus esquinas para cambiar su tamaño. El desenfoque aparece y desaparece de golpe, para que no se vea nada un instante." />
-                                <Button x:Name="DeleteOverlayButton" Focusable="False" Click="OnDeleteOverlay" HorizontalContentAlignment="Left" Padding="10,7" Margin="0,10,0,0"
-                                        ToolTip="Quita la capa elegida (Supr)">
+                                <Button x:Name="DeleteOverlayButton" Style="{StaticResource QuietButton}" Margin="0,12,0,0" Click="OnDeleteOverlay" ToolTip="Quita la capa elegida (Supr)">
                                     <StackPanel Orientation="Horizontal">
                                         <Path Style="{StaticResource Glyph}" Data="{StaticResource TrashGlyph}" Margin="0,0,8,0" />
                                         <TextBlock Text="Quitar capa" VerticalAlignment="Center" />

@@ -52,12 +52,11 @@ public partial class VideoEditWindow
         {
             var swatch = new RadioButton
             {
-                Style = (Style)FindResource("Swatch"),
+                Style = (Style)FindResource("RoundSwatch"),
                 GroupName = "overlayInk",
                 Background = new SolidColorBrush(ink),
                 Tag = ink,
-                Width = 30,
-                Height = 30,
+                Margin = new Thickness(0, 0, 6, 4),
             };
             swatch.Click += OnOverlayInk;
             OverlayInks.Children.Add(swatch);
@@ -326,7 +325,7 @@ public partial class VideoEditWindow
         ApplyZoomPreview();
     }
 
-    private const string OverlayHintText = "Elige una herramienta y haz clic o arrastra sobre el video, en el momento donde está la línea roja. Cada capa dura 3 segundos: estira o mueve su bloque en la fila de abajo de la línea de tiempo.";
+    private const string OverlayHintText = "Elige una herramienta y haz clic o arrastra sobre el video: la capa empieza en la línea roja y dura 3 segundos. Muévela o alárgala en la línea de tiempo.";
 
     private void PutToolDown()
     {
