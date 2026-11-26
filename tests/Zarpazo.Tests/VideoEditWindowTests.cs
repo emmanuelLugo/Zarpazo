@@ -833,6 +833,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Pump(() => false, 200);
                 Assert.Equal(new ZoomStyle(2, ZoomMotion.Focused, false), window.Look.Zoom);
                 Assert.Equal(2, timeline.Zooms[0].Scale); // the video's zooms follow the depth
+                Assert.Equal(Visibility.Visible, window.ZoomStyleResetButton.Visibility);
                 Shot(window, folder, "editor-zoom-style.png");
 
                 Assert.True(window.SavePreset("Tutorial"));
@@ -930,9 +931,15 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Pump(() => false, 500);
                 Shot(window, folder, "editor.png");
 
+                window.ZoomTab.IsChecked = true;
                 window.Lane.SelectedZoom = 0;
                 Pump(() => false, 300);
+                System.Windows.Controls.RadioButton[] depths = window.ZoomDepthBox.Children.OfType<System.Windows.Controls.RadioButton>().ToArray();
+                Assert.True(depths.Single(d => (string)d.Tag == "2").IsChecked, "the chosen zoom shows how close it goes");
                 Shot(window, folder, "editor-zoom-chosen.png");
+
+                depths.Single(d => (string)d.Tag == "2.5").IsChecked = true;
+                Assert.Equal(2.5, timeline.Zooms[0].Scale);
             }
             finally
             {

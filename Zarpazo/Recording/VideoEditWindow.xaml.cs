@@ -1291,9 +1291,9 @@ public partial class VideoEditWindow : Window
         }
     }
 
-    private void OnZoomDepthChanged(object sender, SelectionChangedEventArgs e)
+    private void OnZoomDepthChanged(object sender, RoutedEventArgs e)
     {
-        if (!_ready || _showingDepth || !CanEdit || Lane.SelectedZoom < 0 || ZoomDepthBox.SelectedItem is not ComboBoxItem { Tag: string tag })
+        if (!_ready || _showingDepth || !CanEdit || Lane.SelectedZoom < 0 || sender is not RadioButton { Tag: string tag })
         {
             return;
         }
@@ -1416,8 +1416,8 @@ public partial class VideoEditWindow : Window
     private void ShowDepth(double scale)
     {
         _showingDepth = true;
-        ZoomDepthBox.SelectedItem = ZoomDepthBox.Items.Cast<ComboBoxItem>()
-            .MinBy(item => Math.Abs(double.Parse((string)item.Tag, CultureInfo.InvariantCulture) - scale));
+        ZoomDepthBox.Children.OfType<RadioButton>()
+            .MinBy(choice => Math.Abs(double.Parse((string)choice.Tag, CultureInfo.InvariantCulture) - scale))!.IsChecked = true;
         _showingDepth = false;
     }
 
@@ -2308,6 +2308,7 @@ public partial class VideoEditWindow : Window
     {
         ZoomStyleDepthText.Text = $"{_zoomStyle.Depth.ToString("0.0#", CultureInfo.CurrentCulture)}×";
         ZoomStyleResetButton.IsEnabled = _zoomStyle != ZoomStyle.Default;
+        ZoomStyleResetButton.Visibility = ZoomStyleResetButton.IsEnabled ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void OnZoomStyleChanged(object sender, RoutedEventArgs e)

@@ -344,7 +344,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            <!-- The frame and cursor panels are quiet: greys, and what is chosen is ringed in the colour of the text. -->
+            <!-- The frame, cursor and zoom panels are quiet: greys, and what is chosen is ringed in the colour of the text. -->
             <!-- A setting as a bar to drag: the whole row is the slider; its name and value are written over it. -->
             <Style x:Key="ScrubPart" TargetType="RepeatButton">
                 <Setter Property="Focusable" Value="False" />
@@ -535,6 +535,11 @@
             </Style>
             <!-- An on/off setting as a row: its name, and the quiet switch at the end. The whole row presses it. -->
             <Style x:Key="QuietRow" TargetType="CheckBox">
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45" />
+                    </Trigger>
+                </Style.Triggers>
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
@@ -562,6 +567,33 @@
                 </Setter>
             </Style>
 
+            <!-- Something to do, as a row of its own. -->
+            <Style x:Key="QuietButton" TargetType="Button">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Box" Height="34" CornerRadius="8" Background="{DynamicResource Surface}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Hover}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource Pressed}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <!-- The name of a group of the panel, with what is chosen written at the other end. -->
             <Style x:Key="GroupName" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
@@ -1047,72 +1079,73 @@
 
                         <!-- The zooms: suggested from the clicks or added by hand; the chosen one can be changed here. -->
                         <StackPanel x:Name="ZoomPanel" Visibility="Collapsed">
-                            <TextBlock Text="ZOOM" Style="{StaticResource PanelHeader}" />
-                            <Button x:Name="AutoZoomButton" Focusable="False" IsEnabled="False" Click="OnAutoZoom" HorizontalContentAlignment="Left" Padding="10,7">
+                            <Grid Margin="0,0,0,16">
+                                <TextBlock Text="Zoom" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Button x:Name="ZoomStyleResetButton" Style="{StaticResource IconButton}" HorizontalAlignment="Right" Margin="0,-6" Click="OnZoomStyleReset"
+                                        AutomationProperties.Name="Restablecer el estilo del zoom" ToolTip="Restablecer: vuelve a 1,5×, movimiento suave, zooms conectados y siguiendo al cursor">
+                                    <Path Style="{StaticResource Glyph}" Data="{StaticResource ResetGlyph}" />
+                                </Button>
+                            </Grid>
+                            <Button x:Name="AutoZoomButton" Style="{StaticResource QuietButton}" IsEnabled="False" Click="OnAutoZoom">
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource Glyph}" Data="{StaticResource SparkleGlyph}" Margin="0,0,8,0" />
                                     <TextBlock Text="Zoom automático" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="AddZoomButton" Focusable="False" IsEnabled="False" Click="OnAddZoom" HorizontalContentAlignment="Left" Padding="10,7" Margin="0,8,0,0"
+                            <Button x:Name="AddZoomButton" Style="{StaticResource QuietButton}" IsEnabled="False" Click="OnAddZoom"
                                     ToolTip="Añade un zoom donde está la línea roja (Z). También con doble clic en la fila de zooms">
                                 <StackPanel Orientation="Horizontal">
                                     <Path Style="{StaticResource Glyph}" Data="{StaticResource PlusGlyph}" Margin="0,0,8,0" />
                                     <TextBlock Text="Añadir zoom aquí" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0"
-                                       Text="Los zooms están en la fila de abajo de la línea de tiempo: arrástralos para moverlos o estira sus bordes para alargarlos." />
-                            <Grid Margin="0,4,0,0">
-                                <TextBlock Text="ESTILO" Style="{StaticResource SubHeader}" />
-                                <Button x:Name="ZoomStyleResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                        Margin="0,8,0,0" Click="OnZoomStyleReset" ToolTip="Vuelve a 1,5×, movimiento suave, zooms conectados y siguiendo al cursor" />
-                            </Grid>
-                            <Grid Style="{StaticResource Row}">
-                                <Slider x:Name="ZoomStyleDepthSlider" Style="{StaticResource RowSlider}" Minimum="1.1" Maximum="3" SmallChange="0.05" LargeChange="0.25"
-                                        ValueChanged="OnZoomStyleSlider" ToolTip="Cuánto acercan los zooms de este video y los que se añadan" />
-                                <TextBlock Text="Acercar" Style="{StaticResource RowLabel}" />
-                                <TextBlock x:Name="ZoomStyleDepthText" Style="{StaticResource RowValue}" />
-                            </Grid>
-                            <UniformGrid Columns="2" Margin="0,2,0,0">
-                                <RadioButton x:Name="ZoomSmoothTile" Style="{StaticResource WordTile}" GroupName="zoomMotion" Content="Suave" Click="OnZoomStyleChanged"
-                                             ToolTip="Entra y sale despacio (1,5 s): para presentaciones" />
-                                <RadioButton x:Name="ZoomFocusedTile" Style="{StaticResource WordTile}" GroupName="zoomMotion" Content="Enfocado" Click="OnZoomStyleChanged"
-                                             Margin="0" ToolTip="Entra y sale rápido (0,8 s): para tutoriales de clic en clic" />
-                            </UniformGrid>
-                            <CheckBox x:Name="ZoomConnectBox" Content="Conectar zooms seguidos" Style="{StaticResource Switch}" Margin="0,10,0,0" Click="OnZoomStyleChanged"
-                                      ToolTip="Si dos zooms están cerca, la cámara se desliza del uno al otro sin volver a la pantalla completa" />
-                            <CheckBox x:Name="ZoomFollowBox" Content="Seguir al cursor" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnZoomStyleChanged"
-                                      ToolTip="Con zoom, la cámara acompaña al puntero para que no salga de la vista" />
-                            <CheckBox x:Name="ZoomBlurBox" Content="Desenfoque al moverse" Style="{StaticResource Switch}" Margin="0,4,0,0" Click="OnZoomStyleChanged"
-                                      ToolTip="La cámara y el cursor se difuminan cuando van rápido. Se ve en el video guardado, no en esta vista" />
-                            <StackPanel x:Name="ZoomDetails" Visibility="Collapsed" Margin="0,8,0,0">
-                                <TextBlock Text="Zoom elegido" Style="{StaticResource PanelTitle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Acercar" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <ComboBox x:Name="ZoomDepthBox" Grid.Column="1" Focusable="False" SelectionChanged="OnZoomDepthChanged" ToolTip="Cuánto se acerca este zoom">
-                                        <ComboBoxItem Content="1,25×" Tag="1.25" />
-                                        <ComboBoxItem Content="1,5×" Tag="1.5" />
-                                        <ComboBoxItem Content="1,8×" Tag="1.8" />
-                                        <ComboBoxItem Content="2×" Tag="2" />
-                                        <ComboBoxItem Content="2,5×" Tag="2.5" />
-                                        <ComboBoxItem Content="3×" Tag="3" />
-                                    </ComboBox>
-                                </Grid>
-                                <TextBlock Text="Haz clic o arrastra en el video para elegir adónde mira." Foreground="{DynamicResource TextSecondary}" FontSize="12"
-                                           TextWrapping="Wrap" Margin="0,10,0,0" />
-                                <Button x:Name="DeleteZoomButton" Focusable="False" Click="OnDeleteZoom" HorizontalContentAlignment="Left" Padding="10,7" Margin="0,10,0,0"
-                                        ToolTip="Quita el zoom elegido (Supr)">
+                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       Text="Muévelos o alárgalos en la fila de zooms de la línea de tiempo." />
+
+                            <!-- The chosen zoom comes before the style of them all: it is what was just clicked. -->
+                            <StackPanel x:Name="ZoomDetails" Visibility="Collapsed">
+                                <TextBlock Text="Zoom elegido" Style="{StaticResource GroupName}" />
+                                <Border Style="{StaticResource Segments}">
+                                    <UniformGrid x:Name="ZoomDepthBox" Columns="6" ToolTip="Cuánto se acerca este zoom">
+                                        <RadioButton Style="{StaticResource SegTile}" GroupName="zoomDepth" Content="1,25×" Tag="1.25" Checked="OnZoomDepthChanged" />
+                                        <RadioButton Style="{StaticResource SegTile}" GroupName="zoomDepth" Content="1,5×" Tag="1.5" Checked="OnZoomDepthChanged" />
+                                        <RadioButton Style="{StaticResource SegTile}" GroupName="zoomDepth" Content="1,8×" Tag="1.8" Checked="OnZoomDepthChanged" />
+                                        <RadioButton Style="{StaticResource SegTile}" GroupName="zoomDepth" Content="2×" Tag="2" Checked="OnZoomDepthChanged" />
+                                        <RadioButton Style="{StaticResource SegTile}" GroupName="zoomDepth" Content="2,5×" Tag="2.5" Checked="OnZoomDepthChanged" />
+                                        <RadioButton Style="{StaticResource SegTile}" GroupName="zoomDepth" Content="3×" Tag="3" Checked="OnZoomDepthChanged" />
+                                    </UniformGrid>
+                                </Border>
+                                <TextBlock Text="Haz clic o arrastra en el video para elegir adónde mira." Foreground="{DynamicResource TextSecondary}" FontSize="11.5"
+                                           TextWrapping="Wrap" Margin="0,8" />
+                                <Button x:Name="DeleteZoomButton" Style="{StaticResource QuietButton}" Click="OnDeleteZoom" ToolTip="Quita el zoom elegido (Supr)">
                                     <StackPanel Orientation="Horizontal">
                                         <Path Style="{StaticResource Glyph}" Data="{StaticResource TrashGlyph}" Margin="0,0,8,0" />
                                         <TextBlock Text="Quitar zoom" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
+
+                            <TextBlock Text="Estilo de los zooms" Style="{StaticResource GroupName}" />
+                            <Grid Margin="0,0,0,6">
+                                <Slider x:Name="ZoomStyleDepthSlider" Style="{StaticResource Scrub}" Minimum="1.1" Maximum="3" SmallChange="0.05" LargeChange="0.25"
+                                        ValueChanged="OnZoomStyleSlider" AutomationProperties.Name="Acercar" ToolTip="Cuánto acercan los zooms de este video y los que se añadan" />
+                                <TextBlock Text="Acercar" Style="{StaticResource ScrubLabel}" />
+                                <TextBlock x:Name="ZoomStyleDepthText" Style="{StaticResource ScrubValue}" />
+                            </Grid>
+                            <Border Style="{StaticResource Segments}" Margin="0,0,0,6">
+                                <UniformGrid Columns="2">
+                                    <RadioButton x:Name="ZoomSmoothTile" Style="{StaticResource SegTile}" GroupName="zoomMotion" Content="Suave" Click="OnZoomStyleChanged"
+                                                 ToolTip="Entra y sale despacio (1,5 s): para presentaciones" />
+                                    <RadioButton x:Name="ZoomFocusedTile" Style="{StaticResource SegTile}" GroupName="zoomMotion" Content="Enfocado" Click="OnZoomStyleChanged"
+                                                 ToolTip="Entra y sale rápido (0,8 s): para tutoriales de clic en clic" />
+                                </UniformGrid>
+                            </Border>
+                            <CheckBox x:Name="ZoomConnectBox" Content="Conectar zooms seguidos" Style="{StaticResource QuietRow}" Click="OnZoomStyleChanged"
+                                      ToolTip="Si dos zooms están cerca, la cámara se desliza del uno al otro sin volver a la pantalla completa" />
+                            <CheckBox x:Name="ZoomFollowBox" Content="Seguir al cursor" Style="{StaticResource QuietRow}" Click="OnZoomStyleChanged"
+                                      ToolTip="Con zoom, la cámara acompaña al puntero para que no salga de la vista" />
+                            <CheckBox x:Name="ZoomBlurBox" Content="Desenfoque al moverse" Style="{StaticResource QuietRow}" Click="OnZoomStyleChanged"
+                                      ToolTip="La cámara y el cursor se difuminan cuando van rápido. Se ve en el video guardado, no en esta vista" />
                         </StackPanel>
 
                         <!-- The overlays: a blur to hide something, a text, an arrow. Drawn on the picture; each one shows for a stretch
