@@ -23,6 +23,8 @@ internal sealed class OverlayLaneView : FrameworkElement
     private static readonly Brush TextFill = Frozen(Color.FromArgb(0x80, 0xE0, 0xA1, 0x2E));
     private static readonly Brush ArrowFill = Frozen(Color.FromArgb(0x80, 0xE5, 0x48, 0x4D));
 
+    private static readonly Geometry HintIcon = Geometry.Parse("M12,3 L21,8 12,13 3,8 Z M3,14 L12,19 21,14");
+
     /// <summary>What a point of the row is over.</summary>
     public enum Part
     {
@@ -366,22 +368,18 @@ internal sealed class OverlayLaneView : FrameworkElement
             return;
         }
 
-        Brush border = TryFindResource("Border") as Brush ?? Brushes.Gray;
         Brush accent = TryFindResource("Accent") as Brush ?? Brushes.IndianRed;
-        Brush secondary = TryFindResource("TextSecondary") as Brush ?? Brushes.Silver;
         Brush primary = TryFindResource("TextPrimary") as Brush ?? Brushes.White;
         double pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var semibold = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
 
         double right = TimelineLayout.XOf(_timeline.Duration, _pixelsPerSecond);
-        var lane = new Rect(TimelineLayout.Padding, Top, Math.Max(0, right - TimelineLayout.Padding), ActualHeight - Top * 2);
-        dc.DrawRoundedRectangle(null, new Pen(border, 1) { DashStyle = DashStyles.Dash }, lane, 6, 6);
+        var lane = new Rect(TimelineLayout.Padding, 1, Math.Max(0, right - TimelineLayout.Padding), Math.Max(0, ActualHeight - 2));
+        LaneBackdrop.Draw(dc, this, lane);
 
         if (_spans.Count == 0)
         {
-            var hint = new FormattedText("Desenfoques, textos y flechas: elige una herramienta en la pestaña de la izquierda",
-                CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, secondary, pixelsPerDip);
-            dc.DrawText(hint, new Point(lane.Left + 10, lane.Top + (lane.Height - hint.Height) / 2));
+            LaneBackdrop.DrawHint(dc, this, lane, HintIcon, "Capas · elige una herramienta a la izquierda");
         }
 
         for (int i = 0; i < _spans.Count; i++)
@@ -393,7 +391,7 @@ internal sealed class OverlayLaneView : FrameworkElement
             var block = new Rect(left, Top + _rows[i] * RowPitch, width, BlockHeight);
             bool selected = span.Index == _selected;
             Brush fill = overlay.Kind switch { OverlayKind.Blur => BlurFill, OverlayKind.Text => TextFill, _ => ArrowFill };
-            dc.DrawRoundedRectangle(fill, new Pen(selected ? accent : Brushes.Transparent, selected ? 2 : 0), block, 6, 6);
+            dc.DrawRoundedRectangle(fill, new Pen(selected ? primary : Brushes.Transparent, selected ? 2 : 0), block, 6, 6);
 
             var label = new FormattedText(Label(overlay), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, semibold, 12, primary, pixelsPerDip);
             if (label.Width + 16 <= width)

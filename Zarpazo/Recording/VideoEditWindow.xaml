@@ -56,8 +56,6 @@
             <Geometry x:Key="DuplicateGlyph">M10,8 H18 A2,2 0 0 1 20,10 V18 A2,2 0 0 1 18,20 H10 A2,2 0 0 1 8,18 V10 A2,2 0 0 1 10,8 Z M4,16 V6 A2,2 0 0 1 6,4 H16</Geometry>
             <Geometry x:Key="SoundGlyph">M11,5 L6,9 H3 V15 H6 L11,19 Z M15.5,8.5 A5,5 0 0 1 15.5,15.5 M18.5,5.5 A9,9 0 0 1 18.5,18.5</Geometry>
             <Geometry x:Key="MutedGlyph">M11,5 L6,9 H3 V15 H6 L11,19 Z M22,9 L16,15 M16,9 L22,15</Geometry>
-            <Geometry x:Key="MoveLeftGlyph">M19,12 H6 M11,17 L6,12 L11,7 M3,5 V19</Geometry>
-            <Geometry x:Key="MoveRightGlyph">M5,12 H18 M13,17 L18,12 L13,7 M21,5 V19</Geometry>
             <Geometry x:Key="StepBackGlyph">M17,18 L11,12 L17,6 M7,6 V18</Geometry>
             <Geometry x:Key="StepForwardGlyph">M7,18 L13,12 L7,6 M17,6 V18</Geometry>
             <Geometry x:Key="PlayGlyph">M8,5.5 A1,1 0 0 1 9.5,4.6 L19,11.1 A1,1 0 0 1 19,12.9 L9.5,19.4 A1,1 0 0 1 8,18.5 Z</Geometry>
@@ -221,6 +219,55 @@
                                     <Setter TargetName="Box" Property="Background" Value="{DynamicResource Pressed}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- The timeline's zoom: a thin grey line and a dot, so it does not compete with the red line of the playhead. -->
+            <Style x:Key="TimelineZoomRail" TargetType="RepeatButton">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RepeatButton">
+                            <Grid Background="Transparent">
+                                <Border Height="2" CornerRadius="1" Background="{DynamicResource Border}" VerticalAlignment="Center" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="TimelineZoom" TargetType="Slider">
+                <Setter Property="Height" Value="22" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Slider">
+                            <Grid Background="Transparent">
+                                <Track x:Name="PART_Track">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource TimelineZoomRail}" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Width="12" Height="12">
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Ellipse x:Name="Dot" Fill="{DynamicResource TextPrimary}" />
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource BorderStrong}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource TimelineZoomRail}" />
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Grid>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
@@ -1250,16 +1297,15 @@
                     </Viewbox>
                 </Border>
 
-                <!-- The controls under the video: tools for the chosen piece on the left, playing in the middle, the timeline's zoom on the right. -->
+                <!-- The controls under the video: tools for the chosen piece on the left, playing in the middle, the time and the timeline's zoom on the right. -->
                 <Grid Grid.Row="1" Height="56">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border HorizontalAlignment="Left" VerticalAlignment="Center" Padding="2,1" CornerRadius="10" Background="{DynamicResource Surface}"
-                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
-                    <StackPanel Orientation="Horizontal">
+                    <DockPanel>
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="SplitButton" Style="{StaticResource IconButton}" Click="OnSplit" IsEnabled="False"
                                 ToolTip="Dividir: corta la parte donde está la línea roja (S)">
                             <Path Style="{StaticResource Glyph}" Data="{StaticResource SplitGlyph}" />
@@ -1284,17 +1330,11 @@
                                 <ContextMenu x:Name="SpeedMenu" Placement="Top" Opened="OnSpeedMenuOpened" />
                             </Button.ContextMenu>
                         </Button>
-                        <Border Width="1" Height="18" Margin="3,0" Background="{DynamicResource Border}" />
-                        <Button x:Name="MoveLeftButton" Style="{StaticResource IconButton}" Click="OnMoveLeft" IsEnabled="False"
-                                ToolTip="Pasar la parte seleccionada antes de la anterior (Alt+←). También se arrastra por su título">
-                            <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveLeftGlyph}" />
-                        </Button>
-                        <Button x:Name="MoveRightButton" Style="{StaticResource IconButton}" Click="OnMoveRight" IsEnabled="False"
-                                ToolTip="Pasar la parte seleccionada después de la siguiente (Alt+→)">
-                            <Path Style="{StaticResource Glyph}" Data="{StaticResource MoveRightGlyph}" />
-                        </Button>
                     </StackPanel>
-                    </Border>
+                    <!-- The pieces and how long the edit will be, or why something could not be done. Here, so the video never moves. -->
+                    <TextBlock x:Name="KeptText" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="12,0" VerticalAlignment="Center"
+                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                    </DockPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Button x:Name="BackButton" Style="{StaticResource IconButton}" Click="OnStepBack" IsEnabled="False"
@@ -1311,22 +1351,26 @@
                         </Button>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <TextBlock x:Name="PositionText" Width="112" TextAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0"
-                                   Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource TextSecondary}" />
+                    <DockPanel Grid.Column="2">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                         <Path Style="{StaticResource Glyph}" Data="{StaticResource TimelineZoomGlyph}" Stroke="{DynamicResource TextSecondary}" Margin="0,0,8,0" />
-                        <Slider x:Name="ZoomSlider" Width="110" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
+                        <Slider x:Name="ZoomSlider" Style="{StaticResource TimelineZoom}" Width="110" Minimum="1" Maximum="24" Value="1" IsEnabled="False" ValueChanged="OnZoomChanged"
                                 VerticalAlignment="Center" Focusable="False" ToolTip="Acerca la línea de tiempo (Ctrl + rueda del ratón)" />
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="10,0,8,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="PositionText" Typography.NumeralAlignment="Tabular" />
+                        <TextBlock x:Name="DurationText" Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource TextSecondary}" />
+                    </StackPanel>
+                    </DockPanel>
                 </Grid>
             </Grid>
         </Grid>
 
-        <!-- the timeline, the whole width, and a line about the edit -->
+        <!-- the timeline, the whole width -->
         <StackPanel Grid.Row="2" Margin="16,0,16,12">
             <Border Background="{DynamicResource InputBackground}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="10" Padding="0,0,0,2">
                 <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                              PreviewMouseWheel="OnTimelineWheel" SizeChanged="OnScrollerSizeChanged">
+                              PreviewMouseWheel="OnTimelineWheel" SizeChanged="OnScrollerSizeChanged" ScrollChanged="OnTimelineScrolled">
                     <StackPanel>
                     <local:TimelineView x:Name="View" SelectionChanged="OnSelectionChanged" Scrubbed="OnTimelineScrubbed" Previewed="OnPreviewed"
                                         GestureFinished="OnGestureFinished" ZoomRequested="OnZoomRequested">
@@ -1336,6 +1380,9 @@
                                 <MenuItem Header="Duplicar" InputGestureText="Ctrl+D" Click="OnDuplicate" />
                                 <MenuItem x:Name="MuteMenuItem" Header="Silenciar" InputGestureText="M" Click="OnMute" />
                                 <MenuItem x:Name="SpeedMenuItem" Header="Velocidad" />
+                                <Separator />
+                                <MenuItem x:Name="MoveLeftMenuItem" Header="Mover antes" InputGestureText="Alt+←" Click="OnMoveLeft" />
+                                <MenuItem x:Name="MoveRightMenuItem" Header="Mover después" InputGestureText="Alt+→" Click="OnMoveRight" />
                                 <Separator />
                                 <MenuItem Header="Eliminar" InputGestureText="Supr" Click="OnDelete" />
                             </ContextMenu>
@@ -1360,14 +1407,6 @@
                     </StackPanel>
                 </ScrollViewer>
             </Border>
-            <Grid Margin="2,8,2,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="KeptText" Foreground="{DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="SelectionText" Grid.Column="1" Foreground="{DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center" />
-            </Grid>
         </StackPanel>
     </Grid>
 </Window>

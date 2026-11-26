@@ -87,6 +87,10 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.True(window.NeedsRendering);
                 Assert.True(window.UndoButton.IsEnabled);
                 Assert.True(window.ResetButton.IsEnabled);
+                Assert.Contains("Parte 1 de 3", window.KeptText.Text);
+                Assert.False(window.MoveLeftMenuItem.IsEnabled); // the first piece has nowhere earlier to go
+                Assert.True(window.MoveRightMenuItem.IsEnabled);
+                Shot(window, Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS"), "editor-timeline-cuts.png");
 
                 timeline.Move(2, 0);
                 timeline.Delete(1);
@@ -98,6 +102,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 timeline.Reset();
                 Pump(() => false, 100);
                 Assert.False(window.NeedsRendering, "back to the whole video, nothing to make again");
+                Assert.Equal("", window.KeptText.Text); // one whole piece: nothing to say
             }
             finally
             {
@@ -786,7 +791,6 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.Equal(Visibility.Visible, window.Backdrop.Visibility); // the background shows with no frame chosen
                 Assert.True(window.NeedsRendering, "another shape is drawn again when saved");
                 Assert.True(window.Timeline.HasChanges);
-                Assert.Contains("9:16", window.KeptText.Text);
                 Assert.Contains("×", window.ExportSizeText.Text);
                 Shot(window, Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS"), "editor-format.png");
 

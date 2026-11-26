@@ -8,8 +8,8 @@ namespace Zarpazo.Recording;
 
 /// <summary>
 /// The timeline of the video editor: a ruler and, under it, every piece of the edit as a block with pictures from the
-/// video. Click or drag on the ruler or a block's pictures to move the playhead; drag a block by its title to change the
-/// order; drag its sides to change where it starts or ends. All the editing rules live in <see cref="EditTimeline"/>.
+/// video. Click or drag on the ruler or a block's pictures to move the playhead; drag a block by its top, where its label
+/// is, to change the order; drag its sides to change where it starts or ends. All the editing rules live in <see cref="EditTimeline"/>.
 /// </summary>
 internal sealed class TimelineView : FrameworkElement
 {
@@ -23,6 +23,12 @@ internal sealed class TimelineView : FrameworkElement
     }
 
     private const double ReorderThreshold = 4;
+    private const double LabelHeight = 18;
+
+    // The label sits on the pictures, so its colours are the same in both themes.
+    private static readonly Brush LabelFill = Frozen(Color.FromArgb(0xD1, 0x0F, 0x10, 0x12));
+    private static readonly Brush LabelText = Frozen(Color.FromRgb(0xE8, 0xEA, 0xED));
+    private static readonly Brush LabelDots = Frozen(Color.FromRgb(0x9B, 0xA1, 0xAA));
 
     private EditTimeline? _timeline;
     private IReadOnlyList<VideoSegment>? _drawnSegments; // the pieces last drawn, to skip changes that leave them alone
@@ -420,7 +426,6 @@ internal sealed class TimelineView : FrameworkElement
         var pen = new Pen(palette.BorderStrong, 1);
         var minor = new Pen(palette.Border, 1);
 
-        dc.DrawLine(minor, new Point(TimelineLayout.Padding, TimelineLayout.RulerHeight), new Point(TimelineLayout.XOf(duration, _pixelsPerSecond), TimelineLayout.RulerHeight));
         for (int n = 0; n * step <= duration + 0.0001; n++)
         {
             double time = n * step;
@@ -443,7 +448,7 @@ internal sealed class TimelineView : FrameworkElement
         }
     }
 
-    // One piece as a block: a title strip on top, pictures from the video under it, and handles on the sides when selected.
+    // One piece as a block: pictures from the video with a small label on them, and handles on the sides when selected.
     private void DrawBlock(DrawingContext dc, Palette palette, int index, double offsetX)
     {
         VideoSegment segment = _timeline!.Segments[index];
@@ -451,58 +456,69 @@ internal sealed class TimelineView : FrameworkElement
         var rect = new Rect(left + 1 + offsetX, TimelineLayout.TrackTop, Math.Max(3, right - left - 2), TimelineLayout.TrackHeight);
         bool selected = index == _selected;
 
-        var shape = new RectangleGeometry(rect, 6, 6);
+        var shape = new RectangleGeometry(rect, 8, 8);
         dc.DrawGeometry(palette.Input, null, shape);
         dc.PushClip(shape);
 
         // The pictures.
-        double picturesTop = rect.Top + TimelineLayout.GripHeight;
-        double picturesHeight = TimelineLayout.TrackHeight - TimelineLayout.GripHeight;
         BitmapSource? sample = _thumbnails.FirstOrDefault(t => t != null);
-        double tile = sample == null ? picturesHeight * 16 / 9 : Math.Max(20, picturesHeight * sample.PixelWidth / sample.PixelHeight);
+        double tile = sample == null ? rect.Height * 16 / 9 : Math.Max(20, rect.Height * sample.PixelWidth / sample.PixelHeight);
         for (double x = rect.Left; x < rect.Right; x += tile)
         {
             double sourceTime = segment.Start + (x + tile / 2 - (left + offsetX)) / _pixelsPerSecond * segment.Rate;
             BitmapSource? picture = PictureAt(sourceTime);
             if (picture != null)
             {
-                dc.DrawImage(picture, new Rect(x, picturesTop, tile, picturesHeight));
+                dc.DrawImage(picture, new Rect(x, rect.Top, tile, rect.Height));
             }
         }
         if (segment.Muted)
         {
-            dc.DrawRectangle(palette.Dim, null, new Rect(rect.Left, picturesTop, rect.Width, picturesHeight));
+            dc.DrawRectangle(palette.Dim, null, rect);
         }
-
-        // The title strip.
-        var strip = new Rect(rect.Left, rect.Top, rect.Width, TimelineLayout.GripHeight);
-        dc.DrawRectangle(selected ? palette.Accent : palette.Surface, null, strip);
-        if (rect.Width > 46)
+        if (rect.Width > 56)
         {
-            string title = $"{index + 1} · {TimeText.Format(segment.PlayLength)}"
+            DrawLabel(dc, palette, rect, $"{index + 1} · {TimeText.Format(segment.PlayLength)}"
                 + (segment.IsRetimed ? $" · {TimeText.Speed(segment.Rate)}" : "")
-                + (segment.Muted ? " · sin sonido" : "");
-            FormattedText text = palette.Text(title, 11, selected ? palette.OnAccent : palette.TextPrimary);
-            text.MaxTextWidth = rect.Width - 16;
-            text.MaxLineCount = 1;
-            text.Trimming = TextTrimming.CharacterEllipsis;
-            dc.DrawText(text, new Point(rect.Left + 8, rect.Top + 3));
+                + (segment.Muted ? " · sin sonido" : ""));
         }
         dc.Pop();
 
-        dc.DrawGeometry(null, new Pen(selected ? palette.Accent : palette.BorderStrong, selected ? 2 : 1), new RectangleGeometry(rect, 6, 6));
+        dc.DrawGeometry(null, new Pen(selected ? palette.TextPrimary : palette.BorderStrong, selected ? 2 : 1), shape);
         if (selected)
         {
-            DrawHandle(dc, palette, rect.Left + 1);
-            DrawHandle(dc, palette, rect.Right - 1);
+            // A line of the background inside the ring, so it shows over pictures of its own colour (a white page).
+            dc.DrawRoundedRectangle(null, new Pen(palette.Input, 1.5), Rect.Inflate(rect, -1.75, -1.75), 6.5, 6.5);
+            DrawHandle(dc, palette, rect.Left + 5);
+            DrawHandle(dc, palette, rect.Right - 5);
         }
+    }
+
+    // Its number and length; the dots say the piece can be dragged from up there.
+    private static void DrawLabel(DrawingContext dc, Palette palette, Rect block, string title)
+    {
+        FormattedText text = palette.Text(title, 11, LabelText);
+        text.MaxTextWidth = block.Width - 43;
+        text.MaxLineCount = 1;
+        text.Trimming = TextTrimming.CharacterEllipsis;
+
+        var label = new Rect(block.Left + 8, block.Top + 8, text.Width + 29, LabelHeight);
+        dc.DrawRoundedRectangle(LabelFill, null, label, 5, 5);
+        for (int column = 0; column < 2; column++)
+        {
+            for (int row = 0; row < 3; row++)
+            {
+                dc.DrawEllipse(LabelDots, null, new Point(label.Left + 7.5 + column * 4, label.Top + 5 + row * 4), 1.3, 1.3);
+            }
+        }
+        dc.DrawText(text, new Point(label.Left + 21, label.Top + (LabelHeight - text.Height) / 2));
     }
 
     private static void DrawHandle(DrawingContext dc, Palette palette, double x)
     {
-        double top = TimelineLayout.TrackTop + TimelineLayout.GripHeight + 10;
-        var pill = new Rect(x - 3, top, 6, TimelineLayout.TrackHeight - TimelineLayout.GripHeight - 20);
-        dc.DrawRoundedRectangle(palette.OnAccent, new Pen(palette.Accent, 1.5), pill, 3, 3);
+        const double height = 36;
+        var pill = new Rect(x - 2.5, TimelineLayout.TrackTop + (TimelineLayout.TrackHeight - height) / 2 + 3, 5, height);
+        dc.DrawRoundedRectangle(palette.TextPrimary, new Pen(palette.Input, 1), pill, 2.5, 2.5);
     }
 
     // The picture of the video nearest to a moment of the original that is already loaded.
@@ -538,13 +554,13 @@ internal sealed class TimelineView : FrameworkElement
 
         int place = DropPlace();
         double x = TimelineLayout.DropLineX(_timeline!, _gestureIndex, _pixelsPerSecond, place);
-        dc.DrawRoundedRectangle(palette.Accent, null, new Rect(x - 1.5, TimelineLayout.TrackTop - 4, 3, TimelineLayout.TrackHeight + 8), 1.5, 1.5);
+        dc.DrawRoundedRectangle(palette.TextPrimary, null, new Rect(x - 1.5, TimelineLayout.TrackTop - 4, 3, TimelineLayout.TrackHeight + 8), 1.5, 1.5);
     }
 
     private void DrawPlayhead(DrawingContext dc, Palette palette)
     {
         double x = Math.Round(PlayheadX) + 0.5;
-        dc.DrawLine(new Pen(palette.Accent, 2), new Point(x, 8), new Point(x, TimelineLayout.Height - 4));
+        dc.DrawLine(new Pen(palette.Accent, 2), new Point(x, 8), new Point(x, TimelineLayout.Height)); // on into the rows below
         var head = new StreamGeometry();
         using (StreamGeometryContext context = head.Open())
         {
@@ -577,7 +593,6 @@ internal sealed class TimelineView : FrameworkElement
             _owner = owner;
             _pixelsPerDip = VisualTreeHelper.GetDpi(owner).PixelsPerDip;
             Accent = Find("Accent", Brushes.IndianRed);
-            OnAccent = Find("OnAccent", Brushes.White);
             Surface = Find("Surface", Brushes.DimGray);
             Input = Find("InputBackground", Brushes.Black);
             Border = Find("Border", Brushes.Gray);
@@ -587,8 +602,6 @@ internal sealed class TimelineView : FrameworkElement
         }
 
         public Brush Accent { get; }
-
-        public Brush OnAccent { get; }
 
         public Brush Surface { get; }
 
@@ -602,17 +615,18 @@ internal sealed class TimelineView : FrameworkElement
 
         public Brush TextSecondary { get; }
 
-        public Brush Dim { get; } = Freeze(new SolidColorBrush(Color.FromArgb(150, 0, 0, 0)));
+        public Brush Dim { get; } = Frozen(Color.FromArgb(150, 0, 0, 0));
 
         public FormattedText Text(string text, double size, Brush brush) =>
             new(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), size, brush, _pixelsPerDip);
 
         private Brush Find(string key, Brush fallback) => _owner.TryFindResource(key) as Brush ?? fallback;
+    }
 
-        private static Brush Freeze(Brush brush)
-        {
-            brush.Freeze();
-            return brush;
-        }
+    private static Brush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 }

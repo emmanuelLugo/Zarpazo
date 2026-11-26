@@ -415,6 +415,16 @@ public partial class VideoEditWindow : Window
 
     private void OnScrollerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateScale();
 
+    // The hints of the empty rows stay in the middle of what can be seen.
+    private void OnTimelineScrolled(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.HorizontalChange != 0 || e.ViewportWidthChange != 0)
+        {
+            Lane.InvalidateVisual();
+            OverlayLane.InvalidateVisual();
+        }
+    }
+
     private void OnZoomChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!_ready)
@@ -470,8 +480,11 @@ public partial class VideoEditWindow : Window
         ApplyZoomPreview();
     }
 
-    private void UpdatePositionText() =>
-        PositionText.Text = _timeline == null ? "" : $"{TimeText.Format(_playhead)} / {TimeText.Format(_timeline.Duration)}";
+    private void UpdatePositionText()
+    {
+        PositionText.Text = _timeline == null ? "" : TimeText.Format(_playhead);
+        DurationText.Text = _timeline == null ? "" : $" / {TimeText.Format(_timeline.Duration)}";
+    }
 
     // The player shows the picture of the original that plays at the playhead.
     private void ShowFrame()
@@ -910,8 +923,8 @@ public partial class VideoEditWindow : Window
         DuplicateButton.IsEnabled = hasSelection;
         MuteButton.IsEnabled = hasSelection;
         SpeedButton.IsEnabled = SpeedMenuItem.IsEnabled = hasSelection;
-        MoveLeftButton.IsEnabled = hasSelection && selected > 0;
-        MoveRightButton.IsEnabled = hasSelection && selected < count - 1;
+        MoveLeftMenuItem.IsEnabled = hasSelection && selected > 0;
+        MoveRightMenuItem.IsEnabled = hasSelection && selected < count - 1;
         UndoButton.IsEnabled = free && _timeline.CanUndo;
         RedoButton.IsEnabled = free && _timeline.CanRedo;
         ResetButton.IsEnabled = free && _timeline.IsEdited;
@@ -929,10 +942,6 @@ public partial class VideoEditWindow : Window
         {
             ShowDepth(_timeline.Zooms[chosenZoom].Scale);
         }
-        string zoomText = (zooms switch { 0 => "", 1 => " · 1 zoom", _ => $" · {zooms} zooms" }) + (_frame.Enabled ? " · con marco" : "")
-            + (_timeline.Crop.IsNone ? "" : " · recortado")
-            + (_timeline.Aspect == VideoAspect.Original ? "" : $" · {_timeline.Aspect.Label()}")
-            + (_timeline.Overlays.Count switch { 0 => "", 1 => " · 1 capa", var n => $" · {n} capas" });
 
         bool muted = hasSelection && _timeline.Segments[selected].Muted;
         string muteText = muted ? "Activar sonido" : "Silenciar";
@@ -941,11 +950,6 @@ public partial class VideoEditWindow : Window
         MuteMenuItem.Header = muteText;
         double speed = hasSelection ? _timeline.Segments[selected].Rate : 1;
         SpeedText.Text = TimeText.Speed(speed);
-        SpeedText.ClearValue(TextBlock.ForegroundProperty);
-        if (speed != 1)
-        {
-            SpeedText.SetResourceReference(TextBlock.ForegroundProperty, "Accent");
-        }
         FillSpeedMenu(SpeedMenuItem.Items);
         UpdatePositionText();
 
@@ -955,16 +959,11 @@ public partial class VideoEditWindow : Window
         }
         else
         {
-            KeptText.Text = _timeline.IsEdited
-                ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)}) · {count} {(count == 1 ? "parte" : "partes")}{zoomText}"
-                : zooms > 0 || _frame.Enabled || !_timeline.Crop.IsNone || _timeline.Aspect != VideoAspect.Original
-                    ? $"Sin cortes{zoomText}. Divide con S, elimina con Supr; arrastra un zoom para moverlo o sus bordes para alargarlo."
-                    : "Sin cambios. Divide con S, elimina con Supr y arrastra el título de una parte para cambiar su orden.";
+            // Nothing to say about a recording left in one whole piece.
+            string kept = _timeline.IsEdited ? $"Quedará de {TimeText.Format(_timeline.Duration)} (el original dura {TimeText.Format(_timeline.SourceDuration)})" : "";
+            string piece = count > 1 && hasSelection ? $"Parte {selected + 1} de {count}" : "";
+            KeptText.Text = string.Join(" · ", new[] { kept, piece }.Where(words => words.Length > 0));
         }
-
-        SelectionText.Text = hasSelection
-            ? $"Parte {selected + 1} de {count} · del original {TimeText.Format(_timeline.Segments[selected].Start)} a {TimeText.Format(_timeline.Segments[selected].End)}"
-            : "";
     }
 
     // The recording has to be made again: pieces cut or moved, zooms (the automatic ones count), a frame, a pointer to draw,

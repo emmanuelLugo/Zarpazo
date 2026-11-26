@@ -10,7 +10,7 @@ internal static class TimelineLayout
 
     public const double RulerHeight = 26;
     public const double TrackTop = RulerHeight + 6;
-    public const double GripHeight = 20;
+    public const double GripHeight = 30; // the top of a piece, where its label is: dragged from there
     public const double TrackHeight = 86;
     public const double Height = TrackTop + TrackHeight + 10;
 

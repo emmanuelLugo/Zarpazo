@@ -20,6 +20,8 @@ internal sealed class ZoomLaneView : FrameworkElement
 
     private static readonly Brush BlockFill = Frozen(Color.FromArgb(0x70, 0x8E, 0x6C, 0xEF));
     private static readonly Brush BlockEdge = Frozen(Color.FromRgb(0x8E, 0x6C, 0xEF));
+    private static readonly Geometry HintIcon =
+        Geometry.Parse("M10.5,3.5 A7,7 0 1 0 10.5,17.5 A7,7 0 1 0 10.5,3.5 Z M20.5,20.5 L15.5,15.5 M7.5,10.5 H13.5 M10.5,7.5 V13.5");
 
     /// <summary>What a point of the row is over.</summary>
     public enum Part
@@ -359,21 +361,17 @@ internal sealed class ZoomLaneView : FrameworkElement
             return;
         }
 
-        Brush border = TryFindResource("Border") as Brush ?? Brushes.Gray;
         Brush accent = TryFindResource("Accent") as Brush ?? Brushes.IndianRed;
-        Brush secondary = TryFindResource("TextSecondary") as Brush ?? Brushes.Silver;
         Brush primary = TryFindResource("TextPrimary") as Brush ?? Brushes.White;
         double pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
 
         double right = TimelineLayout.XOf(_timeline.Duration, _pixelsPerSecond);
-        var lane = new Rect(TimelineLayout.Padding, BlockTop, Math.Max(0, right - TimelineLayout.Padding), BlockHeight);
-        dc.DrawRoundedRectangle(null, new Pen(border, 1) { DashStyle = DashStyles.Dash }, lane, 6, 6);
+        var lane = new Rect(TimelineLayout.Padding, 1, Math.Max(0, right - TimelineLayout.Padding), LaneHeight - 2);
+        LaneBackdrop.Draw(dc, this, lane);
 
         if (_camera.IsEmpty)
         {
-            var hint = new FormattedText("Zoom: doble clic aquí o pulsa Z para añadir uno donde está la línea roja",
-                CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, secondary, pixelsPerDip);
-            dc.DrawText(hint, new Point(lane.Left + 10, lane.Top + (lane.Height - hint.Height) / 2));
+            LaneBackdrop.DrawHint(dc, this, lane, HintIcon, "Zoom · doble clic o Z");
         }
 
         foreach (ZoomSpan span in _camera.Spans)
@@ -382,7 +380,7 @@ internal sealed class ZoomLaneView : FrameworkElement
             double width = Math.Max(4, TimelineLayout.XOf(span.End, _pixelsPerSecond) - left);
             var block = new Rect(left, BlockTop, width, BlockHeight);
             bool selected = span.Index == _selected;
-            dc.DrawRoundedRectangle(BlockFill, new Pen(selected ? accent : BlockEdge, selected ? 2 : 1), block, 6, 6);
+            dc.DrawRoundedRectangle(BlockFill, new Pen(selected ? primary : BlockEdge, selected ? 2 : 1), block, 6, 6);
 
             var label = new FormattedText($"Zoom {span.Scale.ToString("0.##", CultureInfo.CurrentCulture)}×",
                 CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal),
@@ -396,7 +394,7 @@ internal sealed class ZoomLaneView : FrameworkElement
         }
 
         double x = Math.Round(TimelineLayout.XOf(Math.Clamp(_playhead, 0, _timeline.Duration), _pixelsPerSecond)) + 0.5;
-        dc.DrawLine(new Pen(accent, 2), new Point(x, 0), new Point(x, LaneHeight));
+        dc.DrawLine(new Pen(accent, 2), new Point(x, 0), new Point(x, LaneHeight + 4)); // across the gap to the row below
     }
 
     private static Brush Frozen(Color color)
