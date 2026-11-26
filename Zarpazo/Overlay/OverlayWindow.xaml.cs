@@ -201,6 +201,11 @@ public partial class OverlayWindow : Window
                 cursor.Y + (e.Key == Key.Down ? 1 : e.Key == Key.Up ? -1 : 0));
             e.Handled = true;
         }
+        else if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down && !ctrl && _textBox == null && !IsMouseCaptured)
+        {
+            Nudge(e.Key, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1);
+            e.Handled = true;
+        }
         else if (!ctrl && Keyboard.Modifiers == ModifierKeys.None && IsSelectionFinal && _textBox == null && !IsMouseCaptured
                  && ToolShortcuts.ForKey(e.Key) is { } shortcut)
         {
@@ -210,6 +215,23 @@ public partial class OverlayWindow : Window
         {
             SelectArea(System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Control.MousePosition).Bounds); // F: the whole monitor
         }
+    }
+
+    // Once the area is chosen the arrows move, by screen pixels, the annotation picked with the move tool, or else the area.
+    private void Nudge(Key key, int pixels)
+    {
+        var step = new Vector(
+            (key == Key.Right ? pixels : key == Key.Left ? -pixels : 0) * ActualWidth / _screenshot.PixelWidth,
+            (key == Key.Down ? pixels : key == Key.Up ? -pixels : 0) * ActualHeight / _screenshot.PixelHeight);
+        if (Toolbar.Tool == AnnotationTool.Move && Annotations.Selected is { } picked)
+        {
+            Annotations.Nudge(picked, step);
+            return;
+        }
+
+        Selection.Rect = SelectionGeometry.Apply(Selection.Rect, SelectionHandle.Inside, step, new Rect(0, 0, ActualWidth, ActualHeight));
+        Annotations.ClipArea = Selection.Rect;
+        ShowToolbar();
     }
 
     /// <summary>

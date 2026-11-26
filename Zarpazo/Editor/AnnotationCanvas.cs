@@ -12,10 +12,11 @@ internal sealed class AnnotationCanvas : FrameworkElement
 
     private static readonly Pen SelectionOutline = CreateSelectionOutline();
 
-    /// <summary>Wheel notches this close together count as one change, so a single undo takes them all back.</summary>
-    private const long ThicknessBurstMs = 800;
+    /// <summary>Wheel notches, or arrow key steps, this close together count as one change, so a single undo takes them all back.</summary>
+    private const long BurstMs = 800;
 
-    private readonly record struct Edit(Action Undo, Action Redo, Annotation? Sized = null, double SizeBefore = 0, long At = 0);
+    private readonly record struct Edit(Action Undo, Action Redo, Annotation? Sized = null, double SizeBefore = 0, long At = 0,
+        Annotation? Nudged = null, Vector Moved = default);
 
     private readonly List<Annotation> _done = [];
     private readonly Stack<Edit> _history = new();
@@ -110,6 +111,21 @@ internal sealed class AnnotationCanvas : FrameworkElement
         }
     }
 
+    /// <summary>Moves a placed annotation a small step, as the arrow keys do. A burst of steps is undone as one.</summary>
+    public void Nudge(Annotation annotation, Vector step)
+    {
+        annotation.Offset(step);
+        long now = Environment.TickCount64;
+        Vector total = step;
+        if (_future.Count == 0 && _history.Count > 0 && _history.Peek() is { Nudged: { } last } top && last == annotation && now - top.At < BurstMs)
+        {
+            _history.Pop();
+            total += top.Moved;
+        }
+        Record(new Edit(() => annotation.Offset(-total), () => annotation.Offset(total), At: now, Nudged: annotation, Moved: total));
+        InvalidateVisual();
+    }
+
     /// <summary>Notes that an annotation was already stretched, so that undo and redo can stretch it back and forth.</summary>
     public void RecordResize(Annotation annotation, Rect before, Rect after)
     {
@@ -133,7 +149,7 @@ internal sealed class AnnotationCanvas : FrameworkElement
         if (annotation != _preview)
         {
             long now = Environment.TickCount64;
-            if (_future.Count == 0 && _history.Count > 0 && _history.Peek() is { Sized: { } last } top && last == annotation && now - top.At < ThicknessBurstMs)
+            if (_future.Count == 0 && _history.Count > 0 && _history.Peek() is { Sized: { } last } top && last == annotation && now - top.At < BurstMs)
             {
                 _history.Pop();
                 before = top.SizeBefore;

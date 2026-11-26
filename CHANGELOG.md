@@ -7,6 +7,7 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 ## [Sin publicar]
 
 ### Añadido
+- Captura: con la zona ya elegida, las flechas mueven 1 píxel el dibujo seleccionado o la zona; con Mayús, 10.
 - Captura: con la herramienta Mover, al elegir un color se aplica al dibujo seleccionado (Ctrl+Z lo deshace).
 
 ### Cambiado
