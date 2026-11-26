@@ -237,7 +237,7 @@ public partial class OverlayWindow : Window
         }
 
         CommitText();
-        Annotations.Clear(); // like dragging a new area: what was drawn belonged to the old one
+        Annotations.Selected = null; // what was drawn stays where it is on the screen
         _hoverRect = null;
         Selection.Rect = area;
         Annotations.ClipArea = area;
@@ -933,7 +933,9 @@ public partial class OverlayWindow : Window
 
     private void StartNewSelection(Point origin)
     {
-        Annotations.Clear();
+        // What was drawn is kept: it is out of sight while the new area is chosen and shows again wherever the area covers it.
+        Annotations.Selected = null;
+        Annotations.ClipArea = Rect.Empty;
         Toolbar.Visibility = Visibility.Collapsed;
         Handles.Visibility = Visibility.Collapsed;
         Selection.Rect = new Rect(origin, origin);

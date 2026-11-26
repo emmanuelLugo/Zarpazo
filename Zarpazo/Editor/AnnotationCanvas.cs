@@ -224,17 +224,6 @@ internal sealed class AnnotationCanvas : FrameworkElement
         AfterHistoryChange();
     }
 
-    public void Clear()
-    {
-        _done.Clear();
-        _history.Clear();
-        _future.Clear();
-        _preview = null;
-        _selected = null;
-        _clipArea = Rect.Empty;
-        InvalidateVisual();
-    }
-
     /// <summary>The cropped screenshot with the annotations on top.</summary>
     /// <param name="crop">The capture area, already cut out of the screenshot.</param>
     /// <param name="x">Pixel column of the crop inside the whole screenshot.</param>
