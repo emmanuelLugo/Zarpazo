@@ -276,8 +276,8 @@ public partial class OverlayWindow : Window
     /// <summary>An area was copied, saved, pinned or recorded: its place in physical screen pixels, so it can be repeated.</summary>
     internal event Action<Rectangle>? AreaUsed;
 
-    /// <summary>The capture was also saved by itself (the path); raised after the overlay has done its work.</summary>
-    internal event Action<string>? AutoSaved;
+    /// <summary>The capture was copied or saved: what happened, and the file written if there is one.</summary>
+    internal event Action<string, string?>? Delivered;
 
     /// <summary>The capture was copied but could not be saved by itself (the reason).</summary>
     internal event Action<string>? AutoSaveFailed;
@@ -297,12 +297,13 @@ public partial class OverlayWindow : Window
         var saver = new AutoSaver(_settings);
         if (!saver.IsEnabled)
         {
+            Delivered?.Invoke("Captura copiada", null);
             return;
         }
 
         try
         {
-            AutoSaved?.Invoke(saver.SaveImage(image));
+            Delivered?.Invoke("Captura copiada y guardada", saver.SaveImage(image));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -310,7 +311,15 @@ public partial class OverlayWindow : Window
         }
     }
 
-    private void OnSave(object? sender, EventArgs e) => Finish(image => ImageOutput.Save(Embellished(image), this, _settings.Current));
+    private void OnSave(object? sender, EventArgs e) => Finish(image =>
+    {
+        if (ImageOutput.Save(Embellished(image), this, _settings.Current) is not { } path)
+        {
+            return false;
+        }
+        Delivered?.Invoke("Captura guardada", path);
+        return true;
+    });
 
     // Only what leaves the app is shrunk and dressed up. The history, the pinned copy and the text reading keep the plain capture.
     private BitmapSource Embellished(BitmapSource image)

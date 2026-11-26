@@ -36,6 +36,9 @@ internal sealed class AppSettings
 
     public bool CopyAsFile { get; set; } = true;
 
+    /// <summary>A short notice in the corner after a capture is copied or saved.</summary>
+    public bool NotifyOnCapture { get; set; } = true;
+
     /// <summary>While choosing the area, a magnifier with the screen position and the color follows the cursor.</summary>
     public bool ShowMagnifier { get; set; } = true;
 

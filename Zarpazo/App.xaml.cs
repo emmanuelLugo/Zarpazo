@@ -53,6 +53,7 @@ public partial class App : Application
     private SettingsStore _settings = null!; // created in OnStartup, before anything can use it
     private UpdateService _updates = null!; // the same
     private DispatcherTimer? _updateTimer;
+    private CaptureToast? _captureToast; // the notice of the last capture copied or saved
     private UpdateToast? _updateToast; // the card about a version that is ready
     private UpdateToast? _updatedToast; // the card that says Zarpazo was just updated
     private Version? _justUpdatedTo; // set on a start after an update, until the card has been shown
@@ -199,6 +200,26 @@ public partial class App : Application
         _guideWindow = new GuideWindow(_guide, _settings);
         _guideWindow.Closed += (_, _) => _guideWindow = null;
         _guideWindow.Show();
+    }
+
+    private void ShowCaptureNotice(string heading, string? path)
+    {
+        if (!_settings.Current.NotifyOnCapture)
+        {
+            return;
+        }
+
+        _captureToast?.Close(); // only the latest one: they share the corner
+        var toast = new CaptureToast(heading, path);
+        toast.Closed += (_, _) =>
+        {
+            if (_captureToast == toast)
+            {
+                _captureToast = null;
+            }
+        };
+        _captureToast = toast;
+        toast.Show();
     }
 
     private void AddGuideStep(BitmapSource image)
@@ -900,7 +921,7 @@ public partial class App : Application
         _overlay.ScrollRequested += BeginScrollCapture;
         _overlay.SetGroup(_guide.AddsOnCapture, _guide.Steps.Count);
         _overlay.GuideStepRequested += AddGuideStep;
-        _overlay.AutoSaved += path => _tray!.ShowInfo($"Copiada y guardada en {path}");
+        _overlay.Delivered += ShowCaptureNotice;
         _overlay.AutoSaveFailed += message => _tray!.ShowWarning($"Se copió, pero no se pudo guardar: {message}");
         _overlay.Closed += (_, _) =>
         {

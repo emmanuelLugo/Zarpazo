@@ -80,7 +80,7 @@ El MVP necesita el icono en la bandeja y una sola instancia en ejecución; el re
 | Icono en la bandeja del sistema con menú contextual | MVP |
 | Una sola instancia en ejecución | MVP |
 | Iniciar con Windows | Después |
-| Notificaciones nativas de Windows | Después |
+| Notificaciones nativas de Windows | Después (hecho el aviso al copiar o guardar: tarjeta propia, sin sonido y fuera de las capturas) |
 | Modo oscuro y claro según el sistema | Después (hecho: Configuración > General > Tema) |
 | Actualización automática | Después (hecho: aviso diario y «Descargar e instalar» en Configuración > Acerca de) |
 

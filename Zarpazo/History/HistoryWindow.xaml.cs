@@ -322,7 +322,7 @@ public partial class HistoryWindow : Window
             {
                 SaveRecording(media, item.Kind);
             }
-            else if (ImageOutput.Save(CaptureHistory.Load(item.Path), this, _settings.Current))
+            else if (ImageOutput.Save(CaptureHistory.Load(item.Path), this, _settings.Current) != null)
             {
                 StatusText.Text = "Guardada";
             }

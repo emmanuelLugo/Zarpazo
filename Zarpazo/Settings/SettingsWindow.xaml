@@ -306,6 +306,12 @@
                             <CheckBox x:Name="CopyAsFileBox" Style="{StaticResource Switch}" AutomationProperties.Name="Copiar también como archivo PNG" />
                         </local:SettingRow>
                     </Border>
+                    <Border Style="{StaticResource Card}">
+                        <local:SettingRow Title="Avisar al copiar o guardar"
+                                          Description="Un aviso breve y sin sonido en la esquina de la pantalla. No sale en las capturas siguientes.">
+                            <CheckBox x:Name="NotifyBox" Style="{StaticResource Switch}" AutomationProperties.Name="Avisar al copiar o guardar" />
+                        </local:SettingRow>
+                    </Border>
 
                     <TextBlock Style="{StaticResource Section}" Text="CAPTURAS AGRUPADAS" />
                     <Border Style="{StaticResource Card}">

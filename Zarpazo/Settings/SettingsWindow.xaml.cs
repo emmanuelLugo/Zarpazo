@@ -92,6 +92,7 @@ public partial class SettingsWindow : Window
         MagnifierBox.IsChecked = settings.ShowMagnifier;
         RememberStyleBox.IsChecked = settings.RememberStyle;
         CopyAsFileBox.IsChecked = settings.CopyAsFile;
+        NotifyBox.IsChecked = settings.NotifyOnCapture;
         GroupOneImageBox.IsChecked = settings.GroupCopyAsOneImage;
         GroupNumberingBox.IsChecked = settings.GroupNumbering;
     }
@@ -397,6 +398,7 @@ public partial class SettingsWindow : Window
             RecordingQuality.VideoMaxMinutesChoices[Math.Max(0, VideoMaxBox.SelectedIndex)]);
         settings.AutoZoomOnOpen = AutoZoomBox.IsChecked == true;
         settings.CopyAsFile = CopyAsFileBox.IsChecked == true;
+        settings.NotifyOnCapture = NotifyBox.IsChecked == true;
         settings.SaveFolder = FolderBox.Text.Trim();
         settings.SaveFormat = FormatBox.SelectedIndex == 1 ? "jpg" : "png";
         settings.RememberStyle = RememberStyleBox.IsChecked == true;

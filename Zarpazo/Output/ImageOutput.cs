@@ -65,8 +65,8 @@ internal static class ImageOutput
         return path;
     }
 
-    /// <summary>Asks for a file and writes the image as PNG or JPG. Returns false if the user cancels.</summary>
-    public static bool Save(BitmapSource image, Window owner, AppSettings settings)
+    /// <summary>Asks for a file and writes the image as PNG or JPG. Returns its path, or null if the user cancels.</summary>
+    public static string? Save(BitmapSource image, Window owner, AppSettings settings)
     {
         bool jpg = settings.SaveFormat == "jpg";
         var dialog = new SaveFileDialog
@@ -83,11 +83,11 @@ internal static class ImageOutput
         };
         if (dialog.ShowDialog(owner) != true)
         {
-            return false;
+            return null;
         }
 
         Write(dialog.FileName, image, settings.JpegQuality);
-        return true;
+        return dialog.FileName;
     }
 
     internal static void Write(string path, BitmapSource image, int jpegQuality = AppSettings.DefaultJpegQuality)
