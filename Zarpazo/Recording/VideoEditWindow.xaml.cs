@@ -1444,76 +1444,99 @@ public partial class VideoEditWindow : Window
         // Looks to start from: a click puts in the background, room, corners and shadow that go together (the switch is left as it is).
         foreach ((string name, string tip, VideoFrameStyle look) in VideoFrameStyle.Looks)
         {
-            var button = new Button { Content = name, ToolTip = tip, Padding = new Thickness(4, 6, 4, 6), Margin = new Thickness(0, 0, 6, 6), Focusable = false, Tag = look };
+            var button = new Button { Style = (Style)FindResource("LookTile"), Content = LookPicture(look), ToolTip = $"{name}: {tip}", Tag = look };
+            System.Windows.Automation.AutomationProperties.SetName(button, name);
             button.Click += OnFrameLook;
             FrameLooks.Children.Add(button);
         }
 
-        // The sections folded away the last time stay folded.
-        foreach (ToggleButton toggle in FrameSectionToggles())
+        // What was opened the last time stays open.
+        foreach (ToggleButton toggle in new[] { FrameBackgroundMore, FrameShadowMore, FrameBorderMore })
         {
-            toggle.IsChecked = !FoldedFrameSections.Contains((string)toggle.Tag);
+            toggle.IsChecked = OpenFrameOptions.Contains((string)toggle.Tag);
         }
         ShowFrameChoices();
     }
 
-    // Which sections of the frame panel are folded away; kept while the app runs, so the next video opens the same way.
-    private static readonly HashSet<string> FoldedFrameSections = [];
+    // A small picture of a look: its background, the recording in it with its room and corners, and its line or bar.
+    private static Border LookPicture(VideoFrameStyle look)
+    {
+        const double height = 30, scale = 100; // the shares of the height, drawn larger than true so they can be told apart
+        double room = 2 + look.Padding * scale * 0.5;
+        var recording = new Border
+        {
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x20, 0x21, 0x24)),
+            CornerRadius = new CornerRadius(1 + look.Radius * scale * 1.5),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 5, ShadowDepth = 1.5, Direction = 270, Opacity = look.Shadow * 0.7 },
+        };
+        if (look.BorderWidth > 0 && FrameBackground.TryHex(look.BorderColor, out System.Windows.Media.Color line))
+        {
+            (recording.BorderBrush, recording.BorderThickness) = (new SolidColorBrush(line), new Thickness(1));
+        }
+        else if (look.Bar != WindowBar.None)
+        {
+            (recording.BorderBrush, recording.BorderThickness) = (new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x6C, 0x70, 0x7A)), new Thickness(0, 4, 0, 0));
+        }
+        return new Border
+        {
+            Height = height,
+            CornerRadius = new CornerRadius(6),
+            Background = FrameBackground.ToBrush(look.Background),
+            Padding = new Thickness(room + 1, room, room + 1, room),
+            Child = recording,
+        };
+    }
 
-    private IEnumerable<ToggleButton> FrameSectionToggles() =>
-        [FrameLooksToggle, FrameBackgroundToggle, FrameShapeToggle, FrameShadowToggle, FrameBorderToggle, FrameBarToggle];
+    // Which extra options of the frame panel are open; kept while the app runs, so the next video opens the same way.
+    private static readonly HashSet<string> OpenFrameOptions = [];
 
-    private void OnFrameSection(object sender, RoutedEventArgs e)
+    private void OnFrameMore(object sender, RoutedEventArgs e)
     {
         var toggle = (ToggleButton)sender;
         if (toggle.IsChecked == true)
         {
-            FoldedFrameSections.Remove((string)toggle.Tag);
+            OpenFrameOptions.Add((string)toggle.Tag);
         }
         else
         {
-            FoldedFrameSections.Add((string)toggle.Tag);
+            OpenFrameOptions.Remove((string)toggle.Tag);
+        }
+        ShowBackgroundSwatches();
+    }
+
+    // One row of backgrounds until the + is pressed; the chosen one is always in it.
+    private void ShowBackgroundSwatches()
+    {
+        const int row = 7;
+        List<RadioButton> swatches = FrameBackgrounds.Children.OfType<RadioButton>().ToList();
+        int chosen = swatches.FindIndex(swatch => (string)swatch.Tag == _frame.Background);
+        bool all = FrameBackgroundMore.IsChecked == true;
+        for (int i = 0; i < swatches.Count; i++)
+        {
+            bool inRow = i < row - 1 || i == (chosen >= row ? chosen : row - 1);
+            swatches[i].Visibility = all || inRow ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
-    // Puts one section back to the factory values, leaving the rest of the frame as it is.
-    private void OnFrameSectionReset(object sender, RoutedEventArgs e)
+    // What follows from the frame as a whole: the names of what is chosen, the ringed look, and the way back.
+    private void ShowFrameSummary()
     {
-        if (!_ready)
+        string? name = null;
+        foreach (Button button in FrameLooks.Children.OfType<Button>())
         {
-            return;
-        }
-        VideoFrameStyle factory = VideoFrameStyle.Default, now = _frame;
-        SetFrame(((string)((Button)sender).Tag) switch
-        {
-            "background" => now with { Background = factory.Background },
-            "shape" => now with
+            bool chosen = (VideoFrameStyle)button.Tag with { Enabled = _frame.Enabled } == _frame;
+            button.SetResourceReference(BorderBrushProperty, chosen ? "TextPrimary" : "InputBackground");
+            if (chosen)
             {
-                Padding = factory.Padding, PaddingBySide = factory.PaddingBySide, PaddingTop = factory.PaddingTop, PaddingBottom = factory.PaddingBottom,
-                PaddingLeft = factory.PaddingLeft, PaddingRight = factory.PaddingRight, Radius = factory.Radius,
-            },
-            "shadow" => now with { Shadow = factory.Shadow, ShadowBlur = factory.ShadowBlur, ShadowOffset = factory.ShadowOffset, ShadowColor = factory.ShadowColor },
-            "border" => now with { BorderWidth = factory.BorderWidth, BorderColor = factory.BorderColor },
-            "bar" => now with { Bar = factory.Bar, LightBar = factory.LightBar },
-            _ => now,
-        });
-        ShowFrameChoices();
-    }
-
-    // A section's "Restablecer" is there only while the section differs from the factory values.
-    private void ShowFrameResets()
-    {
-        VideoFrameStyle d = VideoFrameStyle.Default, f = _frame;
-        FrameBackgroundReset.IsEnabled = f.Background != d.Background;
-        FrameShapeReset.IsEnabled = f.Padding != d.Padding || f.PaddingBySide != d.PaddingBySide || f.PaddingTop != d.PaddingTop || f.PaddingBottom != d.PaddingBottom
-            || f.PaddingLeft != d.PaddingLeft || f.PaddingRight != d.PaddingRight || f.Radius != d.Radius;
-        FrameShadowReset.IsEnabled = f.Shadow != d.Shadow || f.ShadowBlur != d.ShadowBlur || f.ShadowOffset != d.ShadowOffset || f.ShadowColor != d.ShadowColor;
-        FrameBorderReset.IsEnabled = f.BorderWidth != d.BorderWidth || f.BorderColor != d.BorderColor;
-        FrameBarReset.IsEnabled = f.Bar != d.Bar || f.LightBar != d.LightBar;
-        foreach (Button reset in new[] { FrameBackgroundReset, FrameShapeReset, FrameShadowReset, FrameBorderReset, FrameBarReset })
-        {
-            reset.Visibility = reset.IsEnabled ? Visibility.Visible : Visibility.Hidden;
+                name = System.Windows.Automation.AutomationProperties.GetName(button);
+            }
         }
+        FrameLookName.Text = name ?? "Personalizado";
+        FrameBackgroundName.Text = Output.BeautifyBackground.All.FirstOrDefault(background => background.Key == _frame.Background)?.Name
+            ?? (FrameBackground.IsImage(_frame.Background) ? "Imagen" : "Personalizado");
+        ShowBackgroundSwatches();
+        FrameResetButton.IsEnabled = _frame with { Enabled = false } != VideoFrameStyle.Default with { Enabled = false };
+        FrameResetButton.Visibility = FrameResetButton.IsEnabled ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void OnFrameLook(object sender, RoutedEventArgs e)
@@ -1657,7 +1680,7 @@ public partial class VideoEditWindow : Window
         FrameBarDark.IsChecked = !_frame.LightBar;
         FrameBarLight.IsChecked = _frame.LightBar;
         FrameBarToneRow.IsEnabled = _frame.Bar != WindowBar.None; // the tone is of the bar
-        FrameBarToneRow.Opacity = FrameBarToneRow.IsEnabled ? 1 : 0.5;
+        FrameBarToneBox.Visibility = FrameBarToneRow.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
 
         bool hasColors = FrameBackground.TryColors(_frame.Background, out System.Windows.Media.Color from, out System.Windows.Media.Color to, out int angle);
         if (hasColors)
@@ -1673,7 +1696,6 @@ public partial class VideoEditWindow : Window
         ShowFrameValues();
         FrameOptions.IsEnabled = _frame.Enabled;
         FrameOptions.Opacity = _frame.Enabled ? 1 : 0.5;
-        FrameResetButton.IsEnabled = _frame with { Enabled = false } != VideoFrameStyle.Default with { Enabled = false };
         _showingFrame = false;
     }
 
@@ -1695,7 +1717,7 @@ public partial class VideoEditWindow : Window
         FrameBorderText.Text = _frame.BorderWidth > 0 ? $"{Math.Max(1, Math.Round(_frame.BorderWidth * height))} px" : "Sin borde";
         FrameBorderColorButton.IsEnabled = _frame.BorderWidth > 0;
         FrameBorderColorButton.Opacity = _frame.BorderWidth > 0 ? 1 : 0.5;
-        ShowFrameResets();
+        ShowFrameSummary();
     }
 
     private void OnFrameBorderColor(object sender, RoutedEventArgs e)
@@ -1761,7 +1783,6 @@ public partial class VideoEditWindow : Window
         if (sender is Slider)
         {
             ShowFrameValues(); // a slider is left alone while it is dragged
-            FrameResetButton.IsEnabled = true;
         }
         else
         {

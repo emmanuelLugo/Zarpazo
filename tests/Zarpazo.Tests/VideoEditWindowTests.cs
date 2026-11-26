@@ -320,10 +320,11 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Pump(() => false, 200);
 
                 Assert.Equal(VideoFrameStyle.Looks.Count, window.FrameLooks.Children.Count);
-                var dark = (System.Windows.Controls.Button)window.FrameLooks.Children.OfType<System.Windows.Controls.Button>().Single(b => (string)b.Content == "Oscuro");
+                var dark = (System.Windows.Controls.Button)window.FrameLooks.Children.OfType<System.Windows.Controls.Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Oscuro");
                 dark.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 200);
                 Assert.Equal("grafito", window.Look.Frame.Background);
+                Assert.Equal("Oscuro", window.FrameLookName.Text);
                 Assert.True(window.Look.Frame.Enabled, "a look changes the shape and the background, not the switch");
 
                 window.FrameFromButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
@@ -465,7 +466,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
     }
 
     [NeedsGpuFact]
-    public void The_frame_panel_folds_by_section_and_each_section_puts_back_only_its_own_values()
+    public void The_frame_panel_keeps_the_rest_of_the_options_behind_a_button_and_offers_the_way_back_only_after_a_change()
     {
         string? folder = Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS");
         Sta.Run(() =>
@@ -483,44 +484,48 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 window.FrameBox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 200);
 
-                // Nothing differs from the factory values: no section offers to be put back.
-                foreach (System.Windows.Controls.Button reset in new[] { window.FrameBackgroundReset, window.FrameShapeReset, window.FrameShadowReset, window.FrameBorderReset, window.FrameBarReset })
+                Assert.Equal(Visibility.Hidden, window.FrameResetButton.Visibility);
+                Assert.Equal("Demo", window.FrameLookName.Text);
+                System.Windows.Controls.RadioButton[] swatches = window.FrameBackgrounds.Children.OfType<System.Windows.Controls.RadioButton>().ToArray();
+                Assert.Equal(7, swatches.Count(s => s.Visibility == Visibility.Visible));
+
+                // A background from further down the list still shows in the row once chosen.
+                swatches.Single(s => (string)s.Tag == "coral").IsChecked = true;
+                Pump(() => false, 200);
+                Assert.Equal(7, swatches.Count(s => s.Visibility == Visibility.Visible));
+                Assert.Equal(Visibility.Visible, swatches.Single(s => (string)s.Tag == "coral").Visibility);
+                Assert.Equal("Coral", window.FrameBackgroundName.Text);
+                Assert.Equal("Personalizado", window.FrameLookName.Text);
+                Assert.Equal(Visibility.Visible, window.FrameResetButton.Visibility);
+
+                // Closed, then open: every background, and the options of the shadow.
+                Assert.Equal(Visibility.Collapsed, window.FrameBackgroundExtras.Visibility);
+                Assert.Equal(Visibility.Collapsed, window.FrameShadowDetails.Visibility);
+                Shot(window, folder, "editor-frame-closed.png");
+                foreach (System.Windows.Controls.Primitives.ToggleButton more in new[] { window.FrameBackgroundMore, window.FrameShadowMore, window.FrameBorderMore })
                 {
-                    Assert.Equal(Visibility.Hidden, reset.Visibility);
+                    more.IsChecked = true;
+                    more.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 }
-
-                // A section folds away and opens again.
-                Assert.Equal(Visibility.Visible, window.FrameShadowBody.Visibility);
-                window.FrameShadowToggle.IsChecked = false;
-                window.FrameShadowToggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                Pump(() => false, 100);
-                Assert.Equal(Visibility.Collapsed, window.FrameShadowBody.Visibility);
-                window.FrameShadowToggle.IsChecked = true;
-                window.FrameShadowToggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                Pump(() => false, 100);
-                Assert.Equal(Visibility.Visible, window.FrameShadowBody.Visibility);
-
-                // Change a shadow value and a border value: only those sections offer to be put back.
-                window.FrameShadowColorButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 window.FrameBarMac.IsChecked = true;
                 Pump(() => false, 200);
-                Assert.Equal(Visibility.Visible, window.FrameShadowReset.Visibility);
-                Assert.Equal(Visibility.Visible, window.FrameBarReset.Visibility);
-                Assert.Equal(Visibility.Hidden, window.FrameShapeReset.Visibility);
-                window.FrameBarToneRow.BringIntoView();
-                Shot(window, folder, "editor-frame-sections.png");
+                Assert.All(swatches, s => Assert.Equal(Visibility.Visible, s.Visibility));
+                Assert.Equal(Visibility.Visible, window.FrameBackgroundExtras.Visibility);
+                Assert.Equal(Visibility.Visible, window.FrameShadowDetails.Visibility);
+                Shot(window, folder, "editor-frame-open.png");
 
-                window.FrameShadowReset.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                Pump(() => false, 200);
-                Assert.Equal("#000000", window.Look.Frame.ShadowColor);
-                Assert.Equal(WindowBar.Mac, window.Look.Frame.Bar);
-                Assert.Equal(Visibility.Hidden, window.FrameShadowReset.Visibility);
-                Assert.Equal(Visibility.Visible, window.FrameBarReset.Visibility);
-
-                window.FrameBarReset.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                window.FrameResetButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                 Pump(() => false, 200);
                 Assert.Equal(WindowBar.None, window.Look.Frame.Bar);
-                Assert.Equal(Visibility.Hidden, window.FrameBarReset.Visibility);
+                Assert.Equal("violeta", window.Look.Frame.Background);
+                Assert.Equal(Visibility.Hidden, window.FrameResetButton.Visibility);
+
+                // The panel remembers what was open: close it again, so other tests start from a closed one.
+                foreach (System.Windows.Controls.Primitives.ToggleButton more in new[] { window.FrameBackgroundMore, window.FrameShadowMore, window.FrameBorderMore })
+                {
+                    more.IsChecked = false;
+                    more.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                }
             }
             finally
             {
