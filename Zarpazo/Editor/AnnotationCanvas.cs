@@ -143,6 +143,20 @@ internal sealed class AnnotationCanvas : FrameworkElement
         InvalidateVisual();
     }
 
+    /// <summary>Gives a placed annotation another color; undo brings the old one back.</summary>
+    public void ChangeColor(Annotation annotation, Color color)
+    {
+        Color before = annotation.Color;
+        if (!annotation.UsesColor || before == color)
+        {
+            return;
+        }
+
+        annotation.SetColor(color);
+        Record(new Edit(() => annotation.SetColor(before), () => annotation.SetColor(color)));
+        InvalidateVisual();
+    }
+
     /// <summary>The grip of the selected annotation under the point, if it can be stretched.</summary>
     public SelectionHandle HandleAt(Point point, double tolerance)
     {

@@ -378,7 +378,7 @@ public class EditorToolbarTests
 
     [Theory]
     [InlineData("Select", false)]
-    [InlineData("Move", false)]
+    [InlineData("Move", true)]
     [InlineData("Pixelate", false)]
     [InlineData("Ruler", false)]
     [InlineData("Picker", false)]

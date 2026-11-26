@@ -16,6 +16,8 @@ internal sealed class PixelateAnnotation(Color color, double thickness, Point st
 
     public override bool UsesThickness => false;
 
+    public override bool UsesColor => false;
+
     public override void Draw(DrawingContext context)
     {
         var box = new Rect(Start, End);

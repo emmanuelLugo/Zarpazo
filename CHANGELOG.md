@@ -6,6 +6,9 @@ El flujo de publicación lee la sección de la versión que se etiqueta (`## [0.
 
 ## [Sin publicar]
 
+### Añadido
+- Captura: con la herramienta Mover, al elegir un color se aplica al dibujo seleccionado (Ctrl+Z lo deshace).
+
 ### Cambiado
 - Captura: al elegir otra zona (arrastrando fuera o con F) lo dibujado ya no se borra; se ve donde la zona nueva lo cubre, y Ctrl+Z sigue funcionando.
 

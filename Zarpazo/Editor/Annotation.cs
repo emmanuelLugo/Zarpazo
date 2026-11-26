@@ -19,6 +19,12 @@ internal abstract class Annotation
 
     public void SetThickness(double thickness) => Stroke = CreateStroke(Color, thickness);
 
+    /// <summary>Whether its color can be changed: pixelating has none.</summary>
+    public virtual bool UsesColor => true;
+
+    /// <summary>Use <see cref="AnnotationCanvas.ChangeColor"/> to also make it undoable.</summary>
+    public void SetColor(Color color) => Stroke = CreateStroke(color, Thickness);
+
     private static Pen CreateStroke(Color color, double thickness)
     {
         var brush = new SolidColorBrush(color);

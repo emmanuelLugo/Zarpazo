@@ -300,6 +300,7 @@ public partial class EditorToolbar : UserControl
 
             StyleTools.Visibility = tool is AnnotationTool.Rectangle or AnnotationTool.Ellipse or AnnotationTool.Line or AnnotationTool.Arrow
                 or AnnotationTool.Pen or AnnotationTool.Highlighter or AnnotationTool.Text or AnnotationTool.Step
+                or AnnotationTool.Move // to recolor the annotation picked with it
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -620,6 +621,9 @@ public partial class EditorToolbar : UserControl
 
     // Defaults match the buttons checked in the XAML.
     public AnnotationTool Tool { get; private set; } = AnnotationTool.Select;
+    /// <summary>A color was chosen, even if it is the one that was already in use.</summary>
+    public event EventHandler? ColorChosen;
+
     public Color Color { get; private set; } = (Color)ColorConverter.ConvertFromString("#E53935");
     public double Thickness { get; private set; } = StrokeSize.Default;
 
@@ -710,7 +714,12 @@ public partial class EditorToolbar : UserControl
     private void OnChoicePressed(object sender, MouseButtonEventArgs e)
     {
         var choice = (RadioButton)sender;
-        if (choice.GroupName == "tool" && choice.IsChecked == true && choice != SelectTool)
+        if (choice.GroupName == "color" && choice.IsChecked == true)
+        {
+            e.Handled = true;
+            SetColor(Color); // the color already marked can still be wanted for the picked annotation
+        }
+        else if (choice.GroupName == "tool" && choice.IsChecked == true && choice != SelectTool)
         {
             e.Handled = true; // also keeps the click from reaching the window behind
             SelectTool.IsChecked = true;
@@ -725,6 +734,7 @@ public partial class EditorToolbar : UserControl
         {
             ColorPopup.IsOpen = false;
         }
+        ColorChosen?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnColorButton(object sender, RoutedEventArgs e) => ColorPopup.IsOpen = true;

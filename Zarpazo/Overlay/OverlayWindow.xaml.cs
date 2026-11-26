@@ -103,6 +103,13 @@ public partial class OverlayWindow : Window
         _wheelHintsAtStart = settings.Current.WheelHintsShown;
         Toolbar.MouseEnter += (_, _) => HideSizeBubble();
         Toolbar.ToolChanged += OnToolChanged;
+        Toolbar.ColorChosen += (_, _) =>
+        {
+            if (Toolbar.Tool == AnnotationTool.Move && Annotations.Selected is { } picked)
+            {
+                Annotations.ChangeColor(picked, Toolbar.Color);
+            }
+        };
         Loaded += (_, _) => PlaceGroupBadge(); // the size is known by now
         Loaded += (_, _) => UpdateCursor(Mouse.GetPosition(this)); // the cross shows before the mouse moves
         Screenshot.Source = screenshot;

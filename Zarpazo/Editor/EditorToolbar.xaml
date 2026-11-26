@@ -357,7 +357,7 @@
             </RadioButton>
             <ContentControl x:Name="MeasureSlot" Focusable="False" IsTabStop="False" />
 
-            <!-- Only for the tools that draw something with a color. -->
+            <!-- Only for the tools that draw something with a color, and the one that picks what was drawn. -->
             <StackPanel x:Name="StyleTools" Visibility="Collapsed">
                 <Border Style="{StaticResource DividerH}" />
 
