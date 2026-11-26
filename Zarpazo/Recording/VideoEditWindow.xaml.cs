@@ -991,7 +991,7 @@ public partial class VideoEditWindow : Window
     }
 
     // Makes the finished video, or takes the one already made with the same choices; null if it failed (the person is told).
-    private async Task<string?> PrepareAsync()
+    private async Task<string?> PrepareAsync(bool placeChosen = false)
     {
         if (_timeline == null || _busy)
         {
@@ -1021,7 +1021,7 @@ public partial class VideoEditWindow : Window
                 {
                     File.Copy(_source, target, overwrite: true); // nothing to change: the recording as it is
                 }
-            }, CurrentProject);
+            }, CurrentProject, placeChosen);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -1056,7 +1056,7 @@ public partial class VideoEditWindow : Window
         {
             return;
         }
-        if (await PrepareAsync() is not { } path)
+        if (await PrepareAsync(placeChosen: true) is not { } path)
         {
             return;
         }

@@ -430,7 +430,7 @@
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <local:SettingRow Title="Guardar cada captura que copio y cada grabación"
-                                              Description="Además de copiarla, la guarda sola en la carpeta de abajo, sin preguntar. El botón Guardar sigue abriendo el cuadro para elegir otro lugar.">
+                                              Description="Además de copiarla, la guarda sola en la carpeta de abajo, sin preguntar. El botón Guardar sigue abriendo el cuadro para elegir otro lugar; un video guardado así no deja otra copia en la carpeta.">
                                 <CheckBox x:Name="AutoSaveBox" Style="{StaticResource Switch}" AutomationProperties.Name="Guardar cada captura que copio y cada grabación" />
                             </local:SettingRow>
                             <Border Style="{StaticResource Divider}" />

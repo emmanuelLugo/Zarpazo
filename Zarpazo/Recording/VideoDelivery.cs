@@ -70,8 +70,9 @@ internal sealed class VideoDelivery
     /// </summary>
     /// <param name="make">Writes the video into the path it is given.</param>
     /// <param name="project">The edit the video is made from, kept in the history with the clean recording to edit it again.</param>
+    /// <param name="placeChosen">The person is saving it where they chose: no second copy goes to the automatic folder.</param>
     /// <exception cref="Exception">Whatever <paramref name="make"/> throws; the old file is kept in that case.</exception>
-    public async Task<string> PrepareAsync(string recipe, Func<string, Task> make, VideoProject? project = null)
+    public async Task<string> PrepareAsync(string recipe, Func<string, Task> make, VideoProject? project = null, bool placeChosen = false)
     {
         if (IsCurrent(recipe))
         {
@@ -98,7 +99,7 @@ internal sealed class VideoDelivery
         // video is ready to paste. It goes on in the background, one piece after another.
         string ready = ReadyPath;
         QueueHistoryWork(() => KeepInHistory(ready, project));
-        if (!_autoSaved && _settings != null && new AutoSaver(_settings).IsEnabled)
+        if (!placeChosen && !_autoSaved && _settings != null && new AutoSaver(_settings).IsEnabled)
         {
             _autoSaved = true; // once: a second version would only fill the folder
             try

@@ -1,5 +1,6 @@
 using System.IO;
 using Zarpazo.Recording;
+using Zarpazo.Settings;
 
 namespace Zarpazo.Tests;
 
@@ -62,6 +63,22 @@ public sealed class VideoDeliveryTests : IDisposable
         Assert.Equal("good", File.ReadAllText(Path.Combine(_folder, "rec.mp4")));
         Assert.True(delivery.IsCurrent("a"));
         Assert.Single(Directory.GetFiles(_folder)); // nothing half-made left behind
+    }
+
+    [Fact]
+    public async Task A_video_saved_where_the_person_chose_leaves_no_second_copy_and_a_copied_one_is_saved_on_its_own()
+    {
+        var settings = new SettingsStore(Path.Combine(_folder, "settings.json"));
+        settings.Current.AutoSave = true;
+        settings.Current.AutoSaveFolder = Path.Combine(_folder, "auto");
+        var delivery = new VideoDelivery(Path.Combine(_folder, "rec.original.mp4"), Path.Combine(_folder, "rec.mp4"), settings);
+        static Task Make(string target) => File.WriteAllTextAsync(target, "video");
+
+        await delivery.PrepareAsync("saved", Make, placeChosen: true);
+        Assert.False(Directory.Exists(settings.Current.AutoSaveFolder));
+
+        await delivery.PrepareAsync("copied", Make);
+        Assert.Single(Directory.GetFiles(settings.Current.AutoSaveFolder));
     }
 
     [Fact]
