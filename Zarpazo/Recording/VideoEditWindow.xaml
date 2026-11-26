@@ -171,13 +171,6 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- The title of a side panel, small and in capitals, like a section of settings. -->
-            <Style x:Key="PanelHeader" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-                <Setter Property="FontSize" Value="11" />
-                <Setter Property="FontWeight" Value="Bold" />
-                <Setter Property="Margin" Value="0,0,0,12" />
-            </Style>
             <Style x:Key="RowLabel" TargetType="TextBlock">
                 <Setter Property="IsHitTestVisible" Value="False" />
                 <Setter Property="HorizontalAlignment" Value="Left" />
@@ -208,9 +201,6 @@
                 </Setter>
             </Style>
             <BooleanToVisibilityConverter x:Key="SectionVisible" />
-            <Style x:Key="SubHeader" TargetType="TextBlock" BasedOn="{StaticResource PanelHeader}">
-                <Setter Property="Margin" Value="0,18,0,10" />
-            </Style>
             <!-- One of two or three words side by side, as parts of one control. -->
             <Style x:Key="SegTile" TargetType="RadioButton">
                 <Setter Property="Focusable" Value="False" />
@@ -509,7 +499,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Box" CornerRadius="8" Background="Transparent" Padding="6,7">
+                            <Border x:Name="Box" Height="34" CornerRadius="8" Background="{DynamicResource Surface}" Padding="10,0">
                                 <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
@@ -579,21 +569,22 @@
                     <Border Width="320" Margin="0,6,0,0" CornerRadius="12" Padding="14,14,14,12" Background="{DynamicResource InputBackground}"
                             BorderBrush="{DynamicResource Border}" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="PRESETS" Style="{StaticResource PanelHeader}" />
-                            <TextBlock x:Name="PresetsEmptyText" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap"
+                            <TextBlock Text="Presets" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <TextBlock x:Name="PresetsEmptyText" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap"
                                        Text="Todavía no hay presets. Elige un marco, un cursor y un estilo de zoom, y guárdalos aquí con un nombre." />
                             <StackPanel x:Name="PresetRows" />
-                            <TextBlock Text="GUARDAR EL ESTILO ACTUAL" Style="{StaticResource SubHeader}" />
+                            <TextBlock Text="Guardar el estilo actual" Style="{StaticResource GroupName}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="PresetNameBox" MaxLength="40" VerticalContentAlignment="Center" Margin="0,0,8,0" KeyDown="OnPresetNameKeyDown"
+                                <TextBox x:Name="PresetNameBox" MaxLength="40" Height="34" VerticalContentAlignment="Center" Margin="0,0,6,0" KeyDown="OnPresetNameKeyDown"
+                                         Background="{DynamicResource Surface}" BorderBrush="Transparent" AutomationProperties.Name="Nombre del preset"
                                          ToolTip="Un nombre para el marco, el cursor y el estilo del zoom de ahora. Si ya existe, se actualiza" />
-                                <Button Grid.Column="1" Content="Guardar" Padding="12,5" Focusable="False" Click="OnSavePreset" />
+                                <Button Grid.Column="1" Content="Guardar" Style="{StaticResource QuietButton}" Width="84" Margin="0" Click="OnSavePreset" />
                             </Grid>
-                            <TextBlock x:Name="PresetNote" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock x:Name="PresetNote" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,8,0,0" />
                             <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" Opacity="0.8"
                                        Text="Un preset no guarda el recorte, los cortes ni los zooms de este video." />
                         </StackPanel>

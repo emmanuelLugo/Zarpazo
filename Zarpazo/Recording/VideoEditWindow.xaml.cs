@@ -2469,7 +2469,7 @@ public partial class VideoEditWindow : Window
         foreach (VideoPreset preset in _presets)
         {
             string name = preset.Name;
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 2) };
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -2482,7 +2482,7 @@ public partial class VideoEditWindow : Window
                 Visibility = current ? Visibility.Visible : Visibility.Hidden,
                 Margin = new Thickness(0, 0, 6, 0),
             };
-            check.SetResourceReference(Shape.StrokeProperty, "Accent"); // the theme's, whenever it is there
+            check.SetResourceReference(Shape.StrokeProperty, "TextPrimary"); // the theme's, whenever it is there
             var apply = new Button
             {
                 Style = (Style)FindResource("PresetRow"),
@@ -2533,7 +2533,7 @@ public partial class VideoEditWindow : Window
 
     private void StartRenaming(Grid row, Button apply, string name)
     {
-        var box = new TextBox { Text = name, MaxLength = VideoPreset.MaxNameLength, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 2, 4, 2) };
+        var box = new TextBox { Text = name, MaxLength = VideoPreset.MaxNameLength, Height = 34, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) };
         bool done = false;
         void Finish(bool keep)
         {
