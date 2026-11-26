@@ -21,41 +21,6 @@
                 <ResourceDictionary Source="/Zarpazo;component/Theme/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- A choice of the pointer's shape: a tile with a drawing of it, ringed when chosen. -->
-            <Style x:Key="Tile" TargetType="RadioButton">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Width" Value="56" />
-                <Setter Property="Height" Value="46" />
-                <Setter Property="Margin" Value="0,0,6,0" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="Box" CornerRadius="8" BorderThickness="1.5" BorderBrush="{DynamicResource Border}" Background="{DynamicResource Surface}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Box" Property="Opacity" Value="0.85" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-            <Style x:Key="SliderValue" TargetType="TextBlock">
-                <Setter Property="HorizontalAlignment" Value="Right" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
-            </Style>
-            <Style x:Key="PanelTitle" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="Margin" Value="0,12,0,6" />
-            </Style>
             <!-- icons: drawn on a 24 x 24 grid, shown at 18 px, in the colour of the button they are on -->
             <Style x:Key="Glyph" TargetType="Path">
                 <Setter Property="Width" Value="24" />
@@ -213,61 +178,12 @@
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Margin" Value="0,0,0,12" />
             </Style>
-            <!-- A setting on one line: its name, the slider and its value. The name and the value are written by the panel over the
-                 margins the slider leaves free. A click anywhere on the bar moves the value there. -->
-            <Style x:Key="RowSlider" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="local:SliderDrag.Anywhere" Value="True" />
-                <Setter Property="Cursor" Value="SizeWE" />
-                <Setter Property="Height" Value="28" />
-                <Setter Property="Margin" Value="80,0,56,0" />
-            </Style>
             <Style x:Key="RowLabel" TargetType="TextBlock">
                 <Setter Property="IsHitTestVisible" Value="False" />
                 <Setter Property="HorizontalAlignment" Value="Left" />
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
-            <Style x:Key="RowValue" TargetType="TextBlock" BasedOn="{StaticResource RowLabel}">
-                <Setter Property="HorizontalAlignment" Value="Right" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
-            </Style>
-            <Style x:Key="Row" TargetType="Grid">
-                <Setter Property="Margin" Value="0,0,0,4" />
-            </Style>
 
-            <!-- An on/off setting as a switch, with its name on the left. -->
-            <Style x:Key="Switch" TargetType="CheckBox">
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="CheckBox">
-                            <Grid Background="Transparent" Height="30">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <ContentPresenter VerticalAlignment="Center" />
-                                <Border x:Name="Track" Grid.Column="1" Width="36" Height="20" CornerRadius="10" Background="{DynamicResource BorderStrong}">
-                                    <Ellipse x:Name="Knob" Width="14" Height="14" Fill="White" HorizontalAlignment="Left" Margin="3,0" />
-                                </Border>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Track" Property="Background" Value="{DynamicResource Accent}" />
-                                    <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.45" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
 
             <!-- "Restablecer" next to a section's title: a link in the accent colour. -->
             <Style x:Key="LinkButton" TargetType="Button">
@@ -585,12 +501,6 @@
                 <Setter Property="Background" Value="{DynamicResource Surface}" />
             </Style>
 
-            <!-- A choice written in words (Suave, Enfocado), ringed when chosen like the other tiles. -->
-            <Style x:Key="WordTile" TargetType="RadioButton" BasedOn="{StaticResource Tile}">
-                <Setter Property="Width" Value="Auto" />
-                <Setter Property="Height" Value="38" />
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-            </Style>
             <!-- A preset in the list: its name, flat until the pointer is on it; a click applies it. -->
             <Style x:Key="PresetRow" TargetType="Button">
                 <Setter Property="Focusable" Value="False" />
@@ -1187,56 +1097,96 @@
                         <!-- How the finished video is written: size, quality and pictures a second. Not an edit: nothing to undo. -->
                         <StackPanel x:Name="ExportPanel" Visibility="Collapsed">
                             <Grid>
-                                <TextBlock Text="EXPORTAR" Style="{StaticResource PanelHeader}" />
-                                <Button x:Name="ExportResetButton" Content="Restablecer" Style="{StaticResource LinkButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Click="OnExportReset" ToolTip="Vuelve al tamaño y la calidad de la grabación" />
+                                <TextBlock Text="Exportar" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Button x:Name="ExportResetButton" Style="{StaticResource IconButton}" HorizontalAlignment="Right" Margin="0,-6" Click="OnExportReset"
+                                        AutomationProperties.Name="Restablecer la exportación" ToolTip="Restablecer: vuelve al tamaño y la calidad de la grabación">
+                                    <Path Style="{StaticResource Glyph}" Data="{StaticResource ResetGlyph}" />
+                                </Button>
                             </Grid>
-                            <TextBlock Text="Formato" Style="{StaticResource SubHeader}" />
-                            <UniformGrid Columns="4">
-                                <RadioButton x:Name="AspectOriginalTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="Original" Click="OnAspectChanged"
-                                             ToolTip="La forma de la grabación" />
-                                <RadioButton x:Name="AspectWideTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="16:9" Click="OnAspectChanged"
-                                             ToolTip="Horizontal: videos, presentaciones" />
-                                <RadioButton x:Name="AspectTallTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="9:16" Click="OnAspectChanged"
-                                             ToolTip="Vertical: historias, reels, shorts" />
-                                <RadioButton x:Name="AspectSquareTile" Style="{StaticResource WordTile}" GroupName="exportAspect" Content="1:1" Click="OnAspectChanged"
-                                             Margin="0" ToolTip="Cuadrado: publicaciones" />
+                            <TextBlock Text="Formato" Style="{StaticResource GroupName}" />
+                            <UniformGrid Columns="4" Margin="0,0,-6,0">
+                                <RadioButton x:Name="AspectOriginalTile" Style="{StaticResource QuietTile}" Height="58" GroupName="exportAspect" Click="OnAspectChanged"
+                                             AutomationProperties.Name="Original" ToolTip="La forma de la grabación">
+                                    <StackPanel>
+                                        <Grid Height="22">
+                                            <Rectangle Width="22" Height="15" RadiusX="2" RadiusY="2" Stroke="{DynamicResource TextPrimary}" StrokeThickness="1.4" StrokeDashArray="2,1.5" />
+                                        </Grid>
+                                        <TextBlock Text="Original" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="AspectWideTile" Style="{StaticResource QuietTile}" Height="58" GroupName="exportAspect" Click="OnAspectChanged"
+                                             AutomationProperties.Name="16:9" ToolTip="Horizontal: videos, presentaciones">
+                                    <StackPanel>
+                                        <Grid Height="22">
+                                            <Rectangle Width="24" Height="14" RadiusX="2" RadiusY="2" Stroke="{DynamicResource TextPrimary}" StrokeThickness="1.4" />
+                                        </Grid>
+                                        <TextBlock Text="16:9" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="AspectTallTile" Style="{StaticResource QuietTile}" Height="58" GroupName="exportAspect" Click="OnAspectChanged"
+                                             AutomationProperties.Name="9:16" ToolTip="Vertical: historias, reels, shorts">
+                                    <StackPanel>
+                                        <Grid Height="22">
+                                            <Rectangle Width="12" Height="21" RadiusX="2" RadiusY="2" Stroke="{DynamicResource TextPrimary}" StrokeThickness="1.4" />
+                                        </Grid>
+                                        <TextBlock Text="9:16" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="AspectSquareTile" Style="{StaticResource QuietTile}" Height="58" GroupName="exportAspect" Click="OnAspectChanged"
+                                             AutomationProperties.Name="1:1" ToolTip="Cuadrado: publicaciones">
+                                    <StackPanel>
+                                        <Grid Height="22">
+                                            <Rectangle Width="18" Height="18" RadiusX="2" RadiusY="2" Stroke="{DynamicResource TextPrimary}" StrokeThickness="1.4" />
+                                        </Grid>
+                                        <TextBlock Text="1:1" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
                             </UniformGrid>
-                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,8,0,0"
                                        Text="Con otro formato la grabación queda en el centro, sobre el fondo del Marco. Es de este video y se puede deshacer." />
 
-                            <TextBlock Text="Tamaño" Style="{StaticResource SubHeader}" />
-                            <UniformGrid Columns="2">
-                                <RadioButton x:Name="ResolutionOriginalTile" Style="{StaticResource WordTile}" GroupName="exportResolution" Content="Original" Click="OnExportChanged" Margin="0,0,6,6"
-                                             ToolTip="El tamaño de la grabación (o de su recorte)" />
-                                <RadioButton x:Name="ResolutionHighTile" Style="{StaticResource WordTile}" GroupName="exportResolution" Content="Alta" Click="OnExportChanged" Margin="0,0,0,6"
-                                             ToolTip="El 90 % de cada lado" />
-                                <RadioButton x:Name="ResolutionMediumTile" Style="{StaticResource WordTile}" GroupName="exportResolution" Content="Media" Click="OnExportChanged"
-                                             ToolTip="El 75 % de cada lado" />
-                                <RadioButton x:Name="ResolutionLowTile" Style="{StaticResource WordTile}" GroupName="exportResolution" Content="Baja" Click="OnExportChanged"
-                                             Margin="0" ToolTip="La mitad de cada lado: un archivo pequeño para enviar" />
-                            </UniformGrid>
-                            <TextBlock x:Name="ExportSizeText" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <TextBlock Text="Tamaño" Style="{StaticResource GroupName}" />
+                            <Border Style="{StaticResource Segments}">
+                                <UniformGrid Columns="4">
+                                    <RadioButton x:Name="ResolutionOriginalTile" Style="{StaticResource SegTile}" GroupName="exportResolution" Content="Original" Click="OnExportChanged"
+                                                 ToolTip="El tamaño de la grabación (o de su recorte)" />
+                                    <RadioButton x:Name="ResolutionHighTile" Style="{StaticResource SegTile}" GroupName="exportResolution" Content="Alta" Click="OnExportChanged"
+                                                 ToolTip="El 90 % de cada lado" />
+                                    <RadioButton x:Name="ResolutionMediumTile" Style="{StaticResource SegTile}" GroupName="exportResolution" Content="Media" Click="OnExportChanged"
+                                                 ToolTip="El 75 % de cada lado" />
+                                    <RadioButton x:Name="ResolutionLowTile" Style="{StaticResource SegTile}" GroupName="exportResolution" Content="Baja" Click="OnExportChanged"
+                                                 ToolTip="La mitad de cada lado: un archivo pequeño para enviar" />
+                                </UniformGrid>
+                            </Border>
+                            <TextBlock x:Name="ExportSizeText" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,8,0,0" />
 
-                            <TextBlock Text="Calidad" Style="{StaticResource SubHeader}" />
-                            <UniformGrid Columns="3">
-                                <RadioButton x:Name="QualityLightTile" Style="{StaticResource WordTile}" GroupName="exportQuality" Content="Ligera" Click="OnExportChanged"
-                                             ToolTip="Archivo pequeño; el texto se ve un poco más suave" />
-                                <RadioButton x:Name="QualityBalancedTile" Style="{StaticResource WordTile}" GroupName="exportQuality" Content="Normal" Click="OnExportChanged"
-                                             ToolTip="Lo que Zarpazo siempre guardó" />
-                                <RadioButton x:Name="QualityHighTile" Style="{StaticResource WordTile}" GroupName="exportQuality" Content="Alta" Click="OnExportChanged"
-                                             Margin="0" ToolTip="Archivo más pesado; el texto se ve más nítido" />
-                            </UniformGrid>
+                            <TextBlock Text="Calidad" Style="{StaticResource GroupName}" />
+                            <Border Style="{StaticResource Segments}">
+                                <UniformGrid Columns="3">
+                                    <RadioButton x:Name="QualityLightTile" Style="{StaticResource SegTile}" GroupName="exportQuality" Content="Ligera" Click="OnExportChanged"
+                                                 ToolTip="Archivo pequeño; el texto se ve un poco más suave" />
+                                    <RadioButton x:Name="QualityBalancedTile" Style="{StaticResource SegTile}" GroupName="exportQuality" Content="Normal" Click="OnExportChanged"
+                                                 ToolTip="Lo que Zarpazo siempre guardó" />
+                                    <RadioButton x:Name="QualityHighTile" Style="{StaticResource SegTile}" GroupName="exportQuality" Content="Alta" Click="OnExportChanged"
+                                                 ToolTip="Archivo más pesado; el texto se ve más nítido" />
+                                </UniformGrid>
+                            </Border>
 
-                            <TextBlock Text="Cuadros por segundo" Style="{StaticResource SubHeader}" />
-                            <UniformGrid Columns="2">
-                                <RadioButton x:Name="FpsAutoTile" Style="{StaticResource WordTile}" GroupName="exportFps" Content="Como la grabación" Click="OnExportChanged" Margin="0,0,6,6" />
-                                <RadioButton x:Name="Fps24Tile" Style="{StaticResource WordTile}" GroupName="exportFps" Content="24" Click="OnExportChanged" Margin="0,0,0,6" />
-                                <RadioButton x:Name="Fps30Tile" Style="{StaticResource WordTile}" GroupName="exportFps" Content="30" Click="OnExportChanged" />
-                                <RadioButton x:Name="Fps60Tile" Style="{StaticResource WordTile}" GroupName="exportFps" Content="60" Click="OnExportChanged" Margin="0" />
-                            </UniformGrid>
+                            <TextBlock Text="Cuadros por segundo" Style="{StaticResource GroupName}" />
+                            <Border Style="{StaticResource Segments}">
+                                <UniformGrid Columns="4">
+                                    <RadioButton x:Name="FpsAutoTile" Style="{StaticResource SegTile}" GroupName="exportFps" Content="Original" Click="OnExportChanged"
+                                                 ToolTip="Los mismos cuadros que la grabación" />
+                                    <RadioButton x:Name="Fps24Tile" Style="{StaticResource SegTile}" GroupName="exportFps" Content="24" Click="OnExportChanged"
+                                                 ToolTip="24 cuadros por segundo" />
+                                    <RadioButton x:Name="Fps30Tile" Style="{StaticResource SegTile}" GroupName="exportFps" Content="30" Click="OnExportChanged"
+                                                 ToolTip="30 cuadros por segundo" />
+                                    <RadioButton x:Name="Fps60Tile" Style="{StaticResource SegTile}" GroupName="exportFps" Content="60" Click="OnExportChanged"
+                                                 ToolTip="60 cuadros por segundo" />
+                                </UniformGrid>
+                            </Border>
 
-                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0"
+                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,16,0,0"
                                        Text="Se aplica al guardar o copiar. Si la grabación tiene menos cuadros de los que eliges, se conservan los suyos." />
                         </StackPanel>
                     </Grid>

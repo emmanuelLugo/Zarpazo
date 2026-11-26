@@ -727,6 +727,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.True(window.FpsAutoTile.IsChecked);
                 Assert.False(window.NeedsRendering, "the recording is saved as it is until something changes");
                 Assert.False(window.ExportResetButton.IsEnabled);
+                Assert.Equal(Visibility.Hidden, window.ExportResetButton.Visibility);
 
                 window.ResolutionLowTile.IsChecked = true;
                 window.ResolutionLowTile.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
@@ -740,6 +741,7 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
                 Assert.False(window.Timeline!.HasChanges, "it is no edit: nothing to discard, nothing to undo");
                 Assert.False(window.Timeline.CanUndo);
                 Assert.True(window.ExportResetButton.IsEnabled);
+                Assert.Equal(Visibility.Visible, window.ExportResetButton.Visibility);
                 Assert.Contains("px", window.ExportSizeText.Text);
                 Pump(() => false, 200);
                 Shot(window, Environment.GetEnvironmentVariable("ZARPAZO_SCREENSHOTS"), "editor-export.png");

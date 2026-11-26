@@ -2005,6 +2005,7 @@ public partial class VideoEditWindow : Window
         Fps30Tile.IsChecked = _export.Fps == 30;
         Fps60Tile.IsChecked = _export.Fps == 60;
         ExportResetButton.IsEnabled = !_export.IsDefault;
+        ExportResetButton.Visibility = _export.IsDefault ? Visibility.Hidden : Visibility.Visible;
         ShowExportSize();
         _showingExport = false;
     }
