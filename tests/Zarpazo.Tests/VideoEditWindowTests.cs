@@ -111,6 +111,34 @@ public sealed class VideoEditWindowTests : IClassFixture<SampleVideos>, IDisposa
         });
     }
 
+    [Fact]
+    public void The_timeline_fills_the_width_when_the_window_changes_size_at_once()
+    {
+        Sta.Run(() =>
+        {
+            var window = new VideoEditWindow(_samples.Silent) { Width = 1100 };
+            window.Show();
+            try
+            {
+                Assert.True(Pump(() => window.Timeline != null), "the video should open");
+                Pump(() => false, 200);
+
+                foreach (double width in new[] { 1600.0, 1200.0 }) // one jump each way, as maximizing and restoring do
+                {
+                    window.Width = width;
+                    Pump(() => false, 300);
+
+                    double drawn = TimelineLayout.Width(window.Timeline!, window.View.PixelsPerSecond);
+                    Assert.InRange(drawn, window.Scroller.ViewportWidth - 2, window.Scroller.ViewportWidth);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     [NeedsGpuFact]
     public void The_speed_button_shows_the_speed_of_the_chosen_piece()
     {

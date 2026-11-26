@@ -413,11 +413,15 @@ public partial class VideoEditWindow : Window
         Lane.PixelsPerSecond = OverlayLane.PixelsPerSecond = View.PixelsPerSecond;
     }
 
-    private void OnScrollerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateScale();
-
-    // The hints of the empty rows stay in the middle of what can be seen.
+    // A new width is only known here: when SizeChanged comes the viewport is still the old one, so a window maximized in
+    // one jump kept the old scale.
     private void OnTimelineScrolled(object sender, ScrollChangedEventArgs e)
     {
+        if (e.ViewportWidthChange != 0)
+        {
+            UpdateScale();
+        }
+        // The hints of the empty rows stay in the middle of what can be seen.
         if (e.HorizontalChange != 0 || e.ViewportWidthChange != 0)
         {
             Lane.InvalidateVisual();
